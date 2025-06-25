@@ -1,0 +1,88 @@
+import 'package:flutter/material.dart';
+import 'package:frontend/pages/home.dart';
+import 'package:frontend/pages/map.dart';
+import 'package:frontend/pages/profile.dart';
+import 'package:frontend/pages/notification.dart';
+import 'package:frontend/pages/chat.dart';
+
+class AppShell extends StatefulWidget {
+  const AppShell({super.key});
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  final PageController _pageController = PageController();
+  int _currentIndex = 0;
+  final _items = [
+    BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
+    BottomNavigationBarItem(icon: Icon(Icons.map), label: ''),
+    BottomNavigationBarItem(icon: Icon(Icons.chat), label: ''),
+    BottomNavigationBarItem(icon: Icon(Icons.notifications), label: ''),
+  ];
+  void _onTap(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 100),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _currentIndex != 0) {
+          _pageController.jumpTo(0);
+          setState(() => _currentIndex = 0);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: Text("Neighborly"),
+          actions: [
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfilePage(title: 'Profile'),
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12.0),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundImage: AssetImage('assets/dummy.png'),
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: PageView(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() => _currentIndex = index);
+          },
+          children: [
+            HomePage(title: 'Home Page'),
+            MapPage(title: 'Map Page'),
+            ChatPage(title: 'Chat Page'),
+            NotificationPage(title: 'Notification Page'),
+            //ProfilePage(title: 'Profile Page'),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _currentIndex,
+          onTap: _onTap,
+          items: _items,
+        ),
+      ),
+    );
+  }
+}

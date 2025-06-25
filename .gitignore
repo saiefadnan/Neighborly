@@ -1,0 +1,12 @@
+# Root-level environment files
+.env
+.env.*
+
+# System junk
+.DS_Store
+Thumbs.db
+
+# IDE/editor settings
+.vscode/
+.idea/
+*.log
