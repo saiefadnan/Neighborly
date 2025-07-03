@@ -20,6 +20,12 @@ class MyApp extends StatelessWidget {
       title: 'Neighborly',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF33A67B)),
+        appBarTheme: const AppBarTheme(
+          titleTextStyle: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 25.0,
+          ),
+        ),
       ),
       home: const AppShell(),
     );
