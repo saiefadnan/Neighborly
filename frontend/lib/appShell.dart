@@ -15,7 +15,12 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
-  List<String> appBarHeadings = ['Neighborly', 'Map', 'Forum', 'Notifications'];
+  List<String> appBarHeadings = [
+    'Neighborly',
+    'Map',
+    'Community',
+    'Notifications',
+  ];
   String appBarTitle = 'Neighborly';
   final _items = [
     BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
