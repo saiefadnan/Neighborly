@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:neighborly/functions/comment_box.dart';
+import 'package:neighborly/components/comment_box.dart';
 import 'package:like_button/like_button.dart';
 import 'package:readmore/readmore.dart';
 import 'package:share_plus/share_plus.dart';
@@ -80,6 +80,12 @@ class _PostCardState extends ConsumerState<PostCard> {
                       likeCount: 20,
                       countPostion: CountPostion.right,
                       size: 25,
+                      likeBuilder: (isLiked) {
+                        return Icon(
+                          Icons.favorite,
+                          color: isLiked ? Colors.red : Colors.grey,
+                        );
+                      },
                       onTap: OnTap,
                     ),
                     SizedBox(width: 10),
@@ -87,10 +93,10 @@ class _PostCardState extends ConsumerState<PostCard> {
                       icon: Icon(Icons.comment),
                       iconSize: 22,
                       onPressed: () {
-                        showCommentBox(context, ref);
+                        showCommentBox(context, ref, widget.post['postID']);
                       },
                     ),
-                    Text("2k"),
+                    Text('${widget.post['totalComments']}'),
                   ],
                 ),
                 Row(
@@ -99,10 +105,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                     IconButton(
                       icon: Icon(Icons.share),
                       iconSize: 22,
-                      onPressed:
-                          () => Share.share(
-                            "Check this out: ${widget.post['title']}\n\n${widget.post['link']}",
-                          ),
+                      onPressed: () => Share.share(widget.post['link']),
                     ),
                   ],
                 ),

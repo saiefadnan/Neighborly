@@ -10,28 +10,7 @@
             "upvotes": 12,
             "downvotes": 1,
             "link": "https://example.com/post1",
-            "comments":[
-                {
-                    "commentID":0,
-                    "timestamp":"2025-07-01T22:00:00Z",
-                    "authorID": 1,
-                    "postID":0,
-                    "author": "Bundeep",
-                    "content":"Interesting take 🤔",
-                    "upvotes": 2,
-                    "parentID": null
-                },
-                {
-                    "commentID":1,
-                    "timestamp":"2025-07-01T22:00:00Z",
-                    "authorID": 0,
-                    "postID":0,
-                    "author": "Sundeep",
-                    "upvotes": 0,
-                    "content":"Thanks",
-                    "parentID": 0
-                }
-            ]
+            "totalComments": 2
         },
         {
             "postID": 1,
@@ -43,28 +22,7 @@
             "upvotes": 12,
             "downvotes": 1,
             "link": "https://example.com/post2",
-            "comments":[
-                {
-                    "commentID":2,
-                    "timestamp":"2025-07-01T22:00:00Z",
-                    "authorID": 0,
-                    "postID":1,
-                    "author": "Sundeep",
-                    "upvotes": 1,
-                    "content":"Interesting take 🤔",
-                    "parentID": null
-                },
-                {
-                    "commentID":3,
-                    "timestamp":"2025-07-01T22:00:00Z",
-                    "authorID": 1,
-                    "postID":1,
-                    "author": "Bundeep",
-                    "upvotes": 8,
-                    "content":"Thanks",
-                    "parentID": 2
-                }
-            ]
+            "totalComments": 2
         }, 
         {
             "postID": 2,
@@ -76,7 +34,7 @@
             "upvotes": 12,
             "downvotes": 1,
             "link": "https://example.com/post3",
-            "comments":[]
+            "totalComments": 0
         },
         {
             "postID": 3,
@@ -88,7 +46,7 @@
             "upvotes": 12,
             "downvotes": 1,
             "link": "https://example.com/post4",
-            "comments":[]
+            "totalComments": 0
         },
         {
             "postID": 4,
@@ -100,7 +58,7 @@
             "upvotes": 12,
             "downvotes": 1,
             "link": "https://example.com/post5",
-            "comments":[]
+            "totalComments" : 0
         },
         {
             "postID": 5,
@@ -112,7 +70,8 @@
             "upvotes": 12,
             "downvotes": 1,
             "link": "https://example.com/post6",
-            "comments":[]
+            "totalComments": 0
+
         },
         {
             "postID": 6,
@@ -124,7 +83,7 @@
             "upvotes": 12,
             "downvotes": 1,
             "link": "https://example.com/post7",
-            "comments":[]
+            "totalComments": 0
         }
     ]
 }

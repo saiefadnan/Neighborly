@@ -25,7 +25,7 @@ class _AppShellState extends State<AppShell> {
   final _items = [
     BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
     BottomNavigationBarItem(icon: Icon(Icons.map), label: ''),
-    BottomNavigationBarItem(icon: Icon(Icons.newspaper_outlined), label: ''),
+    BottomNavigationBarItem(icon: Icon(Icons.groups), label: ''),
     BottomNavigationBarItem(icon: Icon(Icons.notifications), label: ''),
   ];
   void _onTap(int index) {

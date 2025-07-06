@@ -9,12 +9,13 @@ class ForumPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final asyncPosts = ref.watch(fetchData);
+    final asyncPosts = ref.watch(fetchData('posts'));
     return asyncPosts.when(
-      data:(posts) => ListView.builder(
+      data:(posts) => posts.isNotEmpty? ListView.builder(
             itemCount: posts.length,
             itemBuilder: (_, i) => PostCard(post: posts[i]),
-          ),
+          ):
+          Center(child: Text("No posts found"),),
       error: (e, _) => Center(child: Text('Error: $e')),
       loading: ()=> const Center(child: CircularProgressIndicator()),
     );
