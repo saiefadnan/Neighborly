@@ -12,62 +12,48 @@ class ActivityPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            const Center(
-              child: Text(
-                "ACTIVITY",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ),
             const SizedBox(height: 20),
 
             // Achievement List
             _buildAchievementItem(
               title: "Earned Gold Certification in Change Management",
               subtitle: "May 1, 2022",
-              icon: Icons.star,
-              iconColor: Colors.yellow,
+              image: 'assets/images/Medallions.png',
             ),
             _buildAchievementItem(
               title: "Completed Drive-Thru",
               subtitle: "May 1, 2022",
-              icon: Icons.directions_car,
-              iconColor: Colors.grey,
+              image: 'assets/images/PostTestComplete.png',
             ),
             _buildAchievementItem(
               title: "Earned Bronze in Drive-Thru",
               subtitle: "May 1, 2022",
-              icon: Icons.access_time,
-              iconColor: Colors.brown,
+              image: 'assets/images/BronzeMedal.png',
             ),
             _buildAchievementItem(
               title: "Earned Silver in Drive-Thru",
               subtitle: "May 1, 2022",
-              icon: Icons.access_time,
-              iconColor: Colors.grey,
+              image: 'assets/images/SilverMedal.png',
             ),
             _buildAchievementItem(
               title: "Earned Gold in Drive-Thru",
               subtitle: "May 1, 2022",
-              icon: Icons.star,
-              iconColor: Colors.yellow,
+              image: 'assets/images/GoldMedal.png',
             ),
             _buildAchievementItem(
               title: "Earned Gold in Drive-Thru 101",
               subtitle: "May 1, 2022",
-              icon: Icons.star,
-              iconColor: Colors.yellow,
+              image: 'assets/images/GoldMedal.png',
             ),
             _buildAchievementItem(
               title: "Completed Pre-Test in Customer Experience 101",
               subtitle: "May 1, 2022",
-              icon: Icons.check_circle,
-              iconColor: Colors.green,
+              image: 'assets/images/PostTestComplete.png',
             ),
             _buildAchievementItem(
               title: "Completed Pre-Test in Customer Experience 101",
               subtitle: "May 1, 2022",
-              icon: Icons.check_circle,
-              iconColor: Colors.green,
+              image: 'assets/images/PostTestComplete.png',
             ),
           ],
         ),
@@ -78,17 +64,16 @@ class ActivityPage extends StatelessWidget {
   Widget _buildAchievementItem({
     required String title,
     required String subtitle,
-    required IconData icon,
-    required Color iconColor,
+    required String image,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: iconColor.withOpacity(0.2),
-            child: Icon(icon, color: iconColor, size: 24),
+          Container(
+            width: 50,
+            height: 50,
+            child: Image.asset(image, fit: BoxFit.cover),
           ),
           const SizedBox(width: 16),
           Expanded(
