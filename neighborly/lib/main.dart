@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:neighborly/appshell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:neighborly/pages/login.dart';
+
+final loggedInProvider = StateProvider<bool>((ref) => false);
 
 void main() {
   runApp(ProviderScope(child: const MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final loggedIn = ref.watch(loggedInProvider);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Neighborly',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF33A67B)),
+        colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF71BB7B)),
         appBarTheme: const AppBarTheme(
           titleTextStyle: TextStyle(
             fontWeight: FontWeight.bold,
@@ -23,7 +26,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const AppShell(),
+      home: loggedIn ? const AppShell() : const LoginPage(title: "login"),
     );
   }
 }

@@ -11,7 +11,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  String result = "hello";
+  String result = "";
   String url = "http://10.0.2.2:4000/api/test";
 
   Future<void> fetchData() async {
@@ -42,12 +42,12 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(widget.title),
-              ElevatedButton(
-                child: Text("Click to test backend"),
-                onPressed: () {
-                  fetchData();
-                },
-              ),
+              // ElevatedButton(
+              //   child: Text("Click to test backend"),
+              //   onPressed: () {
+              //     fetchData();
+              //   },
+              // ),
               Text(result),
             ],
           ),

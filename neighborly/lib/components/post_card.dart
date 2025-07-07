@@ -77,7 +77,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                   children: [
                     LikeButton(
                       isLiked: true,
-                      likeCount: 20,
+                      likeCount: widget.post['reacts'],
                       countPostion: CountPostion.right,
                       size: 25,
                       likeBuilder: (isLiked) {

@@ -106,16 +106,17 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
 }
 
 void showCommentBox(BuildContext context, WidgetRef ref, int postId) {
-  showBottomSheet(
+  showModalBottomSheet(
     context: context,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(30.0)),
     ),
+    isScrollControlled: true,
     builder: (context) {
       return DraggableScrollableSheet(
         initialChildSize: .6,
-        minChildSize: .58,
-        maxChildSize: .95,
+        minChildSize: .59,
+        maxChildSize: .9,
         expand: false,
         builder: (context, scrollController) {
           return Container(
