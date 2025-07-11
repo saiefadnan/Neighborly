@@ -44,7 +44,7 @@ class _AppShellState extends State<AppShell> {
       },
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          backgroundColor: Color(0xFF71BB7B),
           title: Text(appBarTitle),
           actions: [
             InkWell(

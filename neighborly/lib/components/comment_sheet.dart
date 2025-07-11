@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:neighborly/components/comment_card.dart';
+import 'package:neighborly/components/comment_tree.dart';
 import 'package:neighborly/functions/fetchData.dart';
 
 class BottomCommentSheet extends ConsumerStatefulWidget {
@@ -25,7 +27,9 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
             allComments
                 .where((comment) => comment['postID'] == widget.postID)
                 .toList();
-        return comments.isEmpty
+        final topLevelComments =
+            comments.where((comment) => comment['parentID'] == null).toList();
+        return topLevelComments.isEmpty
             ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -43,58 +47,17 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
             )
             : ListView.builder(
               controller: widget.scrollController,
-              itemCount: comments.length,
+              itemCount: topLevelComments.length,
               itemBuilder: (context, index) {
-                return Padding(
-                  padding: EdgeInsets.all(3.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          ClipOval(
-                            child: Image.asset(
-                              'assets/images/dummy.png',
-                              width: 25,
-                              height: 25,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Text(
-                            '${comments[index]['author']}',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          SizedBox(width: 35),
-                          Expanded(
-                            child: Text('${comments[index]['content']}'),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          SizedBox(width: 35),
-                          Icon(Icons.favorite, color: Colors.red, size: 15),
-                          SizedBox(width: 5),
-                          Text('${comments[index]['reacts']}'),
-                          SizedBox(width: 40),
-                          Icon(Icons.reply, color: Colors.blue, size: 15),
-                          SizedBox(width: 5),
-                          Text(
-                            'reply',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ], // Replace with actual comment widget
-                  ),
+                return Column(
+                  children: [
+                    CommentCard(comment: topLevelComments[index], depth: 0),
+                    buildCommentTree(
+                      comments,
+                      topLevelComments[index]['commentID'],
+                      1,
+                    ),
+                  ],
                 );
               },
             );
@@ -125,7 +88,7 @@ void showCommentBox(BuildContext context, WidgetRef ref, int postId) {
               borderRadius: BorderRadius.vertical(top: Radius.circular(30.0)),
             ),
             child: Padding(
-              padding: EdgeInsets.only(left: 10, top: 10),
+              padding: EdgeInsets.all(8.0),
               child: BottomCommentSheet(
                 postID: postId,
                 scrollController: scrollController,
