@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/cupertino.dart';
 
 class CurvedHeaderClipper extends CustomClipper<Path> {
   @override
@@ -20,9 +23,82 @@ class CurvedHeaderClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
-class EditProfilePage extends StatelessWidget {
+class ProfileAvatar extends StatefulWidget {
+  const ProfileAvatar({Key? key}) : super(key: key);
+
+  @override
+  State<ProfileAvatar> createState() => _ProfileAvatarState();
+}
+
+//for profile pic changing..........................................................................................
+class _ProfileAvatarState extends State<ProfileAvatar> {
+  File? _imageFile;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 115,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CircleAvatar(
+            radius: 54,
+            backgroundColor: Colors.white,
+            child: CircleAvatar(
+              radius: 50,
+              backgroundImage:
+                  _imageFile != null
+                      ? FileImage(_imageFile!)
+                      : const AssetImage('assets/images/dummy.png')
+                          as ImageProvider,
+            ),
+          ),
+          Positioned(
+            bottom: -6,
+            right: -4,
+            child: Material(
+              color: Colors.white,
+              shape: const CircleBorder(),
+              child: IconButton(
+                icon: const Icon(CupertinoIcons.camera, size: 22),
+                onPressed: _pickImage,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+//for profile pic changing..........................................................................................
+
+//profile page content.................................................................................................
+class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
 
+  @override
+  State<EditProfilePage> createState() => _EditProfilePageState();
+}
+
+class _EditProfilePageState extends State<EditProfilePage> {
+  bool notificationsOn = true; // Added for the switch
+  bool isDarkMode = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,36 +128,7 @@ class EditProfilePage extends StatelessWidget {
                 ),
               ),
               // Profile avatar with edit icon, overlapping the curve
-              Positioned(
-                top: 120,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 54,
-                      backgroundColor: Colors.white,
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundImage: AssetImage('assets/images/dummy.png'),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: -4,
-                      child: Material(
-                        color: Colors.white,
-                        shape: const CircleBorder(),
-                        child: IconButton(
-                          icon: const Icon(Icons.edit, size: 22),
-                          onPressed: () {},
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ProfileAvatar(),
             ],
           ),
           // Name and info
@@ -110,22 +157,23 @@ class EditProfilePage extends StatelessWidget {
               children: [
                 _profileSection([
                   _profileTile(
-                    Icons.badge_outlined,
+                    CupertinoIcons.person_crop_circle,
                     'Edit profile information',
                   ),
                   _profileTile(
-                    Icons.notifications_none,
+                    CupertinoIcons.bell,
                     'Notifications',
-                    trailing: Text(
-                      'ON',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    trailing: CupertinoSwitch(
+                      value: notificationsOn,
+                      onChanged: (bool value) {
+                        setState(() {
+                          notificationsOn = value;
+                        });
+                      },
                     ),
                   ),
                   _profileTile(
-                    Icons.language,
+                    CupertinoIcons.globe,
                     'Language',
                     trailing: Text(
                       'English',
@@ -138,24 +186,37 @@ class EditProfilePage extends StatelessWidget {
                 ]),
                 const SizedBox(height: 16),
                 _profileSection([
-                  _profileTile(Icons.credit_card, 'Security'),
+                  _profileTile(CupertinoIcons.lock, 'Security'),
                   _profileTile(
-                    Icons.brightness_6,
+                    isDarkMode
+                        ? CupertinoIcons.moon_stars
+                        : CupertinoIcons.brightness, // Icon changes!
                     'Theme',
-                    trailing: Text(
-                      'Light mode',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: CupertinoSwitch(
+                        value: isDarkMode,
+                        onChanged: (bool value) {
+                          setState(() {
+                            isDarkMode = value;
+                            // Here, you can also trigger your theme change logic
+                          });
+                        },
                       ),
                     ),
                   ),
                 ]),
                 const SizedBox(height: 16),
                 _profileSection([
-                  _profileTile(Icons.help_outline, 'Help & Support'),
-                  _profileTile(Icons.mail_outline, 'Contact us'),
-                  _profileTile(Icons.privacy_tip_outlined, 'Privacy policy'),
+                  _profileTile(
+                    CupertinoIcons.question_circle,
+                    'Help & Support',
+                  ),
+                  _profileTile(CupertinoIcons.mail, 'Contact us'),
+                  _profileTile(
+                    CupertinoIcons.checkmark_shield,
+                    'Privacy policy',
+                  ),
                 ]),
                 const SizedBox(height: 24),
               ],
