@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:neighborly/components/comment_box.dart';
+import 'package:neighborly/components/comment_sheet.dart';
 import 'package:like_button/like_button.dart';
 import 'package:readmore/readmore.dart';
 import 'package:share_plus/share_plus.dart';
