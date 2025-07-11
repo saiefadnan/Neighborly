@@ -10,17 +10,29 @@ class ForumPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncPosts = ref.watch(fetchData('posts'));
-    return asyncPosts.when(
-      data:
-          (posts) =>
-              posts.isNotEmpty
-                  ? ListView.builder(
-                    itemCount: posts.length,
-                    itemBuilder: (_, i) => PostCard(post: posts[i]),
-                  )
-                  : Center(child: Text("No posts found")),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      loading: () => const Center(child: CircularProgressIndicator()),
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: const Color(0xFF71BB7B),
+        foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: asyncPosts.when(
+        data: (posts) => posts.isNotEmpty
+            ? ListView.builder(
+                itemCount: posts.length,
+                itemBuilder: (_, i) => PostCard(post: posts[i]),
+              )
+            : const Center(child: Text("No posts found")),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        loading: () => const Center(child: CircularProgressIndicator()),
+      ),
     );
   }
 }

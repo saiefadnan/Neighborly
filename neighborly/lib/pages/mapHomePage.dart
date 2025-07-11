@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:neighborly/pages/forum.dart';
+import 'package:neighborly/pages/notification.dart';
+import 'package:neighborly/pages/profile.dart';
 
 class MapHomePage extends StatelessWidget {
   final List<Map<String, dynamic>> helpRequests = [
@@ -79,9 +81,9 @@ class MapHomePage extends StatelessWidget {
             ),
             );
             },
-            child: Icon(Icons.message),
             backgroundColor: const Color(0xFF71BB7B),
             foregroundColor: const Color(0xFFFAF4E8),
+            child: Icon(Icons.message),
           ),
           SizedBox(height: 10),
           FloatingActionButton(
@@ -89,21 +91,88 @@ class MapHomePage extends StatelessWidget {
             onPressed: () {
               // TODO: Open bottom drawer to create help request
             },
-            child: Icon(Icons.add),
             backgroundColor: const Color(0xFF71BB7B),
             foregroundColor: const Color(0xFFFAF4E8),
+            child: Icon(Icons.add),
           ),
         ],
       ),
       appBar: AppBar(
-        title: Text("Neighborly"),
-        leading: IconButton(
-          icon: Icon(Icons.menu),
+      title: const Text("Neighborly"),
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: const Icon(Icons.menu),
           onPressed: () {
-            //TODO: Open drawer menu
+            Scaffold.of(context).openDrawer();
           },
         ),
       ),
+    ),
+    drawer: _buildDrawer(context),
     );
   }
+}
+
+Widget _buildDrawer(BuildContext context) {
+  String username = "Ali";
+
+  return Drawer(
+    backgroundColor: const Color(0xFF71BB7B),
+    child: ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        GestureDetector(
+          onTap: () {
+            Navigator.pop(context); // Close the drawer first
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ProfilePage(title: 'Profile'),
+              ),
+            );
+          },
+          child: DrawerHeader(
+            decoration: const BoxDecoration(
+              color: Color(0xFF71BB7B),
+          ),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 30,
+                  backgroundImage: AssetImage('assets/images/dummy.png'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Hello, $username',
+                    style: const TextStyle(
+                      color: Color(0xFFFAF4E8),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.notifications, color: Color(0xFFFAF4E8)),
+          title: const Text('Notifications'), textColor: Color(0xFFFAF4E8),
+          onTap: () {
+            // Close drawer first
+            Navigator.pop(context);
+            // Navigate to notifications page
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NotificationPage(title: 'Notifications'),
+              ),
+            );
+          },
+        ),
+        // 🔜 Add more options here In Sha Allah
+      ],
+    ),
+  );
 }

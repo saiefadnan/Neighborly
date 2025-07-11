@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'map.dart'; // Make sure the path is correct based on your project structure
+import 'mapHomepage.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key, required this.title});
@@ -55,7 +55,17 @@ class _NotificationPageState extends State<NotificationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
+      appBar: AppBar(
+        title: Text(widget.title),
+        backgroundColor: const Color(0xFF71BB7B),
+        foregroundColor: const Color(0xFFFAF4E8),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -104,14 +114,7 @@ class _NotificationPageState extends State<NotificationPage> {
                         const Spacer(),
                         ElevatedButton(
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const MapPage(
-                                  title: 'Map Page',
-                                ),
-                              ),
-                            );
+                            Navigator.pop(context);
                           },
                           child: const Text("Go to Page"),
                         ),
