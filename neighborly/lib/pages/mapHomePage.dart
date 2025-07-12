@@ -4,8 +4,14 @@ import 'package:latlong2/latlong.dart';
 import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/pages/notification.dart';
 import 'package:neighborly/pages/profile.dart';
+import 'package:neighborly/components/help_request_drawer.dart';
 
-class MapHomePage extends StatelessWidget {
+class MapHomePage extends StatefulWidget {
+  @override
+  _MapHomePageState createState() => _MapHomePageState();
+}
+
+class _MapHomePageState extends State<MapHomePage> {
   final List<Map<String, dynamic>> helpRequests = [
     {
       "type": "Emergency",
@@ -89,7 +95,17 @@ class MapHomePage extends StatelessWidget {
           FloatingActionButton(
             heroTag: "addHelp",
             onPressed: () {
-              // TODO: Open bottom drawer to create help request
+              showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              builder: (_) => HelpRequestDrawer(
+                onSubmit: (helpData) {
+                  setState(() {
+                    helpRequests.add(helpData); // Add new marker
+                  });
+                },
+              ),
+            );
             },
             backgroundColor: const Color(0xFF71BB7B),
             foregroundColor: const Color(0xFFFAF4E8),
