@@ -36,13 +36,10 @@ class ProfilePage extends StatelessWidget {
               child: CircleAvatar(
                 radius: 40,
                 backgroundColor: Colors.grey[200],
-                child: Icon(
-                  Icons.account_circle,
-                  size: 60,
-                  color: Colors.blueGrey,
-                ),
+                backgroundImage: AssetImage('assets/images/dummy.png'),
               ),
             ),
+
             const SizedBox(height: 10),
             const Center(
               child: Text(
@@ -135,9 +132,7 @@ class ProfilePage extends StatelessWidget {
                                       ],
                                     ),
 
-                                    const SizedBox(
-                                      height: 6,
-                                    ), // Add some space between Level and Points
+                                    const SizedBox(height: 6),
                                   ],
                                 ),
 
@@ -153,7 +148,7 @@ class ProfilePage extends StatelessWidget {
                                         borderRadius: BorderRadius.circular(19),
                                       ),
                                     ),
-                                    // Progress bar background
+
                                     // Progress bar background
                                     Positioned(
                                       left:
@@ -169,7 +164,7 @@ class ProfilePage extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    // Progress bar foreground (Dynamic width from level 2 to 3)
+                                    // Progress bar(Dynamic width from level 2 to 3)
                                     Positioned(
                                       left: 19,
                                       right:
@@ -295,7 +290,7 @@ class ProfilePage extends StatelessWidget {
                           const SizedBox(height: 24),
 
                           // Medals Section
-                          _sectionTitle('MEDALS', 53),
+                          _sectionTitle('HONORS', 53),
                           const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -324,23 +319,23 @@ class ProfilePage extends StatelessWidget {
                           const SizedBox(height: 24),
 
                           // Certifications Section
-                          _sectionTitle('CERTIFICATIONS', 8),
+                          _sectionTitle('MILESTONES', 8),
                           const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
                               _certCard(
-                                'Food Safety\nProtocols',
+                                'Rookie\nHero',
                                 'Bronze Certified',
                                 Colors.brown[200]!,
                               ),
                               _certCard(
-                                'Facilities &\nMaintenance',
+                                'Silver \nSurfer',
                                 'Silver Certified',
                                 Colors.blueGrey[200]!,
                               ),
                               _certCard(
-                                'Sustainability\nPractices',
+                                'Guardian\n',
                                 'Gold Certified',
                                 Colors.amber[200]!,
                               ),
@@ -411,27 +406,21 @@ class ProfilePage extends StatelessWidget {
         boxShadow: [
           // Bottom-right shadow
           BoxShadow(
-            color: const Color(
-              0xFFA6ABBD,
-            ).withOpacity(0.5), // light purple shadow
-            blurRadius: 18.58, // Blur intensity
-            offset: const Offset(2.48, 2.48), // Shadow position (bottom-right)
+            color: const Color(0xFFA6ABBD).withOpacity(0.5),
+            blurRadius: 18.58,
+            offset: const Offset(2.48, 2.48), // Shadow (bottomright)
           ),
-          // Upper-left shadow
+          // Upperleft shadow
           BoxShadow(
             color: const Color(0xFFFAFBFF), // light blue shadow
-            blurRadius: 16.1, // Blur intensity
-            offset: const Offset(-1.24, -1.24), // Shadow position (upper-left)
+            blurRadius: 16.1,
+            offset: const Offset(-1.24, -1.24), // Shadow (upperleft)
           ),
         ],
       ),
       child: Column(
         children: [
-          Image.asset(
-            imagePath,
-            width: 50, // Adjust the width as needed
-            height: 50, // Adjust the height as needed
-          ),
+          Image.asset(imagePath, width: 50, height: 50),
           const SizedBox(height: 6),
           Text(
             label,

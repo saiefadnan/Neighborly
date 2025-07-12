@@ -16,37 +16,37 @@ class ActivityPage extends StatelessWidget {
 
             // Achievement List
             _buildAchievementItem(
-              title: "Earned Gold Certification in Change Management",
+              title: "Earned Gold Certified due to successful help",
               subtitle: "May 1, 2022",
               image: 'assets/images/Medallions.png',
             ),
             _buildAchievementItem(
-              title: "Completed Drive-Thru",
+              title: "UserA accepted your help",
               subtitle: "May 1, 2022",
               image: 'assets/images/PostTestComplete.png',
             ),
             _buildAchievementItem(
-              title: "Earned Bronze in Drive-Thru",
+              title: "Earned Bronze in",
               subtitle: "May 1, 2022",
               image: 'assets/images/BronzeMedal.png',
             ),
             _buildAchievementItem(
-              title: "Earned Silver in Drive-Thru",
+              title: "Earned Silver in",
               subtitle: "May 1, 2022",
               image: 'assets/images/SilverMedal.png',
             ),
             _buildAchievementItem(
-              title: "Earned Gold in Drive-Thru",
+              title: "Earned Gold in ",
               subtitle: "May 1, 2022",
               image: 'assets/images/GoldMedal.png',
             ),
             _buildAchievementItem(
-              title: "Earned Gold in Drive-Thru 101",
+              title: "Earned Gold in ",
               subtitle: "May 1, 2022",
               image: 'assets/images/GoldMedal.png',
             ),
             _buildAchievementItem(
-              title: "Completed Pre-Test in Customer Experience 101",
+              title: "Post successfully made in community",
               subtitle: "May 1, 2022",
               image: 'assets/images/PostTestComplete.png',
             ),
