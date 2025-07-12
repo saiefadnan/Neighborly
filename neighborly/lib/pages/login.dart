@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:neighborly/appshell.dart';
+//import 'package:neighborly/appshell.dart';
 import 'package:neighborly/main.dart';
+import 'package:neighborly/pages/mapHomePage.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   final String title;
@@ -17,7 +18,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ref.read(loggedInProvider.notifier).state = true;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const AppShell()),
+      MaterialPageRoute(builder: (context) => MapHomePage()),
     );
   }
 
