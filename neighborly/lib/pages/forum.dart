@@ -13,9 +13,17 @@ class ForumPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Color(
+              0xFFFAF4E8,
+            ),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: const Color(0xFF71BB7B),
-        foregroundColor: Colors.white,
+        foregroundColor: const Color(0xFFFAF4E8),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -24,12 +32,14 @@ class ForumPage extends ConsumerWidget {
         ),
       ),
       body: asyncPosts.when(
-        data: (posts) => posts.isNotEmpty
-            ? ListView.builder(
-                itemCount: posts.length,
-                itemBuilder: (_, i) => PostCard(post: posts[i]),
-              )
-            : const Center(child: Text("No posts found")),
+        data:
+            (posts) =>
+                posts.isNotEmpty
+                    ? ListView.builder(
+                      itemCount: posts.length,
+                      itemBuilder: (_, i) => PostCard(post: posts[i]),
+                    )
+                    : const Center(child: Text("No posts found")),
         error: (e, _) => Center(child: Text('Error: $e')),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),

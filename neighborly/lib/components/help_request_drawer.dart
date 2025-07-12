@@ -98,113 +98,126 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Help Request", style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const CircleAvatar(radius: 20, backgroundImage: AssetImage('assets/images/dummy.png')),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    children: [
-                      TextField(
-                      controller: _usernameController,
-                      decoration: const InputDecoration(labelText: "Your Name"),
-                    ),
-          const SizedBox(height: 8),
-                      TextField(
-                        controller: _addressController,
-                        onChanged: _fetchAddressSuggestions,
-                        decoration: const InputDecoration(labelText: "Your Address"),
+    return Stack(
+      children: [
+        Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Help Request", style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const CircleAvatar(radius: 20, backgroundImage: AssetImage('assets/images/dummy.png')),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        TextField(
+                        controller: _usernameController,
+                        decoration: const InputDecoration(labelText: "Your Name"),
                       ),
-                      if (_suggestions.isNotEmpty)
-                        ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: _suggestions.length,
-                          itemBuilder: (context, index) => ListTile(
-                            title: Text(_suggestions[index]),
-                            onTap: () {
-                              _addressController.text = _suggestions[index];
-                              setState(() => _suggestions.clear());
-                            },
-                          ),
+            const SizedBox(height: 8),
+                        TextField(
+                          controller: _addressController,
+                          onChanged: _fetchAddressSuggestions,
+                          decoration: const InputDecoration(labelText: "Your Address"),
                         ),
-                    ],
+                        if (_suggestions.isNotEmpty)
+                          ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _suggestions.length,
+                            itemBuilder: (context, index) => ListTile(
+                              title: Text(_suggestions[index]),
+                              onTap: () {
+                                _addressController.text = _suggestions[index];
+                                setState(() => _suggestions.clear());
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            DropdownButtonFormField<String>(
-              value: _urgency,
-              items: _urgencies.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-              onChanged: (val) => setState(() => _urgency = val!),
-              decoration: const InputDecoration(labelText: 'Urgency'),
-            ),
-            const SizedBox(height: 10),
-
-            DropdownButtonFormField<String>(
-              value: _helpType,
-              items: _helpTypes.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-              onChanged: (val) => setState(() => _helpType = val!),
-              decoration: const InputDecoration(labelText: 'Help Type'),
-            ),
-            const SizedBox(height: 10),
-
-            TextField(
-              controller: _timeController,
-              decoration: const InputDecoration(labelText: "Time (e.g. Today at 5 PM)"),
-            ),
-            const SizedBox(height: 10),
-
-            TextField(
-              controller: _descriptionController,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: "Description"),
-            ),
-            const SizedBox(height: 10),
-
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.image),
-                  label: const Text("Attach Image"),
-                  onPressed: _pickImage,
-                ),
-                const SizedBox(width: 10),
-                if (_image != null)
-                  kIsWeb
-                      ? Image.network(_image!.path, height: 50, width: 50, fit: BoxFit.cover)
-                      : Image.file(_image!, height: 50, width: 50, fit: BoxFit.cover),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  _submitRequest();
-                  _descriptionController.clear();
-                  _timeController.clear();
-                  _addressController.clear();
-                  _image = null;
-                  setState(() {});
-                  Navigator.pop(context);
-                },
-                child: const Text("Submit Request"),
+                ],
               ),
-            ),
-            const SizedBox(height: 10),
-          ],
+              const SizedBox(height: 20),
+
+              DropdownButtonFormField<String>(
+                value: _urgency,
+                items: _urgencies.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                onChanged: (val) => setState(() => _urgency = val!),
+                decoration: const InputDecoration(labelText: 'Urgency'),
+              ),
+              const SizedBox(height: 10),
+
+              DropdownButtonFormField<String>(
+                value: _helpType,
+                items: _helpTypes.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                onChanged: (val) => setState(() => _helpType = val!),
+                decoration: const InputDecoration(labelText: 'Help Type'),
+              ),
+              const SizedBox(height: 10),
+
+              TextField(
+                controller: _timeController,
+                decoration: const InputDecoration(labelText: "Time (e.g. Today at 5 PM)"),
+              ),
+              const SizedBox(height: 10),
+
+              TextField(
+                controller: _descriptionController,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: "Description"),
+              ),
+              const SizedBox(height: 10),
+
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.image),
+                    label: const Text("Attach Image"),
+                    onPressed: _pickImage,
+                  ),
+                  const SizedBox(width: 10),
+                  if (_image != null)
+                    kIsWeb
+                        ? Image.network(_image!.path, height: 50, width: 50, fit: BoxFit.cover)
+                        : Image.file(_image!, height: 50, width: 50, fit: BoxFit.cover),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    _submitRequest();
+                    _descriptionController.clear();
+                    _timeController.clear();
+                    _addressController.clear();
+                    _image = null;
+                    setState(() {});
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Submit Request"),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
         ),
-      ),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.pop(context),
+            tooltip: 'Close',
+          ),
+        ),
+      ],
     );
   }
 }

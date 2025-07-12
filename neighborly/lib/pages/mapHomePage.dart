@@ -4,7 +4,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/pages/notification.dart';
 import 'package:neighborly/pages/profile.dart';
+import 'package:neighborly/pages/login.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
+import 'package:neighborly/components/help_detail_drawer.dart';
+import 'package:neighborly/pages/placeHolder.dart';
 
 class MapHomePage extends StatefulWidget {
   @override
@@ -62,12 +65,21 @@ class _MapHomePageState extends State<MapHomePage> {
                     point: req['location'],
                     width: 40,
                     height: 40,
-                    child: Tooltip(
-                      message: req['description'],
-                      child: Icon(
-                        Icons.location_pin,
-                        color: getMarkerColor(req['type']),
-                        size: 36,
+                    child: GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (_) => HelpDetailDrawer(helpData: req),
+                        );
+                      },
+                      child: Tooltip(
+                        message: req['description'],
+                        child: Icon(
+                          Icons.location_pin,
+                          color: getMarkerColor(req['type']),
+                          size: 36,
+                        ),
                       ),
                     ),
                   );
@@ -97,16 +109,17 @@ class _MapHomePageState extends State<MapHomePage> {
             heroTag: "addHelp",
             onPressed: () {
               showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (_) => HelpRequestDrawer(
-                onSubmit: (helpData) {
-                  setState(() {
-                    helpRequests.add(helpData); // Add new marker
-                  });
-                },
-              ),
-            );
+                context: context,
+                isScrollControlled: true,
+                builder:
+                    (_) => HelpRequestDrawer(
+                      onSubmit: (helpData) {
+                        setState(() {
+                          helpRequests.add(helpData); // Add new marker
+                        });
+                      },
+                    ),
+              );
             },
             backgroundColor: const Color(0xFF71BB7B),
             foregroundColor: const Color(0xFFFAF4E8),
@@ -115,7 +128,15 @@ class _MapHomePageState extends State<MapHomePage> {
         ],
       ),
       appBar: AppBar(
-        title: const Text("Neighborly"),
+        title: const Text(
+          "Neighborly",
+          style: TextStyle(
+            color: Color.fromARGB(179, 0, 0, 0), // Green color to match your theme
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFAF4E8),
+        foregroundColor: const Color.fromARGB(179, 0, 0, 0),
         leading: Builder(
           builder:
               (context) => IconButton(
@@ -136,12 +157,11 @@ Widget _buildDrawer(BuildContext context) {
 
   return Drawer(
     backgroundColor: const Color(0xFF71BB7B),
-    child: ListView(
-      padding: EdgeInsets.zero,
+    child: Column(
       children: [
         GestureDetector(
           onTap: () {
-            Navigator.pop(context); // Close the drawer first
+            Navigator.pop(context);
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -172,24 +192,152 @@ Widget _buildDrawer(BuildContext context) {
             ),
           ),
         ),
-        ListTile(
-          leading: const Icon(Icons.notifications, color: Color(0xFFFAF4E8)),
-          title: const Text('Notifications'),
-          textColor: Color(0xFFFAF4E8),
-          onTap: () {
-            // Close drawer first
-            Navigator.pop(context);
-            // Navigate to notifications page
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (context) => const NotificationPage(title: 'Notifications'),
+
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.notifications,
+                  color: Color(0xFFFAF4E8),
+                ),
+                title: const Text('Notifications'),
+                textColor: const Color(0xFFFAF4E8),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              const NotificationPage(title: 'Notifications'),
+                    ),
+                  );
+                },
               ),
+              ListTile(
+                leading: const Icon(Icons.people, color: Color(0xFFFAF4E8)),
+                title: const Text('Community'),
+                textColor: const Color(0xFFFAF4E8),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              const PlaceholderPage(title: 'Community List'),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.list_alt, color: Color(0xFFFAF4E8)),
+                title: const Text('Help Requests'),
+                textColor: const Color(0xFFFAF4E8),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              const PlaceholderPage(title: 'Help Requests'),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.history, color: Color(0xFFFAF4E8)),
+                title: const Text('Help History'),
+                textColor: const Color(0xFFFAF4E8),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              const PlaceholderPage(title: 'Help History'),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.feedback, color: Color(0xFFFAF4E8)),
+                title: const Text('Report & Feedback'),
+                textColor: const Color(0xFFFAF4E8),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              const PlaceholderPage(title: 'Report & Feedback'),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+
+        const Divider(
+          color: Color(0xFFFAF4E8),
+          thickness: 1,
+          indent: 16,
+          endIndent: 16,
+        ),
+
+        ListTile(
+          leading: const Icon(Icons.logout, color: Color(0xFFFAF4E8)),
+          title: const Text('Log Out'),
+          textColor: const Color(0xFFFAF4E8),
+          onTap: () {
+            showDialog(
+              context: context,
+              builder:
+                  (context) => AlertDialog(
+                    title: const Text("Confirm Logout"),
+                    content: const Text("Are you sure you want to log out?"),
+                    actions: [
+                      TextButton(
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(
+                            color: Color(0xFF71BB7B),
+                          ),
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF71BB7B),
+                        ),
+                        child: const Text(
+                          "Log Out",
+                          style: TextStyle(
+                            color: Color(0xFFFAF4E8),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pop();
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LoginPage(title: 'Login'),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
             );
           },
         ),
-        // 🔜 Add more options here In Sha Allah
       ],
     ),
   );
