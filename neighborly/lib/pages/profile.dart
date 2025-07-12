@@ -375,7 +375,7 @@ class ProfilePage extends StatelessWidget {
     return Row(
       children: [
         Text(
-          '$title',
+          title,
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.bold,

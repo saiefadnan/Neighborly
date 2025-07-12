@@ -1,23 +1,23 @@
-import 'package:flutter/material.dart';
+// import 'package:flutter/material.dart';
 
-class MapPage extends StatefulWidget {
-  const MapPage({super.key, required this.title});
-  final String title;
+// class MapPage extends StatefulWidget {
+//   const MapPage({super.key, required this.title});
+//   final String title;
 
-  @override
-  State<MapPage> createState() => _MapPageState();
-}
+//   @override
+//   State<MapPage> createState() => _MapPageState();
+// }
 
-class _MapPageState extends State<MapPage> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+// class _MapPageState extends State<MapPage> {
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
       
-      body: SafeArea(
-        child: Center(
-          child: Text(widget.title),
-        ),
-      ),
-    );
-  }
-}
+//       body: SafeArea(
+//         child: Center(
+//           child: Text(widget.title),
+//         ),
+//       ),
+//     );
+//   }
+// }

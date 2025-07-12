@@ -20,7 +20,7 @@ class _NotificationPageState extends State<NotificationPage> {
     "Bob Smith",
     "Charlie Davis",
     "Dana White",
-    "Evan Lee"
+    
 ];
 
 

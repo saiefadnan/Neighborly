@@ -70,7 +70,7 @@ class ActivityPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Container(
+          SizedBox(
             width: 50,
             height: 50,
             child: Image.asset(image, fit: BoxFit.cover),
