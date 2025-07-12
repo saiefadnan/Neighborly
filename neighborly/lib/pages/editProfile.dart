@@ -24,7 +24,7 @@ class CurvedHeaderClipper extends CustomClipper<Path> {
 }
 
 class ProfileAvatar extends StatefulWidget {
-  const ProfileAvatar({Key? key}) : super(key: key);
+  const ProfileAvatar({super.key});
 
   @override
   State<ProfileAvatar> createState() => _ProfileAvatarState();

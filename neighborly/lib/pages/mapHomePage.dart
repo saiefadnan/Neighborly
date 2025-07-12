@@ -56,21 +56,22 @@ class _MapHomePageState extends State<MapHomePage> {
             userAgentPackageName: 'com.example.neighborly',
           ),
           MarkerLayer(
-            markers: helpRequests.map((req) {
-              return Marker(
-                point: req['location'],
-                width: 40,
-                height: 40,
-                child: Tooltip(
-                  message: req['description'],
-                  child: Icon(
-                    Icons.location_pin,
-                    color: getMarkerColor(req['type']),
-                    size: 36,
-                  ),
-                ),
-              );
-            }).toList(),
+            markers:
+                helpRequests.map((req) {
+                  return Marker(
+                    point: req['location'],
+                    width: 40,
+                    height: 40,
+                    child: Tooltip(
+                      message: req['description'],
+                      child: Icon(
+                        Icons.location_pin,
+                        color: getMarkerColor(req['type']),
+                        size: 36,
+                      ),
+                    ),
+                  );
+                }).toList(),
           ),
         ],
       ),
@@ -81,15 +82,15 @@ class _MapHomePageState extends State<MapHomePage> {
             heroTag: "chat",
             onPressed: () {
               Navigator.push(
-              context,
-              MaterialPageRoute(
-              builder: (context) => ForumPage(title: 'Community Forum'),
-            ),
-            );
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ForumPage(title: 'NeighborTalk'),
+                ),
+              );
             },
             backgroundColor: const Color(0xFF71BB7B),
             foregroundColor: const Color(0xFFFAF4E8),
-            child: Icon(Icons.message),
+            child: Icon(Icons.forum),
           ),
           SizedBox(height: 10),
           FloatingActionButton(
@@ -114,17 +115,18 @@ class _MapHomePageState extends State<MapHomePage> {
         ],
       ),
       appBar: AppBar(
-      title: const Text("Neighborly"),
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
-          },
+        title: const Text("Neighborly"),
+        leading: Builder(
+          builder:
+              (context) => IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
+              ),
         ),
       ),
-    ),
-    drawer: _buildDrawer(context),
+      drawer: _buildDrawer(context),
     );
   }
 }
@@ -148,9 +150,7 @@ Widget _buildDrawer(BuildContext context) {
             );
           },
           child: DrawerHeader(
-            decoration: const BoxDecoration(
-              color: Color(0xFF71BB7B),
-          ),
+            decoration: const BoxDecoration(color: Color(0xFF71BB7B)),
             child: Row(
               children: [
                 const CircleAvatar(
@@ -174,7 +174,8 @@ Widget _buildDrawer(BuildContext context) {
         ),
         ListTile(
           leading: const Icon(Icons.notifications, color: Color(0xFFFAF4E8)),
-          title: const Text('Notifications'), textColor: Color(0xFFFAF4E8),
+          title: const Text('Notifications'),
+          textColor: Color(0xFFFAF4E8),
           onTap: () {
             // Close drawer first
             Navigator.pop(context);
@@ -182,7 +183,8 @@ Widget _buildDrawer(BuildContext context) {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const NotificationPage(title: 'Notifications'),
+                builder:
+                    (context) => const NotificationPage(title: 'Notifications'),
               ),
             );
           },
