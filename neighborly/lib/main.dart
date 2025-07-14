@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-//import 'package:neighborly/appshell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/app_routes.dart';
-
 
 void main() {
   runApp(ProviderScope(child: const MyApp()));
