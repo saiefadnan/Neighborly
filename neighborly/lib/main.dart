@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-//import 'package:neighborly/appshell.dart';
+import 'package:neighborly/appshell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/pages/login.dart';
-import 'package:neighborly/pages/mapHomePage.dart';
+//import 'package:neighborly/pages/mapHomePage.dart';
 
 final loggedInProvider = StateProvider<bool>((ref) => false);
 
@@ -27,7 +27,7 @@ class MyApp extends ConsumerWidget {
           ),
         ),
       ),
-      home: loggedIn ? MapHomePage() : const LoginPage(title: "login"),
+      home: loggedIn ? const AppShell() : const LoginPage(title: "login"),
     );
   }
 }
