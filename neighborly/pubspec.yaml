@@ -57,6 +57,9 @@ dependencies:
   # 👁️ Keyboard visibility
   flutter_keyboard_visibility: ^5.4.1
 
+  # fonts
+  google_fonts: ^6.2.1
+
   # 🎨 Icons
   cupertino_icons: ^1.0.8
 

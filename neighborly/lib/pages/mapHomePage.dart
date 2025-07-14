@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:neighborly/app_routes.dart';
 import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/pages/notification.dart';
 import 'package:neighborly/pages/profile.dart';
-import 'package:neighborly/pages/login.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
 import 'package:neighborly/components/help_detail_drawer.dart';
 import 'package:neighborly/pages/placeHolder.dart';
 import 'chat_screen.dart';
 
-class MapHomePage extends StatefulWidget {
+class MapHomePage extends ConsumerStatefulWidget {
   @override
   _MapHomePageState createState() => _MapHomePageState();
 }
 
-class _MapHomePageState extends State<MapHomePage> {
+class _MapHomePageState extends ConsumerState<MapHomePage> {
   final List<Map<String, dynamic>> helpRequests = [
     {
       "type": "Emergency",
@@ -60,30 +62,31 @@ class _MapHomePageState extends State<MapHomePage> {
             userAgentPackageName: 'com.example.neighborly',
           ),
           MarkerLayer(
-            markers: helpRequests.map((req) {
-              return Marker(
-                point: req['location'],
-                width: 40,
-                height: 40,
-                child: GestureDetector(
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (_) => HelpDetailDrawer(helpData: req),
-                    );
-                  },
-                  child: Tooltip(
-                    message: req['description'],
-                    child: Icon(
-                      Icons.location_pin,
-                      color: getMarkerColor(req['type']),
-                      size: 36,
+            markers:
+                helpRequests.map((req) {
+                  return Marker(
+                    point: req['location'],
+                    width: 40,
+                    height: 40,
+                    child: GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (_) => HelpDetailDrawer(helpData: req),
+                        );
+                      },
+                      child: Tooltip(
+                        message: req['description'],
+                        child: Icon(
+                          Icons.location_pin,
+                          color: getMarkerColor(req['type']),
+                          size: 36,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }).toList(),
+                  );
+                }).toList(),
           ),
         ],
       ),
@@ -99,9 +102,7 @@ class _MapHomePageState extends State<MapHomePage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => ChatScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => ChatScreen()),
               );
             },
             child: Icon(Icons.smart_toy_outlined),
@@ -133,13 +134,14 @@ class _MapHomePageState extends State<MapHomePage> {
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
-                builder: (_) => HelpRequestDrawer(
-                  onSubmit: (helpData) {
-                    setState(() {
-                      helpRequests.add(helpData);
-                    });
-                  },
-                ),
+                builder:
+                    (_) => HelpRequestDrawer(
+                      onSubmit: (helpData) {
+                        setState(() {
+                          helpRequests.add(helpData);
+                        });
+                      },
+                    ),
               );
             },
             backgroundColor: const Color(0xFF71BB7B),
@@ -160,21 +162,26 @@ class _MapHomePageState extends State<MapHomePage> {
         backgroundColor: const Color(0xFFFAF4E8),
         foregroundColor: const Color.fromARGB(179, 0, 0, 0),
         leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
+          builder:
+              (context) => IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
+              ),
         ),
       ),
-      drawer: _buildDrawer(context),
+      drawer: _buildDrawer(context, ref),
     );
   }
 }
 
-Widget _buildDrawer(BuildContext context) {
+Widget _buildDrawer(BuildContext context, WidgetRef ref) {
   String username = "Ali";
+  void signOut() {
+    ref.read(signedInProvider.notifier).state = false;
+    context.go('/signin');
+  }
 
   return Drawer(
     backgroundColor: const Color(0xFF71BB7B),
@@ -218,7 +225,10 @@ Widget _buildDrawer(BuildContext context) {
             padding: EdgeInsets.zero,
             children: [
               ListTile(
-                leading: const Icon(Icons.notifications, color: Color(0xFFFAF4E8)),
+                leading: const Icon(
+                  Icons.notifications,
+                  color: Color(0xFFFAF4E8),
+                ),
                 title: const Text('Notifications'),
                 textColor: const Color(0xFFFAF4E8),
                 onTap: () {
@@ -226,8 +236,9 @@ Widget _buildDrawer(BuildContext context) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const NotificationPage(title: 'Notifications'),
+                      builder:
+                          (context) =>
+                              const NotificationPage(title: 'Notifications'),
                     ),
                   );
                 },
@@ -241,8 +252,9 @@ Widget _buildDrawer(BuildContext context) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const PlaceholderPage(title: 'Community List'),
+                      builder:
+                          (context) =>
+                              const PlaceholderPage(title: 'Community List'),
                     ),
                   );
                 },
@@ -256,8 +268,9 @@ Widget _buildDrawer(BuildContext context) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const PlaceholderPage(title: 'Help Requests'),
+                      builder:
+                          (context) =>
+                              const PlaceholderPage(title: 'Help Requests'),
                     ),
                   );
                 },
@@ -271,8 +284,9 @@ Widget _buildDrawer(BuildContext context) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const PlaceholderPage(title: 'Help History'),
+                      builder:
+                          (context) =>
+                              const PlaceholderPage(title: 'Help History'),
                     ),
                   );
                 },
@@ -286,8 +300,9 @@ Widget _buildDrawer(BuildContext context) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const PlaceholderPage(title: 'Report & Feedback'),
+                      builder:
+                          (context) =>
+                              const PlaceholderPage(title: 'Report & Feedback'),
                     ),
                   );
                 },
@@ -308,32 +323,30 @@ Widget _buildDrawer(BuildContext context) {
           onTap: () {
             showDialog(
               context: context,
-              builder: (context) => AlertDialog(
-                title: const Text("Confirm Logout"),
-                content: const Text("Are you sure you want to log out?"),
-                actions: [
-                  TextButton(
-                    child: const Text("Cancel", style: TextStyle(color: Color(0xFF71BB7B))),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF71BB7B),
-                    ),
-                    child: const Text("Log Out", style: TextStyle(color: Color(0xFFFAF4E8))),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).pop();
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => LoginPage(title: 'Login'),
+              builder:
+                  (context) => AlertDialog(
+                    title: const Text("Confirm Logout"),
+                    content: const Text("Are you sure you want to log out?"),
+                    actions: [
+                      TextButton(
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(color: Color(0xFF71BB7B)),
                         ),
-                      );
-                    },
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF71BB7B),
+                        ),
+                        child: const Text(
+                          "Log Out",
+                          style: TextStyle(color: Color(0xFFFAF4E8)),
+                        ),
+                        onPressed: signOut,
+                      ),
+                    ],
                   ),
-                ],
-              ),
             );
           },
         ),

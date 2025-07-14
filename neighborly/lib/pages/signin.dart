@@ -1,25 +1,24 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-//import 'package:neighborly/appshell.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:neighborly/app_routes.dart';
 import 'package:neighborly/main.dart';
-import 'package:neighborly/pages/mapHomePage.dart';
 
-class LoginPage extends ConsumerStatefulWidget {
+class SigninPage extends ConsumerStatefulWidget {
   final String title;
-  const LoginPage({super.key, required this.title});
+  const SigninPage({super.key, required this.title});
   @override
-  ConsumerState<LoginPage> createState() => _LoginPageState();
+  ConsumerState<SigninPage> createState() => _SigninPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _SigninPageState extends ConsumerState<SigninPage> {
   bool _obsecure = true;
 
-  void onTapLogin(BuildContext context) {
-    ref.read(loggedInProvider.notifier).state = true;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => MapHomePage()),
-    );
+  void onTapSignin(BuildContext context) {
+    ref.read(signedInProvider.notifier).state = true;
+    context.go('/mapHomePage');
   }
 
   @override
@@ -33,14 +32,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Login",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30.0),
+                  "Sign in your Account",
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 30.0,
+                  ),
                 ),
                 SizedBox(height: 20.0),
                 TextField(
                   decoration: InputDecoration(
-                    labelText: "Username",
-                    border: OutlineInputBorder(),
+                    labelText: "Email",
+                    // border: OutlineInputBorder(),
                   ),
                 ),
                 SizedBox(height: 40.0),
@@ -48,7 +50,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   obscureText: _obsecure,
                   decoration: InputDecoration(
                     labelText: "Password",
-                    border: OutlineInputBorder(),
+                    // border: OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obsecure ? Icons.visibility : Icons.visibility_off,
@@ -72,8 +74,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       elevation: 5,
                     ),
-                    onPressed: () => onTapLogin(context),
-                    child: Text("Login", style: TextStyle(color: Colors.white)),
+                    onPressed: () => onTapSignin(context),
+                    child: Text(
+                      "SIGN IN",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20.0),
+                RichText(
+                  text: TextSpan(
+                    text: "Don't have an account? ",
+                    style: TextStyle(color: Colors.grey, fontSize: 16.0),
+                    children: [
+                      TextSpan(
+                        text: "Sign Up",
+                        style: TextStyle(
+                          color: Color(0xFF71BB7B),
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
+                        recognizer:
+                            TapGestureRecognizer()
+                              ..onTap = () {
+                                context.push('/signup');
+                              },
+                      ),
+                    ],
                   ),
                 ),
               ],

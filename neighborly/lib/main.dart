@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 //import 'package:neighborly/appshell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:neighborly/pages/login.dart';
-import 'package:neighborly/pages/mapHomePage.dart';
+import 'package:neighborly/app_routes.dart';
 
-final loggedInProvider = StateProvider<bool>((ref) => false);
 
 void main() {
   runApp(ProviderScope(child: const MyApp()));
@@ -14,8 +12,8 @@ class MyApp extends ConsumerWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final loggedIn = ref.watch(loggedInProvider);
-    return MaterialApp(
+    final router = createRouter(ref);
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Neighborly',
       theme: ThemeData(
@@ -27,7 +25,7 @@ class MyApp extends ConsumerWidget {
           ),
         ),
       ),
-      home: loggedIn ? MapHomePage() : const LoginPage(title: "login"),
+      routerConfig: router,
     );
   }
 }
