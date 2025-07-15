@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:neighborly/app_routes.dart';
 import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/pages/notification.dart';
@@ -18,6 +18,9 @@ class MapHomePage extends ConsumerStatefulWidget {
 }
 
 class _MapHomePageState extends ConsumerState<MapHomePage> {
+  GoogleMapController? _mapController;
+  Set<Marker> _markers = {};
+
   final List<Map<String, dynamic>> helpRequests = [
     {
       "type": "Emergency",
@@ -36,60 +39,149 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
     },
   ];
 
-  Color getMarkerColor(String type) {
+  @override
+  void initState() {
+    super.initState();
+    _createMarkers();
+  }
+
+  void _createMarkers() {
+    _markers =
+        helpRequests.asMap().entries.map((entry) {
+          int idx = entry.key;
+          Map<String, dynamic> req = entry.value;
+
+          return Marker(
+            markerId: MarkerId('help_request_$idx'),
+            position: req['location'],
+            infoWindow: InfoWindow(
+              title: req['type'],
+              snippet: req['description'],
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              _getMarkerHue(req['type']),
+            ),
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => HelpDetailDrawer(helpData: req),
+              );
+            },
+          );
+        }).toSet();
+  }
+
+  double _getMarkerHue(String type) {
     switch (type) {
       case "Emergency":
-        return Colors.red;
+        return BitmapDescriptor.hueRed;
       case "Urgent":
-        return Colors.orange;
+        return BitmapDescriptor.hueOrange;
       default:
-        return Colors.green;
+        return BitmapDescriptor.hueGreen;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: FlutterMap(
-        options: MapOptions(
-          initialCenter: LatLng(23.8103, 90.4125),
-          initialZoom: 14.0,
-        ),
-        children: [
-          TileLayer(
-            urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            subdomains: ['a', 'b', 'c'],
-            userAgentPackageName: 'com.example.neighborly',
-          ),
-          MarkerLayer(
-            markers:
-                helpRequests.map((req) {
-                  return Marker(
-                    point: req['location'],
-                    width: 40,
-                    height: 40,
-                    child: GestureDetector(
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          builder: (_) => HelpDetailDrawer(helpData: req),
-                        );
-                      },
-                      child: Tooltip(
-                        message: req['description'],
-                        child: Icon(
-                          Icons.location_pin,
-                          color: getMarkerColor(req['type']),
-                          size: 36,
+      body:
+          kIsWeb
+              ? Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFFF7F2E7), Color(0xFFE8F4EA)],
+                  ),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.2),
+                              spreadRadius: 2,
+                              blurRadius: 10,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.map_outlined,
+                              size: 80,
+                              color: Color(0xFF71BB7B),
+                            ),
+                            SizedBox(height: 20),
+                            Text(
+                              'Map Feature',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2E5E3E),
+                              ),
+                            ),
+                            SizedBox(height: 15),
+                            Text(
+                              'Map functionality is currently available\non mobile devices only.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[700],
+                                height: 1.5,
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF71BB7B).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              child: Text(
+                                'Try on mobile for full experience',
+                                style: TextStyle(
+                                  color: Color(0xFF71BB7B),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
-          ),
-        ],
-      ),
+                    ],
+                  ),
+                ),
+              )
+              : GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(23.8103, 90.4125),
+                  zoom: 14.0,
+                ),
+                markers: _markers,
+                onMapCreated: (GoogleMapController controller) {
+                  _mapController = controller;
+                },
+                mapType: MapType.normal,
+                myLocationEnabled: true,
+                myLocationButtonEnabled: true,
+                zoomControlsEnabled: true,
+                compassEnabled: true,
+              ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -139,6 +231,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
                       onSubmit: (helpData) {
                         setState(() {
                           helpRequests.add(helpData);
+                          _createMarkers(); // Recreate markers when new request is added
                         });
                       },
                     ),

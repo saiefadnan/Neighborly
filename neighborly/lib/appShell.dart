@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:neighborly/pages/home.dart';
+import 'package:neighborly/pages/mapHomePage.dart';
 import 'package:neighborly/pages/profile.dart';
 import 'package:neighborly/pages/notification.dart';
 import 'package:neighborly/pages/forum.dart';
@@ -80,12 +81,12 @@ class _AppShellState extends State<AppShell> {
           onPageChanged: (index) {
             setState(() => _currentIndex = index);
           },
-          children: const [
-            HomePage(title: 'Home Page'),
-            Scaffold(body: Center(child: Text('Map Page'))),
-            ProfilePage(title: 'Profile Page'),
-            ForumPage(title: 'Forum Page'),
-            NotificationPage(title: 'Notification Page'),
+          children: [
+            const HomePage(title: 'Home Page'),
+            MapHomePage(),
+            const ProfilePage(title: 'Profile Page'),
+            const ForumPage(title: 'Forum Page'),
+            const NotificationPage(title: 'Notification Page'),
           ],
         ),
         bottomNavigationBar: CurvedNavigationBar(
@@ -100,9 +101,10 @@ class _AppShellState extends State<AppShell> {
             return Icon(
               _navIcons[index],
               size: 30,
-              color: _currentIndex == index
-                  ? const Color(0xFFF7F2E7)
-                  : Colors.grey[600]!,
+              color:
+                  _currentIndex == index
+                      ? const Color(0xFFF7F2E7)
+                      : Colors.grey[600]!,
             );
           }),
           onTap: _onTap,

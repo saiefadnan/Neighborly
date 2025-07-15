@@ -1,7 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:neighborly/pages/mapHomePage.dart';
+import 'package:neighborly/appShell.dart';
+//import 'package:neighborly/pages/mapHomePage.dart';
 import 'package:neighborly/pages/signin.dart';
 import 'package:neighborly/pages/signup.dart';
 
@@ -18,7 +19,7 @@ GoRouter createRouter(WidgetRef ref) {
         return '/signin';
       }
       if (signedIn && isGoingtoSignin) {
-        return '/mapHomePage';
+        return '/appShell';
       }
       return null;
     },
@@ -31,7 +32,7 @@ GoRouter createRouter(WidgetRef ref) {
         path: '/signup',
         builder: (context, state) => const SignupPage(title: 'Sign Up'),
       ),
-      GoRoute(path: '/mapHomePage', builder: (context, state) => MapHomePage()),
+      GoRoute(path: '/appShell', builder: (context, state) => AppShell()),
     ],
   );
 }

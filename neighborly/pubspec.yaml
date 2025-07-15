@@ -1,6 +1,6 @@
 name: neighborly
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.0+1
 
@@ -14,6 +14,7 @@ dependencies:
   # 🗺️ Maps
   flutter_map: ^6.1.0
   latlong2: ^0.9.0
+  google_maps_flutter: ^2.5.0
 
   # 🌐 HTTP
   http: ^1.4.0
