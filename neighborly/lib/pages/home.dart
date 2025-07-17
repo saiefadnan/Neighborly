@@ -522,12 +522,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         elevation: 0,
         title: Row(
           children: [
-            Icon(Icons.home, color: Colors.white, size: 28),
+            Icon(Icons.home, color: Color(0xFFFAF4E8), size: 28),
             const SizedBox(width: 10),
             Text(
               'Neighborly',
               style: TextStyle(
-                color: Colors.white,
+                color: Color(0xFFFAF4E8),
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
