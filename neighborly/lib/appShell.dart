@@ -78,10 +78,7 @@ class _AppShellState extends State<AppShell> {
         ),**/
         body: PageView(
           controller: _pageController,
-          physics:
-              _currentIndex == 1
-                  ? NeverScrollableScrollPhysics()
-                  : PageScrollPhysics(),
+          physics: NeverScrollableScrollPhysics(),
           onPageChanged: (index) {
             setState(() => _currentIndex = index);
           },

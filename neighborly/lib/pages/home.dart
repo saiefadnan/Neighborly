@@ -17,6 +17,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late PageController _carouselController;
   int _currentCarouselIndex = 0;
 
+  // Static variable to track if this is the first time opening the app
+  static bool _hasAnimated = false;
+
   final List<Map<String, dynamic>> communityUpdates = [
     {
       'title': 'Community Garden Project',
@@ -49,7 +52,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _carouselController = PageController();
-    _animationController.forward();
+
+    // Only animate on first app load
+    if (!_hasAnimated) {
+      _animationController.forward();
+      _hasAnimated = true;
+    } else {
+      // Skip animation, go straight to final state
+      _animationController.value = 1.0;
+    }
 
     // Auto-scroll carousel
     _startAutoScroll();
@@ -96,51 +107,58 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildWelcomeSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [const Color(0xFF71BB7B), const Color(0xFF5EA968)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const CircleAvatar(
-                radius: 25,
-                backgroundImage: AssetImage('assets/images/dummy.png'),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome back, Ali!',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'What\'s happening in your neighborhood?',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    return GestureDetector(
+      onTap: () {
+        if (widget.onNavigate != null) {
+          widget.onNavigate!(2); // Navigate to Profile page (index 2)
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [const Color(0xFF71BB7B), const Color(0xFF5EA968)],
           ),
-        ],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const CircleAvatar(
+                  radius: 25,
+                  backgroundImage: AssetImage('assets/images/dummy.png'),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Welcome back, Ali!',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        'What\'s happening in your neighborhood?',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -161,67 +179,69 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 15),
-        Container(
-          height: 120,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
             children: [
-              _buildActionCard(
-                'Explore Map',
-                Icons.map,
-                const Color(0xFF71BB7B),
-                () {
-                  if (widget.onNavigate != null) {
-                    widget.onNavigate!(1); // Navigate to Map page (index 1)
-                  }
-                },
+              Expanded(
+                child: _buildActionCard(
+                  'Forum',
+                  Icons.chat_bubble_outline,
+                  const Color(0xFF4A90E2),
+                  () {
+                    if (widget.onNavigate != null) {
+                      widget.onNavigate!(3); // Navigate to Forum page (index 3)
+                    }
+                  },
+                ),
               ),
               const SizedBox(width: 15),
-              _buildActionCard(
-                'Forum',
-                Icons.chat_bubble_outline,
-                const Color(0xFF4A90E2),
-                () {
-                  if (widget.onNavigate != null) {
-                    widget.onNavigate!(3); // Navigate to Forum page (index 3)
-                  }
-                },
+              Expanded(
+                child: _buildActionCard(
+                  'Help Request',
+                  Icons.help_outline,
+                  const Color(0xFFFF6B6B),
+                  () {
+                    if (widget.onNavigate != null) {
+                      widget.onNavigate!(1); // Navigate to Map page (index 1)
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 15),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildActionCard(
+                  'Notifications',
+                  Icons.notifications,
+                  const Color(0xFFFFB347),
+                  () {
+                    if (widget.onNavigate != null) {
+                      widget.onNavigate!(
+                        4,
+                      ); // Navigate to Notifications page (index 4)
+                    }
+                  },
+                ),
               ),
               const SizedBox(width: 15),
-              _buildActionCard(
-                'Community List',
-                Icons.groups,
-                const Color.fromARGB(255, 2, 157, 147),
-                () {
-                  if (widget.onNavigate != null) {
-                    widget.onNavigate!(3); // Navigate to Forum page (index 3)
-                  }
-                },
-              ),
-              const SizedBox(width: 15),
-              _buildActionCard(
-                'Help Request',
-                Icons.help_outline,
-                const Color(0xFFFF6B6B),
-                () {
-                  if (widget.onNavigate != null) {
-                    widget.onNavigate!(1); // Navigate to Map page (index 1)
-                  }
-                },
-              ),
-              const SizedBox(width: 15),
-              _buildActionCard(
-                'Notifications',
-                Icons.notifications,
-                const Color(0xFFFFB347),
-                () {
-                  if (widget.onNavigate != null) {
-                    widget.onNavigate!(
-                      4,
-                    ); // Navigate to Notifications page (index 4)
-                  }
-                },
+              Expanded(
+                child: _buildActionCard(
+                  'Community List',
+                  Icons.groups,
+                  const Color.fromARGB(255, 2, 157, 147),
+                  () {
+                    if (widget.onNavigate != null) {
+                      widget.onNavigate!(3); // Navigate to Forum page (index 3)
+                    }
+                  },
+                ),
               ),
             ],
           ),
@@ -234,15 +254,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     String title,
     IconData icon,
     Color color,
-    VoidCallback onTap, {
-    bool isLarge = false,
-  }) {
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: isLarge ? 160 : 100,
+        height: 100,
         decoration: BoxDecoration(
-          color: color,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [color, color.withOpacity(0.8)],
+          ),
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
@@ -253,19 +276,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ),
           ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            Icon(icon, size: isLarge ? 35 : 30, color: Colors.white),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: isLarge ? 14 : 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+            // Icon positioned on the right, half outside the container
+            Positioned(
+              right: -20,
+              top: 0,
+              bottom: 0,
+              child: Icon(icon, size: 60, color: Colors.white.withOpacity(0.3)),
+            ),
+            // Text positioned on the left center
+            Positioned(
+              left: 16,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.left,
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
