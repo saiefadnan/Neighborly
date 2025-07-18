@@ -78,11 +78,15 @@ class _AppShellState extends State<AppShell> {
         ),**/
         body: PageView(
           controller: _pageController,
+          physics:
+              _currentIndex == 1
+                  ? NeverScrollableScrollPhysics()
+                  : PageScrollPhysics(),
           onPageChanged: (index) {
             setState(() => _currentIndex = index);
           },
           children: [
-            const HomePage(title: 'Home Page'),
+            HomePage(title: 'Home Page', onNavigate: _onTap),
             MapHomePage(),
             const ProfilePage(title: 'Profile Page'),
             const ForumPage(title: 'Forum Page'),

@@ -52,23 +52,21 @@ class _NotificationPageState extends State<NotificationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.title,
-          style: const TextStyle(
-            color: Color(
-              0xFFFAF4E8,
-            ), // Cream color to contrast with green background
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          children: [
+            Icon(Icons.notifications, color: Color(0xFFFAF4E8), size: 28),
+            const SizedBox(width: 10),
+            Text(
+              widget.title,
+              style: const TextStyle(
+                color: Color(0xFFFAF4E8),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         backgroundColor: const Color(0xFF71BB7B),
         foregroundColor: const Color(0xFFFAF4E8),
-        // leading: IconButton(
-        //   icon: const Icon(Icons.arrow_back),
-        //   onPressed: () {
-        //     Navigator.pop(context);
-        //   },
-        // ),
       ),
       body: Container(
         decoration: const BoxDecoration(

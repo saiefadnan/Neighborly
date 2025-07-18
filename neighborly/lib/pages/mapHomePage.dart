@@ -8,7 +8,6 @@ import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/pages/notification.dart';
 import 'package:neighborly/pages/profile.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
-import 'package:neighborly/components/help_detail_drawer.dart';
 import 'package:neighborly/pages/placeHolder.dart';
 import 'chat_screen.dart';
 
@@ -28,16 +27,25 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
       "type": "Emergency",
       "location": LatLng(23.8103, 90.4125),
       "description": "Medical emergency near Dhanmondi",
+      "title": "Medical Emergency",
+      "time": "5 mins ago",
+      "priority": "high",
     },
     {
       "type": "Urgent",
       "location": LatLng(23.8115, 90.4090),
       "description": "Need groceries for elder person",
+      "title": "Grocery Help Needed",
+      "time": "15 mins ago",
+      "priority": "medium",
     },
     {
       "type": "General",
       "location": LatLng(23.8127, 90.4150),
       "description": "Looking for direction to new clinic",
+      "title": "Direction Help",
+      "time": "1 hour ago",
+      "priority": "low",
     },
   ];
 
@@ -47,41 +55,199 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
     _createMarkers();
   }
 
-  void _createMarkers() {
-    _markers =
-        helpRequests.asMap().entries.map((entry) {
-          int idx = entry.key;
-          Map<String, dynamic> req = entry.value;
+  Future<void> _createMarkers() async {
+    Set<Marker> markers = {};
 
-          return Marker(
-            markerId: MarkerId('help_request_$idx'),
-            position: req['location'],
-            infoWindow: InfoWindow(
-              title: req['type'],
-              snippet: req['description'],
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              _getMarkerHue(req['type']),
-            ),
-            onTap: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (_) => HelpDetailDrawer(helpData: req),
-              );
-            },
-          );
-        }).toSet();
+    for (int idx = 0; idx < helpRequests.length; idx++) {
+      Map<String, dynamic> req = helpRequests[idx];
+
+      // Create custom marker icon
+      BitmapDescriptor customIcon = await _createCustomMarker(req['type']);
+
+      markers.add(
+        Marker(
+          markerId: MarkerId('help_request_$idx'),
+          position: req['location'],
+          infoWindow: InfoWindow(
+            title: req['title'] ?? req['type'],
+            snippet: req['description'],
+          ),
+          icon: customIcon,
+          onTap: () {
+            _showHelpRequestBottomSheet(req);
+          },
+        ),
+      );
+    }
+
+    setState(() {
+      _markers = markers;
+    });
   }
 
-  double _getMarkerHue(String type) {
+  Future<BitmapDescriptor> _createCustomMarker(String type) async {
+    // Use different colors and icons based on type
+    double hue;
     switch (type) {
       case "Emergency":
-        return BitmapDescriptor.hueRed;
+        hue = BitmapDescriptor.hueRed;
+        break;
       case "Urgent":
-        return BitmapDescriptor.hueOrange;
+        hue = BitmapDescriptor.hueOrange;
+        break;
       default:
-        return BitmapDescriptor.hueGreen;
+        hue = BitmapDescriptor.hueGreen;
+        break;
+    }
+
+    return BitmapDescriptor.defaultMarkerWithHue(hue);
+  }
+
+  void _showHelpRequestBottomSheet(Map<String, dynamic> helpData) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => Container(
+            height: MediaQuery.of(context).size.height * 0.6,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(25),
+                topRight: Radius.circular(25),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Handle bar
+                Container(
+                  margin: EdgeInsets.only(top: 10),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getTypeColor(helpData['type']),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                helpData['type'],
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            Spacer(),
+                            Text(
+                              helpData['time'] ?? '',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 15),
+                        Text(
+                          helpData['title'] ?? helpData['type'],
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          helpData['description'],
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[700],
+                            height: 1.5,
+                          ),
+                        ),
+                        SizedBox(height: 30),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  // Add chat functionality here
+                                },
+                                icon: Icon(Icons.message, color: Colors.white),
+                                label: Text('Message'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color(0xFF71BB7B),
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 15),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  // Add offer help functionality here
+                                },
+                                icon: Icon(
+                                  Icons.volunteer_activism,
+                                  color: Color(0xFF71BB7B),
+                                ),
+                                label: Text('Offer Help'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Color(0xFF71BB7B),
+                                  padding: EdgeInsets.symmetric(vertical: 15),
+                                  side: BorderSide(color: Color(0xFF71BB7B)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Color _getTypeColor(String type) {
+    switch (type) {
+      case "Emergency":
+        return Colors.red;
+      case "Urgent":
+        return Colors.orange;
+      default:
+        return Color(0xFF71BB7B);
     }
   }
 
@@ -183,6 +349,13 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
                 myLocationButtonEnabled: true,
                 zoomControlsEnabled: true,
                 compassEnabled: true,
+                rotateGesturesEnabled: true,
+                scrollGesturesEnabled: true,
+                tiltGesturesEnabled: true,
+                zoomGesturesEnabled: true,
+                buildingsEnabled: true,
+                indoorViewEnabled: true,
+                trafficEnabled: false,
               ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
