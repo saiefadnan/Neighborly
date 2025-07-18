@@ -111,6 +111,18 @@ void showCommentBox(BuildContext context, WidgetRef ref, int postId) {
                 ),
                 child: Column(
                   children: [
+                    Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          Text(
+                            "Comments",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Divider(color: Colors.grey, thickness: 1),
+                        ],
+                      ),
+                    ),
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.all(8.0),

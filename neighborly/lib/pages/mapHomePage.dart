@@ -13,6 +13,8 @@ import 'package:neighborly/pages/placeHolder.dart';
 import 'chat_screen.dart';
 
 class MapHomePage extends ConsumerStatefulWidget {
+  const MapHomePage({super.key});
+
   @override
   _MapHomePageState createState() => _MapHomePageState();
 }
@@ -432,11 +434,11 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF71BB7B),
                         ),
+                        onPressed: signOut,
                         child: const Text(
                           "Log Out",
                           style: TextStyle(color: Color(0xFFFAF4E8)),
                         ),
-                        onPressed: signOut,
                       ),
                     ],
                   ),

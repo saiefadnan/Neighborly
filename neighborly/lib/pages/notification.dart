@@ -20,10 +20,7 @@ class _NotificationPageState extends State<NotificationPage> {
     "Bob Smith",
     "Charlie Davis",
     "Dana White",
-    
-];
-
-
+  ];
 
   final List<String> messages = [
     "Wants Grocery",
@@ -66,12 +63,12 @@ class _NotificationPageState extends State<NotificationPage> {
         ),
         backgroundColor: const Color(0xFF71BB7B),
         foregroundColor: const Color(0xFFFAF4E8),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+        // leading: IconButton(
+        //   icon: const Icon(Icons.arrow_back),
+        //   onPressed: () {
+        //     Navigator.pop(context);
+        //   },
+        // ),
       ),
       body: Container(
         decoration: const BoxDecoration(
