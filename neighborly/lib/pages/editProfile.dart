@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/cupertino.dart';
+import 'EditNotifications.dart';
+import 'PrivacyPolicyPage.dart';
 
 class CurvedHeaderClipper extends CustomClipper<Path> {
   @override
@@ -163,15 +165,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   _profileTile(
                     CupertinoIcons.bell,
                     'Notifications',
-                    trailing: CupertinoSwitch(
-                      value: notificationsOn,
-                      onChanged: (bool value) {
-                        setState(() {
-                          notificationsOn = value;
-                        });
-                      },
-                    ),
+                    trailing: Icon(
+                      Icons.chevron_right,
+                    ), // Default icon and color
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditNotificationsPage(),
+                        ),
+                      );
+                    },
                   ),
+
                   _profileTile(
                     CupertinoIcons.globe,
                     'Language',
@@ -216,6 +222,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   _profileTile(
                     CupertinoIcons.checkmark_shield,
                     'Privacy policy',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PrivacyPolicyPage(),
+                        ),
+                      );
+                    },
                   ),
                 ]),
                 const SizedBox(height: 24),
@@ -239,17 +253,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _profileTile(IconData icon, String title, {Widget? trailing}) {
+  Widget _profileTile(
+    IconData icon,
+    String title, {
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
     return ListTile(
-      leading: Icon(icon, color: Colors.black, size: 26),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
-      ),
-      trailing:
-          trailing ?? const Icon(Icons.chevron_right, color: Colors.black),
-      onTap: () {},
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: trailing,
+      onTap: onTap,
+      contentPadding: EdgeInsets.zero,
+      horizontalTitleGap: 10,
     );
   }
 }
