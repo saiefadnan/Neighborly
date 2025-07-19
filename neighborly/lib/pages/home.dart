@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'NotificationScreen.dart'; // Adjust the path accordingly
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.title, this.onNavigate});
@@ -17,7 +18,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late PageController _carouselController;
   int _currentCarouselIndex = 0;
 
-  // Static variable to track if this is the first time opening the app
   static bool _hasAnimated = false;
 
   final List<Map<String, dynamic>> communityUpdates = [
@@ -53,16 +53,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
     _carouselController = PageController();
 
-    // Only animate on first app load
     if (!_hasAnimated) {
       _animationController.forward();
       _hasAnimated = true;
     } else {
-      // Skip animation, go straight to final state
       _animationController.value = 1.0;
     }
 
-    // Auto-scroll carousel
     _startAutoScroll();
   }
 
@@ -109,53 +106,96 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildWelcomeSection() {
     return GestureDetector(
       onTap: () {
-        if (widget.onNavigate != null) {
-          widget.onNavigate!(2); // Navigate to Profile page (index 2)
-        }
+        widget.onNavigate?.call(2);
       },
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [const Color(0xFF71BB7B), const Color(0xFF5EA968)],
+            colors: [Color(0xFF71BB7B), Color(0xFF5EA968)],
           ),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  radius: 25,
-                  backgroundImage: AssetImage('assets/images/dummy.png'),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome back, Ali!',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        'What\'s happening in your neighborhood?',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                    ],
+            const CircleAvatar(
+              radius: 25,
+              backgroundImage: AssetImage('assets/images/dummy.png'),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Welcome back, Ali!',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    'What\'s happening in your neighborhood?',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 100,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [color, color.withOpacity(0.8)],
+          ),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              spreadRadius: 1,
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -20,
+              top: 0,
+              bottom: 0,
+              child: Icon(icon, size: 60, color: Colors.white.withOpacity(0.3)),
+            ),
+            Positioned(
+              left: 16,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),
@@ -189,9 +229,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   Icons.chat_bubble_outline,
                   const Color(0xFF4A90E2),
                   () {
-                    if (widget.onNavigate != null) {
-                      widget.onNavigate!(3); // Navigate to Forum page (index 3)
-                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationScreen(title: 'Notifications'),
+                      ),
+                    );
                   },
                 ),
               ),
@@ -201,11 +244,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   'Help Request',
                   Icons.help_outline,
                   const Color(0xFFFF6B6B),
-                  () {
-                    if (widget.onNavigate != null) {
-                      widget.onNavigate!(1); // Navigate to Map page (index 1)
-                    }
-                  },
+                  () => widget.onNavigate?.call(1),
                 ),
               ),
             ],
@@ -221,13 +260,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   'Notifications',
                   Icons.notifications,
                   const Color(0xFFFFB347),
-                  () {
-                    if (widget.onNavigate != null) {
-                      widget.onNavigate!(
-                        4,
-                      ); // Navigate to Notifications page (index 4)
-                    }
-                  },
+                  () => widget.onNavigate?.call(4),
                 ),
               ),
               const SizedBox(width: 15),
@@ -235,12 +268,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 child: _buildActionCard(
                   'Community List',
                   Icons.groups,
-                  const Color.fromARGB(255, 2, 157, 147),
-                  () {
-                    if (widget.onNavigate != null) {
-                      widget.onNavigate!(3); // Navigate to Forum page (index 3)
-                    }
-                  },
+                  const Color(0xFF029D93),
+                  () => widget.onNavigate?.call(3),
                 ),
               ),
             ],
@@ -250,83 +279,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildActionCard(
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 100,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [color, color.withOpacity(0.8)],
-          ),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              spreadRadius: 1,
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // Icon positioned on the right, half outside the container
-            Positioned(
-              right: -20,
-              top: 0,
-              bottom: 0,
-              child: Icon(icon, size: 60, color: Colors.white.withOpacity(0.3)),
-            ),
-            // Text positioned on the left center
-            Positioned(
-              left: 16,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.left,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildMapHighlight() {
     return GestureDetector(
-      onTap: () {
-        if (widget.onNavigate != null) {
-          widget.onNavigate!(1); // Navigate to Map page (index 1)
-        }
-      },
+      onTap: () => widget.onNavigate?.call(1),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20),
         height: 180,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF71BB7B),
-              const Color(0xFF5EA968),
-              const Color(0xFF4A8A5A),
-            ],
+            colors: [Color(0xFF71BB7B), Color(0xFF5EA968), Color(0xFF4A8A5A)],
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
@@ -343,11 +306,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             Positioned(
               right: -20,
               top: -20,
-              child: Icon(
-                Icons.map,
-                size: 120,
-                color: Colors.white.withOpacity(0.1),
-              ),
+              child: Icon(Icons.map, size: 120, color: Colors.white.withOpacity(0.1)),
             ),
             Padding(
               padding: const EdgeInsets.all(25),
@@ -356,9 +315,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.location_on, color: Colors.white, size: 28),
+                      const Icon(Icons.location_on, color: Colors.white, size: 28),
                       const SizedBox(width: 10),
-                      Text(
+                      const Text(
                         'Explore Your Area',
                         style: TextStyle(
                           fontSize: 22,
@@ -389,7 +348,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                      const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
                     ],
                   ),
                 ],
@@ -419,15 +378,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
               TextButton(
-                onPressed: () {
-                  if (widget.onNavigate != null) {
-                    widget.onNavigate!(3); // Navigate to Forum page (index 3)
-                  }
-                },
-                child: Text(
+                onPressed: () => widget.onNavigate?.call(3),
+                child: const Text(
                   'View All',
                   style: TextStyle(
-                    color: const Color(0xFF71BB7B),
+                    color: Color(0xFF71BB7B),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -525,7 +480,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 10),
-        // Page indicators
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
@@ -536,10 +490,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color:
-                    _currentCarouselIndex == index
-                        ? const Color(0xFF71BB7B)
-                        : Colors.grey.withOpacity(0.3),
+                color: _currentCarouselIndex == index
+                    ? const Color(0xFF71BB7B)
+                    : Colors.grey.withOpacity(0.3),
               ),
             ),
           ),
@@ -556,9 +509,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         backgroundColor: const Color(0xFF71BB7B),
         elevation: 0,
         title: Row(
-          children: [
+          children: const [
             Icon(Icons.home, color: Color(0xFFFAF4E8), size: 28),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Text(
               'Neighborly',
               style: TextStyle(
@@ -600,21 +553,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(
-                height: 20,
-              ), // Reduced space since we have AppBar now
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _buildWelcomeSection(),
-              ),
-              const SizedBox(height: 30),
-              _buildMapHighlight(),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
+              _buildWelcomeSection(),
+              const SizedBox(height: 20),
               _buildQuickActions(),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
+              _buildMapHighlight(),
+              const SizedBox(height: 20),
               _buildCommunityCarousel(),
+              const SizedBox(height: 20),
+              _buildNotificationPreview(), // This widget will show notification cards
               const SizedBox(height: 30),
             ],
           ),
@@ -622,4 +571,116 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
     );
   }
+
+  Widget _buildNotificationPreview() {
+  final List<String> names = [
+    "Jack Conniler",
+    "Sual Canal",
+    "Samuel Badre",
+    "Alice Johnson",
+    "Bob Smith",
+  ];
+
+  final List<String> messages = [
+    "Wants Grocery",
+    "Wants Emergency Ambulance Service",
+    "Gave a traffic update",
+    "Has lost her pet cat named Sania",
+    "Needs help with trash pickup",
+  ];
+
+  final List<String> images = [
+    'assets/images/Image1.jpg',
+    'assets/images/Image2.jpg',
+    'assets/images/Image3.jpg',
+    'assets/images/Image1.jpg',
+    'assets/images/Image2.jpg',
+  ];
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Latest Notifications',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 100,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: names.length,
+            itemBuilder: (context, index) {
+              return Container(
+                width: 250,
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        images[index],
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            names[index],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            messages[index],
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                      onPressed: () {
+                        widget.onNavigate?.call(4);
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
 }
