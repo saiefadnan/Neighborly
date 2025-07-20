@@ -11,8 +11,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  flutter_local_notifications: ^13.0.0  # Correctly aligned at root of dependencies
-
   # 🗺️ Maps
   flutter_map: ^6.1.0
   latlong2: ^0.9.0

@@ -61,7 +61,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
     for (int idx = 0; idx < helpRequests.length; idx++) {
       Map<String, dynamic> req = helpRequests[idx];
 
-      // Create custom marker icon
+
       BitmapDescriptor customIcon = await _createCustomMarker(req['type']);
 
       markers.add(
@@ -86,7 +86,6 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
   }
 
   Future<BitmapDescriptor> _createCustomMarker(String type) async {
-    // Use different colors and icons based on type
     double hue;
     switch (type) {
       case "Emergency":
@@ -406,7 +405,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
                       onSubmit: (helpData) {
                         setState(() {
                           helpRequests.add(helpData);
-                          _createMarkers(); // Recreate markers when new request is added
+                          _createMarkers();
                         });
                       },
                     ),
