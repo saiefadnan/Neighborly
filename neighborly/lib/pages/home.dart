@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'NotificationScreen.dart'; // Adjust the path accordingly
 import 'community_list.dart';
 
 class HomePage extends StatefulWidget {
@@ -237,26 +236,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   'Forum',
                   Icons.chat_bubble_outline,
                   const Color(0xFF4A90E2),
-                  () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) => const NotificationScreen(
-                              title: 'Notifications',
-                            ),
-                      ),
-                    );
-                  },
+                  () => widget.onNavigate?.call(3), // Navigate to Forum tab
                 ),
               ),
               const SizedBox(width: 15),
               Expanded(
                 child: _buildActionCard(
-                  'Help Request',
-                  Icons.help_outline,
-                  const Color(0xFFFF6B6B),
-                  () => widget.onNavigate?.call(1),
+                  'Help List',
+                  Icons.list_alt,
+                  const Color(0xFF9C27B0),
+                  () => widget.onNavigate?.call(
+                    0,
+                  ), // Navigate to Help List tab (now index 0)
                 ),
               ),
             ],
@@ -267,15 +258,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              Expanded(
-                child: _buildActionCard(
-                  'Notifications',
-                  Icons.notifications,
-                  const Color(0xFFFFB347),
-                  () => widget.onNavigate?.call(4),
-                ),
-              ),
-              const SizedBox(width: 15),
               Expanded(
                 child: _buildActionCard(
                   'Community List',
@@ -291,6 +273,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   },
                 ),
               ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: _buildActionCard(
+                  'Notifications',
+                  Icons.notifications,
+                  const Color(0xFFFFB347),
+                  () => widget.onNavigate?.call(4),
+                ),
+              ),
             ],
           ),
         ),
@@ -300,7 +291,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildMapHighlight() {
     return GestureDetector(
-      onTap: () => widget.onNavigate?.call(1),
+      onTap:
+          () => widget.onNavigate?.call(1), // Navigate to Map tab (now index 1)
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20),
         height: 180,
@@ -596,9 +588,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               const SizedBox(height: 20),
               _buildWelcomeSection(),
               const SizedBox(height: 20),
-              _buildQuickActions(),
-              const SizedBox(height: 20),
               _buildMapHighlight(),
+              const SizedBox(height: 20),
+              _buildQuickActions(),
               const SizedBox(height: 20),
               _buildCommunityCarousel(),
               const SizedBox(height: 20),
