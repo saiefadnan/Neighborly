@@ -68,19 +68,19 @@ class _VerifyEmailState extends ConsumerState<VerifyEmail> {
           ),
         ),
         SizedBox(height: 20.0),
-        // PinCodeTextField(
-        //   appContext: context,
-        //   length: 5,
-        //   autoFocus: true,
-        //   onChanged: (value) {},
-        //   pinTheme: PinTheme(
-        //     shape: PinCodeFieldShape.box,
-        //     borderRadius: BorderRadius.circular(8.0),
-        //     selectedColor: Color(0xFF71BB7B),
-        //     activeColor: Colors.grey,
-        //     inactiveColor: Colors.red,
-        //   ),
-        // ),
+        PinCodeTextField(
+          appContext: context,
+          length: 5,
+          autoFocus: true,
+          onChanged: (value) {},
+          pinTheme: PinTheme(
+            shape: PinCodeFieldShape.box,
+            borderRadius: BorderRadius.circular(8.0),
+            selectedColor: Color(0xFF71BB7B),
+            activeColor: Colors.grey,
+            inactiveColor: Colors.red,
+          ),
+        ),
         SizedBox(height: 30.0),
         SizedBox(
           width: double.infinity,

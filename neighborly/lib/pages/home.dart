@@ -227,14 +227,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 15),
-        SizedBox(
-          height: 120,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
             children: [
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.4,
+              Expanded(
                 child: _buildActionCard(
                   'Forum',
                   Icons.chat_bubble_outline,
@@ -243,8 +241,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
               const SizedBox(width: 15),
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.4,
+              Expanded(
                 child: _buildActionCard(
                   'Help List',
                   Icons.list_alt,
@@ -262,8 +259,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.4,
+              Expanded(
                 child: _buildActionCard(
                   'Community List',
                   Icons.groups,
@@ -279,8 +275,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
               const SizedBox(width: 15),
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.4,
+              Expanded(
                 child: _buildActionCard(
                   'Notifications',
                   Icons.notifications,
