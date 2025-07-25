@@ -27,9 +27,9 @@ class _SigninPageState extends ConsumerState<AuthPage> {
   bool isImageSliding = false;
   bool isFormSliding = false;
   final portraitFactors = {
-    0: 0.35, // Signin
+    0: 0.3, // Signin
     1: 0.16, // Signup
-    2: 0.5, // Forget Password
+    2: 0.45, // Forget Password
     3: 0.4, // Verify Email
     4: 0.3, // New Password
   };
@@ -91,7 +91,7 @@ class _SigninPageState extends ConsumerState<AuthPage> {
             ),
             //),
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 5),
+              padding: EdgeInsets.fromLTRB(32, 0, 32, 10),
               child: AnimatedSlide(
                 duration: Duration(milliseconds: 600),
                 offset:
