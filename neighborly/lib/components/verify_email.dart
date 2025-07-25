@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/pages/authPage.dart';
@@ -24,87 +23,38 @@ class _VerifyEmailState extends ConsumerState<VerifyEmail> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.mark_email_read_outlined,
-              color: Colors.black,
-              size: 45.0,
-            ),
-            Text(
-              "Check your email",
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-                fontSize: 28.0,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 30.0),
-        Center(
-          child: RichText(
-            text: TextSpan(
-              style: TextStyle(fontSize: 16.0, color: Colors.grey.shade700),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(height: 40.0),
+
+          // Title
+          Container(
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextSpan(text: 'We sent a reset link to '),
-                TextSpan(
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  text: 'contact@gmail.com',
-                ),
-                TextSpan(
-                  style: TextStyle(color: Colors.grey.shade700),
-                  text: '. \nEnter',
-                ),
-                TextSpan(
+                Text(
+                  "Check Your Email!",
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade700,
+                    fontSize: 32.0,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
                   ),
-                  text: ' 5 digit ',
                 ),
-                TextSpan(
-                  style: TextStyle(color: Colors.grey.shade700),
-                  text: 'code that is mentioned in the email.',
+                Container(
+                  width: 140.0,
+                  height: 3.0,
+                  margin: EdgeInsets.only(top: 8.0),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF71BB7B),
+                    borderRadius: BorderRadius.circular(2.0),
+                  ),
                 ),
               ],
-            ),
-          ),
-        ),
-        SizedBox(height: 20.0),
-        Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 400.0),
-            child: PinCodeTextField(
-              appContext: context,
-              length: 5,
-              autoFocus: true,
-              onChanged: (value) {},
-              pinTheme: PinTheme(
-                shape: PinCodeFieldShape.box,
-                borderRadius: BorderRadius.circular(8.0),
-                selectedColor: Color(0xFF71BB7B),
-                activeColor: Colors.grey,
-                inactiveColor: Colors.red,
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: 30.0),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF71BB7B),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 50.0, vertical: 15.0),
-              elevation: 3,
             ),
           ),
           SizedBox(height: 24.0),
@@ -197,34 +147,6 @@ class _VerifyEmailState extends ConsumerState<VerifyEmail> {
               ),
             ),
           ),
-<<<<<<< HEAD
-        ),
-        SizedBox(height: 40.0),
-        Center(
-          child: RichText(
-            text: TextSpan(
-              text: "Haven't got any email yet? ",
-              style: TextStyle(color: Colors.grey, fontSize: 16.0),
-              children: [
-                TextSpan(
-                  text: "Resend email",
-                  style: TextStyle(
-                    color: Color(0xFF71BB7B),
-                    fontWeight: FontWeight.bold,
-                    // decoration: TextDecoration.underline,
-                  ),
-                  recognizer:
-                      TapGestureRecognizer()
-                        ..onTap = () {
-                          //resend email
-                        },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-=======
           SizedBox(height: 24.0),
 
           // Haven't got email text
@@ -259,7 +181,6 @@ class _VerifyEmailState extends ConsumerState<VerifyEmail> {
           ),
         ],
       ),
->>>>>>> aa8ca408330cda85f5616fa3a0e3f2b40991ec0a
     );
   }
 }

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/pages/authPage.dart';
-<<<<<<< HEAD
-=======
 import 'dart:math' as math;
->>>>>>> aa8ca408330cda85f5616fa3a0e3f2b40991ec0a
+
 
 class Success extends ConsumerStatefulWidget {
   final String title;
@@ -14,12 +12,6 @@ class Success extends ConsumerStatefulWidget {
   ConsumerState<Success> createState() => _SuccessState();
 }
 
-<<<<<<< HEAD
-class _SuccessState extends ConsumerState<Success> {
-  void navigateToSignin() {
-    // Navigate to the Signin page
-    ref.read(pageNumberProvider.notifier).state = 0;
-=======
 class _SuccessState extends ConsumerState<Success>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
@@ -89,56 +81,10 @@ class _SuccessState extends ConsumerState<Success>
     _pulseController.dispose();
     _particleController.dispose();
     super.dispose();
->>>>>>> aa8ca408330cda85f5616fa3a0e3f2b40991ec0a
   }
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle_outline, color: Colors.black, size: 45.0),
-            Text(
-              "Congratulations!",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28.0),
-            ),
-          ],
-        ),
-        SizedBox(height: 30.0),
-        Text(
-          "Congratulations! Your password has been changed. Click continue to sign in.",
-          style: TextStyle(fontSize: 16.0, color: Colors.grey.shade700),
-        ),
-        SizedBox(height: 20.0),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF71BB7B),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 50.0, vertical: 15.0),
-              elevation: 3,
-            ),
-            onPressed: () => navigateToSignin(),
-            child: Text(
-              "Continue",
-              style: TextStyle(
-                color: Colors.black54,
-                fontWeight: FontWeight.bold,
-                fontSize: 16.0,
-              ),
-            ),
-          ),
-        ),
-      ],
-=======
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32.0),
       child: Column(
@@ -282,7 +228,6 @@ class _SuccessState extends ConsumerState<Success>
           ),
         ],
       ),
->>>>>>> aa8ca408330cda85f5616fa3a0e3f2b40991ec0a
     );
   }
 }

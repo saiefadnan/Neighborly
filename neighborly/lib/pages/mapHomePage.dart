@@ -61,7 +61,6 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
     for (int idx = 0; idx < helpRequests.length; idx++) {
       Map<String, dynamic> req = helpRequests[idx];
 
-
       BitmapDescriptor customIcon = await _createCustomMarker(req['type']);
 
       markers.add(
@@ -447,6 +446,8 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
   String username = "Ali";
   void signOut() {
     ref.read(signedInProvider.notifier).state = false;
+    ref.read(hasSeenSplashProvider.notifier).state =
+        true; // Ensure direct auth access
     context.go('/auth');
   }
 
