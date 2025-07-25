@@ -24,6 +24,28 @@ class _SigninPageState extends ConsumerState<AuthPage> {
     context.go('/mapHomePage');
   }
 
+  int? _lastPage;
+
+  @override
+  // void didChangeDependencies() {
+  //   super.didChangeDependencies();
+  //   final currentPage = ref.watch(pageNumberProvider);
+  //   if (_lastPage != currentPage) {
+  //     setState(() {
+  //       isImageSliding = true;
+  //       isFormSliding = true;
+  //     });
+  //     Future.delayed(const Duration(milliseconds: 100), () {
+  //       if (mounted) {
+  //         setState(() {
+  //           isImageSliding = false;
+  //           isFormSliding = false;
+  //         });
+  //       }
+  //     });
+  //     _lastPage = currentPage;
+  //   }
+  // }
   bool isImageSliding = false;
   bool isFormSliding = false;
   final portraitFactors = {
@@ -62,70 +84,109 @@ class _SigninPageState extends ConsumerState<AuthPage> {
   @override
   Widget build(BuildContext context) {
     int pageNumber = ref.watch(pageNumberProvider);
+    ref.listen<int>(pageNumberProvider, (prev, next) {
+      if (_lastPage != next) {
+        setState(() {
+          isImageSliding = true;
+          isFormSliding = true;
+        });
+
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              isImageSliding = false;
+              isFormSliding = false;
+            });
+          }
+        });
+
+        _lastPage = next;
+      }
+    });
 
     return Scaffold(
-      body:
-      // SafeArea(
-      //   child:
-      SingleChildScrollView(
-        child: Column(
-          children: [
-            AnimatedSlide(
-              duration: Duration(milliseconds: 300),
-              offset:
-                  isImageSliding
-                      ? Offset(0, -1)
-                      : Offset(0, 0), // Slide in from the top
-              child: SizedBox(
-                key: ValueKey('page$pageNumber'),
-                height:
-                    MediaQuery.of(context).size.height *
-                    _getHeightFactor(pageNumber, context),
-                width: double.infinity,
-                child: Image.asset(
-                  "assets/images/signin.png",
-                  fit: BoxFit.cover,
-                  alignment: Alignment.bottomCenter,
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Column(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeInOut,
+                  height:
+                      MediaQuery.of(context).size.height *
+                      _getHeightFactor(pageNumber, context),
+                  width: double.infinity,
+                  child: Image.asset(
+                    "assets/images/signin.png",
+                    fit: BoxFit.cover,
+                    alignment: Alignment.bottomCenter,
+                  ),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 10),
+                  child: AnimatedSlide(
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeInOut,
+                    offset:
+                        isFormSliding
+                            ? const Offset(0, 0.1)
+                            : const Offset(0, 0),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 500),
+                      switchInCurve: Curves.easeIn,
+                      switchOutCurve: Curves.easeOut,
+                      transitionBuilder:
+                          (child, animation) => FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 0.1),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          ),
+                      child: _getformWidget(pageNumber),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            //),
-            Padding(
-              padding: EdgeInsets.fromLTRB(32, 0, 32, 10),
-              child: AnimatedSlide(
-                duration: Duration(milliseconds: 600),
-                offset:
-                    isFormSliding
-                        ? Offset(0, 1)
-                        : Offset(0, 0), // Slide in from the bottom
-                child: _getformWidget(
-                  pageNumber,
-                ), // your form with keys already
-              ),
+          ),
+
+          /// 🔙 Back button animation
+          Positioned(
+            top: 32,
+            left: 16,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder:
+                  (child, animation) => SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, -0.5),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: FadeTransition(opacity: animation, child: child),
+                  ),
+              child:
+                  (pageNumber != 0 && pageNumber != 1)
+                      ? IconButton(
+                        key: const ValueKey("backButton"),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          size: 28,
+                          color: Colors.black,
+                        ),
+                        onPressed:
+                            () =>
+                                ref.read(pageNumberProvider.notifier).state = 0,
+                      )
+                      : const SizedBox.shrink(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-      // ),
     );
   }
 }
-
-
-
-
-// Positioned(
-        //   top: 0,
-        //   left: 0,
-        //   child: Visibility(
-        //     visible: pageNumber != 0 && pageNumber != 1,
-        //     child: IconButton(
-        //       onPressed: () {
-        //         ref.read(pageNumberProvider.notifier).state = 0;
-        //       },
-        //       icon: Icon(Icons.arrow_back),
-        //       iconSize: 28,
-        //       color: Colors.black,
-        //     ),
-        //   ),
-        // ),
