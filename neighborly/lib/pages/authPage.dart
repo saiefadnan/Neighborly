@@ -24,118 +24,108 @@ class _SigninPageState extends ConsumerState<AuthPage> {
     context.go('/mapHomePage');
   }
 
+  bool isImageSliding = false;
+  bool isFormSliding = false;
+  final portraitFactors = {
+    0: 0.35, // Signin
+    1: 0.16, // Signup
+    2: 0.5, // Forget Password
+    3: 0.4, // Verify Email
+    4: 0.5, // New Password
+  };
+  Widget _getformWidget(int pagenum) {
+    switch (pagenum) {
+      case 0:
+        return SigninForm(title: 'signin page', key: ValueKey('signin'));
+      case 1:
+        return SignupForm(title: 'signup page', key: ValueKey('signup'));
+      case 2:
+        return ForgetPass(
+          title: 'Forget password',
+          key: ValueKey('forgetPass'),
+        );
+      case 3:
+        return VerifyEmail(title: 'Verify Email', key: ValueKey("verifyEmail"));
+      case 4:
+        return NewPass(title: "Update password", key: ValueKey('updatePass'));
+      default:
+        return Success(title: 'Success', key: ValueKey('success'));
+    }
+  }
+
+  double _getHeightFactor(int pageNumber, BuildContext context) {
+    final isPortrait =
+        MediaQuery.of(context).orientation == Orientation.portrait;
+    return isPortrait ? (portraitFactors[pageNumber] ?? 0.45) : 0.7;
+  }
+
   @override
   Widget build(BuildContext context) {
     int pageNumber = ref.watch(pageNumberProvider);
 
     return Scaffold(
-      body: SafeArea(
-        child: Stack(
+      body:
+      // SafeArea(
+      //   child:
+      SingleChildScrollView(
+        child: Column(
           children: [
-            Positioned.fill(
-              child: Container(
-                color: Colors.transparent,
-                child: AnimatedSlide(
-                  offset: Offset(
-                    0,
-                    pageNumber == 0 ? -0.42 : (pageNumber == 1 ? -0.62 : -0.27),
-                  ),
-                  duration: Duration(milliseconds: 500),
-                  curve: Curves.easeInOut,
-                  child: Image.asset(
-                    "assets/images/signin.png",
-                    fit: BoxFit.fitWidth,
-                  ),
+            AnimatedSlide(
+              duration: Duration(milliseconds: 300),
+              offset:
+                  isImageSliding
+                      ? Offset(0, -1)
+                      : Offset(0, 0), // Slide in from the top
+              child: SizedBox(
+                key: ValueKey('page$pageNumber'),
+                height:
+                    MediaQuery.of(context).size.height *
+                    _getHeightFactor(pageNumber, context),
+                width: double.infinity,
+                child: Image.asset(
+                  "assets/images/signin.png",
+                  fit: BoxFit.cover,
+                  alignment: Alignment.bottomCenter,
                 ),
               ),
             ),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      pageNumber == 0 ? 260 : (pageNumber == 1 ? 120 : 250),
-                      20,
-                      10,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight:
-                            constraints.maxHeight > 160
-                                ? constraints.maxHeight -
-                                    (pageNumber == 2 ? 300 : 270)
-                                : 160,
-                      ),
-                      child: AnimatedSwitcher(
-                        duration: Duration(milliseconds: 250),
-                        transitionBuilder: (child, animation) {
-                          final slide = Tween<Offset>(
-                            begin: Offset(0, 0.1), // from slightly below
-                            end: Offset.zero,
-                          ).animate(animation);
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: slide,
-                              child: child,
-                            ),
-                          );
-                        },
-                        child:
-                            pageNumber == 0
-                                ? SigninForm(
-                                  title: 'signin page',
-                                  key: ValueKey('signin'),
-                                )
-                                : (pageNumber == 1
-                                    ? SignupForm(
-                                      title: 'signup page',
-                                      key: ValueKey('signup'),
-                                    )
-                                    : (pageNumber == 2
-                                        ? ForgetPass(
-                                          title: "Forget password",
-                                          key: ValueKey('forgetPass'),
-                                        )
-                                        : (pageNumber == 3
-                                            ? VerifyEmail(
-                                              title: 'Verify Email',
-                                              key: ValueKey("verifyEmail"),
-                                            )
-                                            : (pageNumber == 4
-                                                ? NewPass(
-                                                  title: "Update password",
-                                                  key: ValueKey('updatePass'),
-                                                )
-                                                : Success(
-                                                  title: 'Success',
-                                                  key: ValueKey('success'),
-                                                ))))),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            Positioned(
-              top: 0,
-              left: 0,
-              child: Visibility(
-                visible: pageNumber != 0 && pageNumber != 1,
-                child: IconButton(
-                  onPressed: () {
-                    ref.read(pageNumberProvider.notifier).state = 0;
-                  },
-                  icon: Icon(Icons.arrow_back),
-                  iconSize: 28,
-                  color: Colors.black,
-                ),
+            //),
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 5),
+              child: AnimatedSlide(
+                duration: Duration(milliseconds: 600),
+                offset:
+                    isFormSliding
+                        ? Offset(0, 1)
+                        : Offset(0, 0), // Slide in from the bottom
+                child: _getformWidget(
+                  pageNumber,
+                ), // your form with keys already
               ),
             ),
           ],
         ),
       ),
+      // ),
     );
   }
 }
+
+
+
+
+// Positioned(
+        //   top: 0,
+        //   left: 0,
+        //   child: Visibility(
+        //     visible: pageNumber != 0 && pageNumber != 1,
+        //     child: IconButton(
+        //       onPressed: () {
+        //         ref.read(pageNumberProvider.notifier).state = 0;
+        //       },
+        //       icon: Icon(Icons.arrow_back),
+        //       iconSize: 28,
+        //       color: Colors.black,
+        //     ),
+        //   ),
+        // ),

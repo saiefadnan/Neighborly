@@ -36,11 +36,7 @@ class _SigninFormState extends ConsumerState<SigninForm> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.account_circle_outlined,
-              color: Colors.black,
-              size: 45.0,
-            ),
+            Icon(Icons.account_circle_outlined, color: Colors.black, size: 4.0),
             Text(
               "Sign in your Account",
               style: GoogleFonts.inter(
@@ -227,7 +223,7 @@ class _SigninFormState extends ConsumerState<SigninForm> {
             ),
           ],
         ),
-        SizedBox(height: 40.0),
+        SizedBox(height: 20.0),
         Center(
           child: RichText(
             text: TextSpan(

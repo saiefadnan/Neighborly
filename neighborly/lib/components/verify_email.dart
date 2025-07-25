@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -40,45 +41,52 @@ class _VerifyEmailState extends ConsumerState<VerifyEmail> {
           ],
         ),
         SizedBox(height: 30.0),
-        RichText(
-          text: TextSpan(
-            style: TextStyle(fontSize: 16.0, color: Colors.grey.shade700),
-            children: [
-              TextSpan(text: 'We sent a reset link to '),
-              TextSpan(
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                text: 'contact@gmail.com',
-              ),
-              TextSpan(
-                style: TextStyle(color: Colors.grey.shade700),
-                text: '. Enter\n',
-              ),
-              TextSpan(
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade700,
+        Center(
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(fontSize: 16.0, color: Colors.grey.shade700),
+              children: [
+                TextSpan(text: 'We sent a reset link to '),
+                TextSpan(
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  text: 'contact@gmail.com',
                 ),
-                text: '5 digit ',
-              ),
-              TextSpan(
-                style: TextStyle(color: Colors.grey.shade700),
-                text: 'code that is mentioned in the email.',
-              ),
-            ],
+                TextSpan(
+                  style: TextStyle(color: Colors.grey.shade700),
+                  text: '. \nEnter',
+                ),
+                TextSpan(
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade700,
+                  ),
+                  text: ' 5 digit ',
+                ),
+                TextSpan(
+                  style: TextStyle(color: Colors.grey.shade700),
+                  text: 'code that is mentioned in the email.',
+                ),
+              ],
+            ),
           ),
         ),
         SizedBox(height: 20.0),
-        PinCodeTextField(
-          appContext: context,
-          length: 5,
-          autoFocus: true,
-          onChanged: (value) {},
-          pinTheme: PinTheme(
-            shape: PinCodeFieldShape.box,
-            borderRadius: BorderRadius.circular(8.0),
-            selectedColor: Color(0xFF71BB7B),
-            activeColor: Colors.grey,
-            inactiveColor: Colors.red,
+        Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 400.0),
+            child: PinCodeTextField(
+              appContext: context,
+              length: 5,
+              autoFocus: true,
+              onChanged: (value) {},
+              pinTheme: PinTheme(
+                shape: PinCodeFieldShape.box,
+                borderRadius: BorderRadius.circular(8.0),
+                selectedColor: Color(0xFF71BB7B),
+                activeColor: Colors.grey,
+                inactiveColor: Colors.red,
+              ),
+            ),
           ),
         ),
         SizedBox(height: 30.0),
@@ -101,6 +109,30 @@ class _VerifyEmailState extends ConsumerState<VerifyEmail> {
                 fontWeight: FontWeight.bold,
                 fontSize: 16.0,
               ),
+            ),
+          ),
+        ),
+        SizedBox(height: 40.0),
+        Center(
+          child: RichText(
+            text: TextSpan(
+              text: "Haven't got any email yet? ",
+              style: TextStyle(color: Colors.grey, fontSize: 16.0),
+              children: [
+                TextSpan(
+                  text: "Resend email",
+                  style: TextStyle(
+                    color: Color(0xFF71BB7B),
+                    fontWeight: FontWeight.bold,
+                    // decoration: TextDecoration.underline,
+                  ),
+                  recognizer:
+                      TapGestureRecognizer()
+                        ..onTap = () {
+                          //resend email
+                        },
+                ),
+              ],
             ),
           ),
         ),

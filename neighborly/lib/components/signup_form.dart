@@ -234,7 +234,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
             ),
           ],
         ),
-        SizedBox(height: 40.0),
+        SizedBox(height: 20.0),
         Center(
           child: RichText(
             text: TextSpan(
