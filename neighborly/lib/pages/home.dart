@@ -161,7 +161,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 15),
-        Container(
+        SizedBox(
           height: 120,
           child: ListView(
             scrollDirection: Axis.horizontal,

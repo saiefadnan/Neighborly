@@ -448,7 +448,7 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
   String username = "Ali";
   void signOut() {
     ref.read(signedInProvider.notifier).state = false;
-    context.go('/signin');
+    context.go('/auth');
   }
 
   return Drawer(

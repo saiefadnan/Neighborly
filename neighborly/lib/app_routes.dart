@@ -1,35 +1,28 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:neighborly/appShell.dart';
-
-import 'package:neighborly/pages/signin.dart';
-import 'package:neighborly/pages/signup.dart';
+import 'package:neighborly/pages/authPage.dart';
 
 final signedInProvider = StateProvider<bool>((ref) => false);
 
 GoRouter createRouter(WidgetRef ref) {
   final signedIn = ref.watch(signedInProvider);
   return GoRouter(
-    initialLocation: '/signin',
+    initialLocation: '/auth',
     redirect: (context, state) {
-      final isGoingtoSignin =
-          state.uri.path == '/signin' || state.uri.path == '/signup';
-      if (!signedIn && !isGoingtoSignin) {
-        return '/signin';
+      final isGoingtoAuth = state.uri.path == '/auth';
+      if (!signedIn && !isGoingtoAuth) {
+        return '/auth';
       }
-      if (signedIn && isGoingtoSignin) {
+      if (signedIn && isGoingtoAuth) {
         return '/appShell';
       }
       return null;
     },
     routes: [
       GoRoute(
-        path: '/signin',
-        builder: (context, state) => const SigninPage(title: 'Sign In'),
-      ),
-      GoRoute(
-        path: '/signup',
-        builder: (context, state) => const SignupPage(title: 'Sign Up'),
+        path: '/auth',
+        builder: (context, state) => const AuthPage(title: 'Auth'),
       ),
       GoRoute(path: '/appShell', builder: (context, state) => AppShell()),
     ],
