@@ -20,58 +20,130 @@ class _PostCardState extends ConsumerState<PostCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Card(
-      margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shadowColor: Colors.black26,
       child: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Author Info Row
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 ClipOval(
                   child: Image.asset(
                     'assets/images/dummy.png',
-                    width: 35,
-                    height: 35,
+                    width: 40,
+                    height: 40,
                     fit: BoxFit.cover,
                   ),
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 14),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       widget.post['author'],
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo[900],
+                        fontSize: 16,
+                      ),
                     ),
                     Text(
                       '🕒 ${timeago.format(DateTime.parse(widget.post['timestamp']))}',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-            SizedBox(height: 20),
-            Text('${widget.post['title']}', style: TextStyle(fontSize: 18)),
-            ReadMoreText(
-              widget.post['content'],
-              trimLength: 142,
-              trimCollapsedText: 'Show more',
-              trimExpandedText: '',
-              style: TextStyle(fontSize: 16),
-              moreStyle: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
+            const SizedBox(height: 24),
+
+            // Title
+            Text(
+              widget.post['title'],
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Colors.indigo[800],
+                fontSize: 22,
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 12),
+
+            // Content with ReadMore
+            ReadMoreText(
+              widget.post['content'],
+              trimLength: 130,
+              trimCollapsedText: 'Show more',
+              trimExpandedText: '',
+              style: TextStyle(
+                height: 1.4,
+                color: Colors.grey[800],
+                fontSize: 20,
+              ),
+              moreStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.indigo,
+              ),
+            ),
+
+            // Image if exists
+            if (widget.post['imageUrl'] != null) ...[
+              const SizedBox(height: 18),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  widget.post['imageUrl'],
+                  width: double.infinity,
+                  height: 200,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 200,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value:
+                              loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder:
+                      (context, error, stackTrace) => SizedBox(
+                        width: double.infinity,
+                        height: 200,
+                        child: Center(
+                          child: Icon(
+                            Icons.broken_image,
+                            size: 50,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                      ),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 20),
+
+            // Actions row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Row(
                   children: [
@@ -79,32 +151,40 @@ class _PostCardState extends ConsumerState<PostCard> {
                       isLiked: true,
                       likeCount: widget.post['reacts'],
                       countPostion: CountPostion.right,
-                      size: 25,
+                      size: 26,
                       likeBuilder: (isLiked) {
                         return Icon(
                           Icons.favorite,
-                          color: isLiked ? Colors.red : Colors.grey,
+                          color: isLiked ? Colors.redAccent : Colors.grey,
                         );
                       },
                       onTap: OnTap,
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 14),
                     IconButton(
-                      icon: Icon(Icons.comment),
-                      iconSize: 22,
+                      icon: const Icon(Icons.comment_outlined),
+                      iconSize: 26,
+                      tooltip: "Comments",
                       onPressed: () {
                         showCommentBox(context, ref, widget.post['postID']);
                       },
                     ),
-                    Text('${widget.post['totalComments']}'),
+                    Text(
+                      '${widget.post['totalComments']}',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                    ),
                   ],
                 ),
                 Row(
                   children: [
-                    IconButton(onPressed: () {}, icon: Icon(Icons.report)),
                     IconButton(
-                      icon: Icon(Icons.share),
-                      iconSize: 22,
+                      icon: const Icon(Icons.flag_outlined),
+                      tooltip: "Report",
+                      onPressed: () {},
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.share_outlined),
+                      tooltip: "Share",
                       onPressed: () => Share.share(widget.post['link']),
                     ),
                   ],
