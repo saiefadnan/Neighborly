@@ -38,7 +38,7 @@ class _SigninPageState extends ConsumerState<AuthPage> {
                 child: AnimatedSlide(
                   offset: Offset(
                     0,
-                    pageNumber == 0 ? -0.42 : (pageNumber == 1 ? -0.62 : -0.27),
+                    pageNumber == 0 ? -0.42 : (pageNumber == 1 ? -0.62 : pageNumber == 4 ? -0.52 : pageNumber == 5 ? -0.60 : -0.37),
                   ),
                   duration: Duration(milliseconds: 500),
                   curve: Curves.easeInOut,
@@ -54,9 +54,9 @@ class _SigninPageState extends ConsumerState<AuthPage> {
                 return SingleChildScrollView(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
-                      20,
-                      pageNumber == 0 ? 260 : (pageNumber == 1 ? 120 : 250),
-                      20,
+                      0,
+                      pageNumber == 0 ? 250 : (pageNumber == 1 ? 120 : pageNumber == 3 ? 270 : pageNumber == 4 ? 220 : pageNumber == 5 ? 150 : 250),
+                      0,
                       10,
                     ),
                     child: ConstrainedBox(
@@ -119,17 +119,27 @@ class _SigninPageState extends ConsumerState<AuthPage> {
               },
             ),
             Positioned(
-              top: 0,
-              left: 0,
+              top: 25,
+              left: 20,
               child: Visibility(
-                visible: pageNumber != 0 && pageNumber != 1,
-                child: IconButton(
-                  onPressed: () {
+                visible: pageNumber != 0 && pageNumber != 1 && pageNumber != 4 && pageNumber != 5,
+                child: GestureDetector(
+                  onTap: () {
                     ref.read(pageNumberProvider.notifier).state = 0;
                   },
-                  icon: Icon(Icons.arrow_back),
-                  iconSize: 28,
-                  color: Colors.black,
+                  child: Container(
+                    width: 33,
+                    height: 33,
+                    decoration: BoxDecoration(
+                      color: Color(0xFFFAF4E8),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_back,
+                      color: Color(0xFF71BB7B),
+                      size: 22,
+                    ),
+                  ),
                 ),
               ),
             ),
