@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'EditNotifications.dart';
 import 'PrivacyPolicyPage.dart';
 import 'EditInfosPage.dart';
+import 'SecurityPage.dart';
 
 class CurvedHeaderClipper extends CustomClipper<Path> {
   @override
@@ -203,7 +204,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ]),
                 const SizedBox(height: 16),
                 _profileSection([
-                  _profileTile(CupertinoIcons.lock, 'Security'),
+                  _profileTile(
+                    CupertinoIcons.lock,
+                    'Security',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SecurityPage(),
+                        ),
+                      );
+                    },
+                  ),
                   _profileTile(
                     isDarkMode
                         ? CupertinoIcons.moon_stars

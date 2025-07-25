@@ -54,7 +54,7 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
       alignment: Alignment.topCenter,
       child: Padding(
         padding: const EdgeInsets.only(
-          top: 250,
+          top: 220,
         ), // Adjust as needed for your layout
         child: Stack(
           alignment: Alignment.center,
@@ -106,7 +106,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF7F7FA),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -129,73 +129,186 @@ class _EditInfosPageState extends State<EditInfosPage> {
             ),
             const SizedBox(height: 80),
             // Form Fields
+            // Form Fields
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(height: 6),
-                  Text("Username"),
-                  SizedBox(height: 4),
-                  TextField(
-                    controller: _usernameController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  // Card 1: Names, Email, Contact
+                  Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    elevation: 0,
+                    color: Colors.white,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 18,
                       ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 13,
-                        horizontal: 12,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text("First Name"),
+                          const SizedBox(height: 4),
+                          TextField(
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                                horizontal: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text("Last Name"),
+                          const SizedBox(height: 4),
+                          TextField(
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                                horizontal: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text("E-mail"),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: _emailController,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                                horizontal: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text("Contact Number"),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: _phoneController,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                                horizontal: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  SizedBox(height: 18),
-                  Text("Email"),
-                  SizedBox(height: 4),
-                  TextField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: 24),
+                  // Card 2: Address Section
+                  Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    elevation: 0,
+                    color: Colors.white,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 18,
                       ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 13,
-                        horizontal: 12,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            "Address",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Divider(thickness: 1.1, height: 24),
+                          const Text("Address Line 1"),
+                          const SizedBox(height: 4),
+                          TextField(
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                                horizontal: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text("Address Line 2 (optional)"),
+                          const SizedBox(height: 4),
+                          TextField(
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                                horizontal: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text("City"),
+                          const SizedBox(height: 4),
+                          TextField(
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                                horizontal: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text("Division"),
+                          const SizedBox(height: 4),
+                          TextField(
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                                horizontal: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text("ZIP/Postal Code"),
+                          const SizedBox(height: 4),
+                          TextField(
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                                horizontal: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  SizedBox(height: 18),
-                  Text("Phone Number"),
-                  SizedBox(height: 4),
-                  TextField(
-                    controller: _phoneController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 13,
-                        horizontal: 12,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 18),
-                  Text("Password"),
-                  SizedBox(height: 4),
-                  TextField(
-                    controller: _passwordController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 13,
-                        horizontal: 12,
-                      ),
-                    ),
-                    obscureText: true,
-                  ),
-                  SizedBox(height: 30),
+                  const SizedBox(height: 30),
                   SizedBox(
                     height: 48,
                     child: ElevatedButton(
@@ -209,7 +322,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
                       onPressed: () {
                         // Handle update
                       },
-                      child: Text(
+                      child: const Text(
                         "Update",
                         style: TextStyle(
                           color: Colors.white,
@@ -220,7 +333,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 28),
+                  const SizedBox(height: 28),
                 ],
               ),
             ),
