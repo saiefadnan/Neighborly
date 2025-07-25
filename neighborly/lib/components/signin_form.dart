@@ -212,11 +212,19 @@ class _SigninFormState extends ConsumerState<SigninForm> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FaIcon(FontAwesomeIcons.google, color: Colors.red, size: 40),
+            FaIcon(FontAwesomeIcons.google, color: Color(0xFF71BB7B), size: 40),
             SizedBox(width: 30.0),
-            FaIcon(FontAwesomeIcons.facebook, color: Colors.blue, size: 40),
+            FaIcon(
+              FontAwesomeIcons.facebook,
+              color: Color(0xFF71BB7B),
+              size: 40,
+            ),
             SizedBox(width: 30.0),
-            FaIcon(FontAwesomeIcons.xTwitter, color: Colors.black, size: 40),
+            FaIcon(
+              FontAwesomeIcons.xTwitter,
+              color: Color(0xFF71BB7B),
+              size: 40,
+            ),
           ],
         ),
         SizedBox(height: 40.0),

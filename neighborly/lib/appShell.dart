@@ -28,15 +28,7 @@ class _AppShellState extends State<AppShell> {
     Icons.groups,
     Icons.notifications_none,
   ];
-
-  /**final List<String> _appBarTitles = [
-    'Neighborly',
-    'Map',
-    'Community',
-    'Notifications',
-    'Notifications',
-  ];**/
-
+  
   void _onTap(int index) {
     setState(() {
       _currentIndex = index;

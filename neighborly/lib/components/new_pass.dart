@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:neighborly/pages/authPage.dart';
 
 class NewPass extends ConsumerStatefulWidget {
   final String title;
@@ -11,7 +12,9 @@ class NewPass extends ConsumerStatefulWidget {
 
 class _NewPassState extends ConsumerState<NewPass> {
   bool _obsecure = true;
-  void onTapUpdate() {}
+  void onTapUpdate() {
+    ref.read(pageNumberProvider.notifier).state = 5;
+  }
   @override
   Widget build(BuildContext context) {
     return Column(

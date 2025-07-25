@@ -6,6 +6,8 @@ import 'package:neighborly/components/forget_pass.dart';
 import 'package:neighborly/components/new_pass.dart';
 import 'package:neighborly/components/signin_form.dart';
 import 'package:neighborly/components/signup_form.dart';
+import 'package:neighborly/components/success.dart';
+import 'package:neighborly/components/verify_email.dart';
 
 final pageNumberProvider = StateProvider<int>((ref) => 0);
 
@@ -25,7 +27,7 @@ class _SigninPageState extends ConsumerState<AuthPage> {
   @override
   Widget build(BuildContext context) {
     int pageNumber = ref.watch(pageNumberProvider);
-    final scnHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       body: SafeArea(
         child: Stack(
@@ -36,7 +38,7 @@ class _SigninPageState extends ConsumerState<AuthPage> {
                 child: AnimatedSlide(
                   offset: Offset(
                     0,
-                    pageNumber == 0 ? -0.4 : (pageNumber == 1 ? -0.55 : -0.2),
+                    pageNumber == 0 ? -0.42 : (pageNumber == 1 ? -0.62 : -0.27),
                   ),
                   duration: Duration(milliseconds: 500),
                   curve: Curves.easeInOut,
@@ -53,7 +55,7 @@ class _SigninPageState extends ConsumerState<AuthPage> {
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
                       20,
-                      pageNumber == 0 ? 150 : (pageNumber == 1 ? 60 : 250),
+                      pageNumber == 0 ? 260 : (pageNumber == 1 ? 120 : 250),
                       20,
                       10,
                     ),
@@ -62,7 +64,7 @@ class _SigninPageState extends ConsumerState<AuthPage> {
                         minHeight:
                             constraints.maxHeight > 160
                                 ? constraints.maxHeight -
-                                    (pageNumber == 2 ? 300 : 160)
+                                    (pageNumber == 2 ? 300 : 270)
                                 : 160,
                       ),
                       child: AnimatedSwitcher(
@@ -96,15 +98,40 @@ class _SigninPageState extends ConsumerState<AuthPage> {
                                           title: "Forget password",
                                           key: ValueKey('forgetPass'),
                                         )
-                                        : NewPass(
-                                          title: "Update password",
-                                          key: ValueKey('updatePass'),
-                                        ))),
+                                        : (pageNumber == 3
+                                            ? VerifyEmail(
+                                              title: 'Verify Email',
+                                              key: ValueKey("verifyEmail"),
+                                            )
+                                            : (pageNumber == 4
+                                                ? NewPass(
+                                                  title: "Update password",
+                                                  key: ValueKey('updatePass'),
+                                                )
+                                                : Success(
+                                                  title: 'Success',
+                                                  key: ValueKey('success'),
+                                                ))))),
                       ),
                     ),
                   ),
                 );
               },
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              child: Visibility(
+                visible: pageNumber != 0 && pageNumber != 1,
+                child: IconButton(
+                  onPressed: () {
+                    ref.read(pageNumberProvider.notifier).state = 0;
+                  },
+                  icon: Icon(Icons.arrow_back),
+                  iconSize: 28,
+                  color: Colors.black,
+                ),
+              ),
             ),
           ],
         ),

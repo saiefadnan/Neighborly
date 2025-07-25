@@ -70,6 +70,8 @@ dependencies:
 
   custom_check_box: ^0.0.4
 
+  pin_code_fields: ^8.0.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
