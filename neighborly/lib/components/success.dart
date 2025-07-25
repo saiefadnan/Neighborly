@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/pages/authPage.dart';
-import 'dart:math' as math;
 
+import 'dart:math' as math;
 
 class Success extends ConsumerStatefulWidget {
   final String title;
@@ -86,7 +86,7 @@ class _SuccessState extends ConsumerState<Success>
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,

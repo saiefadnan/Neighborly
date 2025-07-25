@@ -79,7 +79,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,6 +89,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
             width: double.infinity,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+
               children: [
                 Text(
                   "Sign up",
@@ -337,7 +338,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
                 ),
                 children: [
                   TextSpan(
-                    text: "Login",
+                    text: "Signin",
                     style: TextStyle(
                       color: Color(0xFF71BB7B),
                       fontWeight: FontWeight.w600,

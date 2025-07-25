@@ -24,7 +24,7 @@ class _VerifyEmailState extends ConsumerState<VerifyEmail> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,6 +147,7 @@ class _VerifyEmailState extends ConsumerState<VerifyEmail> {
               ),
             ),
           ),
+
           SizedBox(height: 24.0),
 
           // Haven't got email text
