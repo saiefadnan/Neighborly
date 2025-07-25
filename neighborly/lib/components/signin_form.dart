@@ -254,7 +254,7 @@ class _SigninFormState extends ConsumerState<SigninForm> {
               ),
               onPressed: () => onTapSignin(context),
               child: Text(
-                "Login",
+                "Sign in",
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
