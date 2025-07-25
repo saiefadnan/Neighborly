@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'EditNotifications.dart';
 import 'PrivacyPolicyPage.dart';
+import 'EditInfosPage.dart';
 
 class CurvedHeaderClipper extends CustomClipper<Path> {
   @override
@@ -161,7 +162,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   _profileTile(
                     CupertinoIcons.person_crop_circle,
                     'Edit profile information',
+                    trailing: Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditInfosPage(),
+                        ),
+                      );
+                    },
                   ),
+
                   _profileTile(
                     CupertinoIcons.bell,
                     'Notifications',
