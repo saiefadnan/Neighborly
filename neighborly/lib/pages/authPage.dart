@@ -31,7 +31,7 @@ class _SigninPageState extends ConsumerState<AuthPage> {
     1: 0.16, // Signup
     2: 0.5, // Forget Password
     3: 0.4, // Verify Email
-    4: 0.5, // New Password
+    4: 0.3, // New Password
   };
   Widget _getformWidget(int pagenum) {
     switch (pagenum) {
