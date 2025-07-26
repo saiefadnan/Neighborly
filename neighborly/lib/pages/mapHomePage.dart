@@ -11,7 +11,6 @@ import 'package:neighborly/components/help_request_drawer.dart';
 import 'package:neighborly/pages/community_list.dart';
 import 'package:neighborly/pages/help_list.dart';
 import 'package:neighborly/pages/placeHolder.dart';
-import 'chat_screen.dart';
 
 class MapHomePage extends ConsumerStatefulWidget {
   const MapHomePage({super.key});
@@ -361,19 +360,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // 🔮 Chatbot Icon (NEW)
-          FloatingActionButton(
-            heroTag: "chatbot",
-            backgroundColor: Colors.deepPurple,
-            foregroundColor: Colors.white,
-            tooltip: "Ask NeighborBot",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ChatScreen()),
-              );
-            },
-            child: Icon(Icons.smart_toy_outlined),
-          ),
+          
           SizedBox(height: 10),
 
           // 🗣 Community Forum (Unchanged)

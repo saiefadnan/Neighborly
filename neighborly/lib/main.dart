@@ -17,6 +17,7 @@ class MyApp extends ConsumerWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF71BB7B)),
         appBarTheme: const AppBarTheme(
+          
           titleTextStyle: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 25.0,

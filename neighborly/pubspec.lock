@@ -1165,8 +1165,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.0+3"
-<<<<<<< HEAD
-=======
   xml:
     dependency: transitive
     description:
@@ -1183,7 +1181,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.3"
->>>>>>> 46da09b20434005b1e4d965b0685953e63448c00
 sdks:
   dart: ">=3.8.0 <4.0.0"
   flutter: ">=3.27.0"
