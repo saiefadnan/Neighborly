@@ -26,7 +26,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add({'sender': 'user', 'text': message});
     });
 
-   final url = Uri.parse('http://10.0.2.2:5000/chat'); // Android emulator
+   final url = Uri.parse('http://172.20.10.2:5000/chat'); // Android emulator
 
  // Change if needed
     try {

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'community_list.dart';
 import 'profile.dart';
+import 'chat_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.title, this.onNavigate});
@@ -15,7 +16,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _animationController;
+  late AnimationController _headerAnimationController;
   late Animation<double> _fadeAnimation;
+  late Animation<double> _headerSlideAnimation;
   late PageController _carouselController;
   int _currentCarouselIndex = 0;
 
@@ -52,13 +55,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+
+    _headerAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _headerSlideAnimation = Tween<double>(begin: -50.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _headerAnimationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
     _carouselController = PageController();
 
     if (!_hasAnimated) {
       _animationController.forward();
+      _headerAnimationController.forward();
       _hasAnimated = true;
     } else {
       _animationController.value = 1.0;
+      _headerAnimationController.forward();
     }
 
     _startAutoScroll();
@@ -84,6 +101,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _animationController.dispose();
+    _headerAnimationController.dispose();
     _carouselController.dispose();
     super.dispose();
   }
@@ -546,19 +564,38 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       appBar: AppBar(
         backgroundColor: const Color(0xFF71BB7B),
         elevation: 0,
-        title: Row(
-          children: const [
-            Icon(Icons.home, color: Color(0xFFFAF4E8), size: 28),
-            SizedBox(width: 10),
-            Text(
-              'Neighborly',
-              style: TextStyle(
-                color: Color(0xFFFAF4E8),
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+        title: AnimatedBuilder(
+          animation: _headerSlideAnimation,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(_headerSlideAnimation.value, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.home,
+                      color: Color(0xFFFAF4E8),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Neighborly',
+                    style: TextStyle(
+                      color: Color(0xFFFAF4E8),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            );
+          },
         ),
         actions: [
           Container(
@@ -640,6 +677,42 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.deepPurple.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ChatScreen()),
+                    );
+                  },
+                  icon: Icon(Icons.smart_toy_outlined),
+                  label: Text("Ask NeighborBot"),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           Text(
             'Latest Notifications',
             style: TextStyle(
