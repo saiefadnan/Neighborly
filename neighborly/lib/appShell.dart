@@ -83,7 +83,7 @@ class _AppShellState extends State<AppShell> {
               title: 'Home Page',
               onNavigate: _onTap,
             ), // Index 2 - Home (middle)
-            const ForumPage(title: 'Forum Page'), // Index 3
+            const ForumPage(title: 'Community Hub'), // Index 3
             NotificationPage(
               title: 'Notification Page',
               onNavigate: _onTap,

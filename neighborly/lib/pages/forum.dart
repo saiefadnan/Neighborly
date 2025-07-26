@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:neighborly/components/post_card.dart';
 import 'package:neighborly/functions/fetchData.dart';
 
@@ -44,7 +45,17 @@ class _ForumPageState extends ConsumerState<ForumPage>
     final asyncPosts = ref.watch(fetchData('posts'));
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F2E7),
       appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.post_add_outlined),
+            iconSize: 30,
+            onPressed: () {
+              context.push('/addpost');
+            },
+          ),
+        ],
         title: AnimatedBuilder(
           animation: _headerSlideAnimation,
           builder: (context, child) {
