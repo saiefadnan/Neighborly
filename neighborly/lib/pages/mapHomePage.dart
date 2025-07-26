@@ -10,7 +10,8 @@ import 'package:neighborly/pages/profile.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
 import 'package:neighborly/pages/community_list.dart';
 import 'package:neighborly/pages/help_list.dart';
-import 'package:neighborly/pages/placeHolder.dart';
+import 'package:neighborly/pages/help_history.dart';
+import 'package:neighborly/pages/report_feedback.dart';
 
 class MapHomePage extends ConsumerStatefulWidget {
   const MapHomePage({super.key});
@@ -19,9 +20,12 @@ class MapHomePage extends ConsumerStatefulWidget {
   _MapHomePageState createState() => _MapHomePageState();
 }
 
-class _MapHomePageState extends ConsumerState<MapHomePage> {
+class _MapHomePageState extends ConsumerState<MapHomePage>
+    with TickerProviderStateMixin {
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
+  late AnimationController _headerAnimationController;
+  late Animation<double> _headerSlideAnimation;
 
   final List<Map<String, dynamic>> helpRequests = [
     {
@@ -53,7 +57,25 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
   @override
   void initState() {
     super.initState();
+    _headerAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _headerSlideAnimation = Tween<double>(begin: -50.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _headerAnimationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _headerAnimationController.forward();
     _createMarkers();
+  }
+
+  @override
+  void dispose() {
+    _headerAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _createMarkers() async {
@@ -360,7 +382,6 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // 🔮 Chatbot Icon (NEW)
-          
           SizedBox(height: 10),
 
           // 🗣 Community Forum (Unchanged)
@@ -407,12 +428,43 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
         ],
       ),
       appBar: AppBar(
-        title: const Text(
-          "Neighborly",
-          style: TextStyle(
-            color: Color.fromARGB(179, 0, 0, 0),
-            fontWeight: FontWeight.bold,
-          ),
+        title: AnimatedBuilder(
+          animation: _headerSlideAnimation,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(_headerSlideAnimation.value, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(
+                        179,
+                        0,
+                        0,
+                        0,
+                      ).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.map,
+                      color: Color.fromARGB(179, 0, 0, 0),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    "Neighborly Map",
+                    style: TextStyle(
+                      color: Color.fromARGB(179, 0, 0, 0),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
         backgroundColor: const Color(0xFFFAF4E8),
         foregroundColor: const Color.fromARGB(179, 0, 0, 0),
@@ -509,9 +561,7 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              const CommunityListPage(),
+                      builder: (context) => const CommunityListPage(),
                     ),
                   );
                 },
@@ -525,9 +575,7 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              const HelpListPage(),
+                      builder: (context) => const HelpListPage(),
                     ),
                   );
                 },
@@ -541,9 +589,7 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              const PlaceholderPage(title: 'Help History'),
+                      builder: (context) => const HelpHistoryPage(),
                     ),
                   );
                 },
@@ -557,9 +603,7 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              const PlaceholderPage(title: 'Report & Feedback'),
+                      builder: (context) => const ReportFeedbackPage(),
                     ),
                   );
                 },

@@ -3,31 +3,80 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/post_card.dart';
 import 'package:neighborly/functions/fetchData.dart';
 
-class ForumPage extends ConsumerWidget {
+class ForumPage extends ConsumerStatefulWidget {
   const ForumPage({super.key, required this.title});
   final String title;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  _ForumPageState createState() => _ForumPageState();
+}
+
+class _ForumPageState extends ConsumerState<ForumPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _headerAnimationController;
+  late Animation<double> _headerSlideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _headerAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _headerSlideAnimation = Tween<double>(begin: -50.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _headerAnimationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _headerAnimationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _headerAnimationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final asyncPosts = ref.watch(fetchData('posts'));
 
     return Scaffold(
       appBar: AppBar(
-
-        title: Row(
-          children: [
-            Icon(Icons.groups, color: Color(0xFFFAF4E8), size: 28),
-            const SizedBox(width: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Color(
-                  0xFFFAF4E8,
-                ),
-                fontWeight: FontWeight.bold,
+        title: AnimatedBuilder(
+          animation: _headerSlideAnimation,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(_headerSlideAnimation.value, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.groups,
+                      color: Color(0xFFFAF4E8),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    widget.title,
+                    style: const TextStyle(
+                      color: Color(0xFFFAF4E8),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            );
+          },
         ),
         backgroundColor: const Color(0xFF71BB7B),
         foregroundColor: const Color(0xFFFAF4E8),

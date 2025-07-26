@@ -11,6 +11,8 @@ class HelpListPage extends StatefulWidget {
 class _HelpListPageState extends State<HelpListPage>
     with TickerProviderStateMixin {
   late TabController _tabController;
+  late AnimationController _headerAnimationController;
+  late Animation<double> _headerSlideAnimation;
   String _selectedHelpType = 'All';
   String _selectedUrgency = 'All';
   bool _nearbyOnly = false;
@@ -151,11 +153,25 @@ class _HelpListPageState extends State<HelpListPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    _headerAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _headerSlideAnimation = Tween<double>(begin: -50.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _headerAnimationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _headerAnimationController.forward();
     _sortHelpsByUrgency();
   }
 
   @override
   void dispose() {
+    _headerAnimationController.dispose();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -1137,19 +1153,38 @@ class _HelpListPageState extends State<HelpListPage>
         backgroundColor: const Color(0xFF71BB7B),
         elevation: 0,
         automaticallyImplyLeading: false, // Remove back button
-        title: const Row(
-          children: [
-            Icon(Icons.list_alt, color: Colors.white, size: 24),
-            SizedBox(width: 8),
-            Text(
-              'Help Requests',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+        title: AnimatedBuilder(
+          animation: _headerSlideAnimation,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(_headerSlideAnimation.value, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.list_alt,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Help Requests',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            );
+          },
         ),
         bottom: TabBar(
           controller: _tabController,

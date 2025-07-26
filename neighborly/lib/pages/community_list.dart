@@ -11,6 +11,8 @@ class CommunityListPage extends StatefulWidget {
 class _CommunityListPageState extends State<CommunityListPage>
     with TickerProviderStateMixin {
   late TabController _tabController;
+  late AnimationController _headerAnimationController;
+  late Animation<double> _headerSlideAnimation;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   Set<String> _expandedCommunities = {};
@@ -143,10 +145,24 @@ class _CommunityListPageState extends State<CommunityListPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    _headerAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _headerSlideAnimation = Tween<double>(begin: -50.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _headerAnimationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _headerAnimationController.forward();
   }
 
   @override
   void dispose() {
+    _headerAnimationController.dispose();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -591,13 +607,38 @@ class _CommunityListPageState extends State<CommunityListPage>
       appBar: AppBar(
         backgroundColor: const Color(0xFF71BB7B),
         elevation: 0,
-        title: const Text(
-          'Communities',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
+        title: AnimatedBuilder(
+          animation: _headerSlideAnimation,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(_headerSlideAnimation.value, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.people,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Communities',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
         leading: IconButton(
           onPressed: () => Navigator.pop(context),

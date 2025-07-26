@@ -28,7 +28,7 @@ class _AppShellState extends State<AppShell> {
     Icons.groups,
     Icons.notifications_none,
   ];
-  
+
   void _onTap(int index) {
     setState(() {
       _currentIndex = index;
@@ -84,7 +84,10 @@ class _AppShellState extends State<AppShell> {
               onNavigate: _onTap,
             ), // Index 2 - Home (middle)
             const ForumPage(title: 'Forum Page'), // Index 3
-            const NotificationPage(title: 'Notification Page'), // Index 4
+            NotificationPage(
+              title: 'Notification Page',
+              onNavigate: _onTap,
+            ), // Index 4
           ],
         ),
         bottomNavigationBar: CurvedNavigationBar(
