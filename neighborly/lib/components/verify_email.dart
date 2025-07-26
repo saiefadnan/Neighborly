@@ -30,7 +30,7 @@ class _VerifyEmailState extends ConsumerState<VerifyEmail> {
         SizedBox(height: 40.0),
 
         // Title
-        Container(
+        SizedBox(
           width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,7 +123,7 @@ class _VerifyEmailState extends ConsumerState<VerifyEmail> {
         SizedBox(height: 40.0),
 
         // Verify Code Button
-        Container(
+        SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(

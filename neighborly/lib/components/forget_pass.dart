@@ -43,7 +43,7 @@ class _ForgetPassState extends ConsumerState<ForgetPass> {
       children: [
         SizedBox(height: 70.0),
         // Title
-        Container(
+        SizedBox(
           width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,7 +118,7 @@ class _ForgetPassState extends ConsumerState<ForgetPass> {
         SizedBox(height: 40.0),
 
         // Reset Password Button
-        Container(
+        SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(

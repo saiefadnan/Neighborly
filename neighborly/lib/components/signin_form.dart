@@ -61,7 +61,7 @@ class _SigninFormState extends ConsumerState<SigninForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Title
-        Container(
+        SizedBox(
           width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,7 +227,7 @@ class _SigninFormState extends ConsumerState<SigninForm> {
         SizedBox(height: 40.0),
 
         // Login Button
-        Container(
+        SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(

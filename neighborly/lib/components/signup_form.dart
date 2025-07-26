@@ -84,7 +84,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Title
-        Container(
+        SizedBox(
           width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,7 +293,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
         SizedBox(height: 30.0),
 
         // Create Account Button
-        Container(
+        SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(

@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class EditNotificationsPage extends StatefulWidget {
+  const EditNotificationsPage({super.key});
+
   @override
   _EditNotificationsPageState createState() => _EditNotificationsPageState();
 }

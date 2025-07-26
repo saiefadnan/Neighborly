@@ -202,7 +202,7 @@ class _SuccessState extends ConsumerState<Success>
         SizedBox(height: 40.0),
 
         // Continue Button
-        Container(
+        SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(

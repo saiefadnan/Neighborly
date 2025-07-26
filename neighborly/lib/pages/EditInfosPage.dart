@@ -93,6 +93,8 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
 }
 
 class EditInfosPage extends StatefulWidget {
+  const EditInfosPage({super.key});
+
   @override
   _EditInfosPageState createState() => _EditInfosPageState();
 }

@@ -34,7 +34,7 @@ Widget buildCommentTree(dynamic comments, int parentID, int depth) {
             ),
             Expanded(
               child: CommentCard(
-                ckey: ckeys[comment['commentID']] ??= GlobalKey(),
+                ckey: commentKeys[comment['commentID']] ??= GlobalKey(),
                 comment: comment,
                 depth: depth,
               ),

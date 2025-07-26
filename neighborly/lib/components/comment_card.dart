@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:like_button/like_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:neighborly/components/comment_sheet.dart';
 
 final boxHeightProvider = StateProvider<Map<int, double>>((ref) => {});
+final replyTargetProvider = StateProvider<int?>((ref) => null);
+final kvc = KeyboardVisibilityController();
 
 class CommentCard extends ConsumerStatefulWidget {
   final dynamic comment;
@@ -34,7 +38,7 @@ class _CommentCardState extends ConsumerState<CommentCard> {
         ref.read(boxHeightProvider.notifier).update((state) {
           return {...state, widget.comment['commentID']: height};
         });
-        print('Height for comment ${widget.comment['commentID']}: $height');
+        //print('Height for comment ${widget.comment['commentID']}: $height');
       }
     });
   }
@@ -93,7 +97,6 @@ class _CommentCardState extends ConsumerState<CommentCard> {
             Row(
               children: [
                 SizedBox(width: 35),
-                SizedBox(width: 5),
                 LikeButton(
                   likeCount: widget.comment['reacts'] ?? 0,
                   countPostion: CountPostion.right,
@@ -107,8 +110,22 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                   onTap: OnTap,
                 ),
                 SizedBox(width: 40),
-                Icon(Icons.reply, color: Colors.blue, size: 15),
-                SizedBox(width: 5),
+                IconButton(
+                  onPressed: () {
+                    ref.read(replyTargetProvider.notifier).state =
+                        widget.comment['commentID'];
+                    ref.read(hintTextProvider.notifier).state =
+                        'Replying to @${widget.comment['author']}';
+                    final focusNode = ref.read(commentFocusNodeProvider);
+                    if (focusNode.hasFocus && !kvc.isVisible) {
+                      focusNode.unfocus();
+                    }
+                    Future.delayed(Duration(milliseconds: 50), () {
+                      focusNode.requestFocus();
+                    });
+                  },
+                  icon: Icon(Icons.reply, color: Colors.blue, size: 15),
+                ),
                 Text(
                   'reply',
                   style: TextStyle(

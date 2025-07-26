@@ -18,16 +18,46 @@ class _PostCardState extends ConsumerState<PostCard> {
     return !isLiked;
   }
 
+  String _getFormattedTime(String timestamp) {
+    final date = DateTime.parse(timestamp);
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays >= 1) {
+      // Show like "Jul 25"
+      return '${_getMonthAbbreviation(date.month)} ${date.day}, ${date.year}';
+    } else {
+      return timeago.format(date);
+    }
+  }
+
+  String _getMonthAbbreviation(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[month - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       shadowColor: Colors.black26,
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -51,12 +81,12 @@ class _PostCardState extends ConsumerState<PostCard> {
                       widget.post['author'],
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.indigo[900],
+                        color: Colors.black,
                         fontSize: 16,
                       ),
                     ),
                     Text(
-                      '🕒 ${timeago.format(DateTime.parse(widget.post['timestamp']))}',
+                      _getFormattedTime(widget.post['timestamp']),
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontStyle: FontStyle.italic,
@@ -83,20 +113,19 @@ class _PostCardState extends ConsumerState<PostCard> {
             // Content with ReadMore
             ReadMoreText(
               widget.post['content'],
-              trimLength: 130,
+              trimLines: 2,
               trimCollapsedText: 'Show more',
               trimExpandedText: '',
               style: TextStyle(
                 height: 1.4,
                 color: Colors.grey[800],
-                fontSize: 20,
+                fontSize: 18,
               ),
               moreStyle: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.indigo,
               ),
             ),
-
             // Image if exists
             if (widget.post['imageUrl'] != null) ...[
               const SizedBox(height: 18),
@@ -111,7 +140,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                     if (loadingProgress == null) return child;
                     return SizedBox(
                       width: double.infinity,
-                      height: 200,
+                      height: 400,
                       child: Center(
                         child: CircularProgressIndicator(
                           value:

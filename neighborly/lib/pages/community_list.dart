@@ -13,7 +13,7 @@ class _CommunityListPageState extends State<CommunityListPage>
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  Set<String> _expandedCommunities = {};
+  final Set<String> _expandedCommunities = {};
 
   final List<Community> _myCommunities = [
     Community(
