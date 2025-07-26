@@ -178,8 +178,8 @@ class ProfilePage extends StatelessWidget {
                                         decoration: BoxDecoration(
                                           gradient: const LinearGradient(
                                             colors: [
-                                              Color(0xFFFFD966),
-                                              Color(0xFFFFE9A7),
+                                              Color(0xFFF3B14E),
+                                              Color(0xFFFFCE51),
                                             ],
                                             begin: Alignment.centerLeft,
                                             end: Alignment.centerRight,

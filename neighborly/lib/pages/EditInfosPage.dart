@@ -100,9 +100,9 @@ class EditInfosPage extends StatefulWidget {
 }
 
 class _EditInfosPageState extends State<EditInfosPage> {
-  final _usernameController = TextEditingController(text: "yANCHUI");
-  final _emailController = TextEditingController(text: "yanchui@gmail.com");
-  final _phoneController = TextEditingController(text: "+14987889999");
+  final _usernameController = TextEditingController(text: "Mir Sayef");
+  final _emailController = TextEditingController(text: "mirsayef@gmail.com");
+  final _phoneController = TextEditingController(text: "01678998814");
   final _passwordController = TextEditingController(text: "evFTbyVVCd");
 
   @override
@@ -138,6 +138,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Card 1: Names, Email, Contact
+                  // Card 1: User Information, Names, Email, Contact
                   Card(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
@@ -152,8 +153,17 @@ class _EditInfosPageState extends State<EditInfosPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          const Text(
+                            "User Information",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Divider(thickness: 1.1, height: 24),
                           const Text("First Name"),
                           const SizedBox(height: 4),
+                          // ...rest
                           TextField(
                             decoration: InputDecoration(
                               border: OutlineInputBorder(

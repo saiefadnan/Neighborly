@@ -42,7 +42,7 @@ class StatisticsPage extends StatelessWidget {
               _statCard(
                 iconPath: 'assets/images/map-marker.png',
                 iconData: null,
-                label: '86%',
+                label: '2 km',
                 subLabel: 'Help Range\nRadius',
               ),
             ],
