@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:neighborly/appShell.dart';
+import 'package:neighborly/pages/add_post.dart';
 import 'package:neighborly/pages/authPage.dart';
 import 'package:neighborly/pages/splash_screen.dart';
 
@@ -60,6 +61,10 @@ GoRouter createRouter(WidgetRef ref) {
         builder: (context, state) => const AuthPage(title: 'Auth'),
       ),
       GoRoute(path: '/appShell', builder: (context, state) => AppShell()),
+      GoRoute(
+        path: '/addpost',
+        builder: (context, state) => const AddPostPage(title: 'Post Submission'),
+      ),
     ],
   );
 }
