@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'activityPage.dart';
 import 'editProfile.dart';
+import 'statistics.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key, required this.title});
@@ -63,7 +64,8 @@ class ProfilePage extends StatelessWidget {
               child: TabBarView(
                 children: [
                   // STATS TAB
-                  Center(child: Text("Stats Coming Soon")),
+                  //Center(child: Text("Stats Coming Soon")),
+                  StatisticsPage(),
                   // ACHIEVEMENTS TAB
                   SingleChildScrollView(
                     child: Padding(
