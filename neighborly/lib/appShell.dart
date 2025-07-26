@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:neighborly/pages/home.dart';
 import 'package:neighborly/pages/mapHomePage.dart';
-import 'package:neighborly/pages/profile.dart';
 import 'package:neighborly/pages/notification.dart';
+import 'package:neighborly/pages/help_list.dart';
 import 'package:neighborly/pages/forum.dart';
 
 class AppShell extends StatefulWidget {
@@ -14,27 +14,21 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  final PageController _pageController = PageController();
-  int _currentIndex = 0;
+  final PageController _pageController = PageController(
+    initialPage: 2,
+  ); // Start from home (middle)
+  int _currentIndex = 2; // Start from home
 
   final GlobalKey<CurvedNavigationBarState> _navKey = GlobalKey();
 
   final List<IconData> _navIcons = [
-    Icons.home,
-    Icons.map,
-    Icons.add,
+    Icons.list_alt, // Help List at index 0
+    Icons.map, // Map at index 1
+    Icons.home, // Home in the middle
     Icons.groups,
     Icons.notifications_none,
   ];
-
-  /**final List<String> _appBarTitles = [
-    'Neighborly',
-    'Map',
-    'Community',
-    'Notifications',
-    'Notifications',
-  ];**/
-
+  
   void _onTap(int index) {
     setState(() {
       _currentIndex = index;
@@ -45,11 +39,11 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: _currentIndex == 0,
+      canPop: _currentIndex == 2, // Home is now at index 2
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _currentIndex != 0) {
-          _pageController.jumpTo(0);
-          setState(() => _currentIndex = 0);
+        if (!didPop && _currentIndex != 2) {
+          _pageController.jumpToPage(2); // Jump to home (index 2)
+          setState(() => _currentIndex = 2);
         }
       },
       child: Scaffold(
@@ -83,11 +77,14 @@ class _AppShellState extends State<AppShell> {
             setState(() => _currentIndex = index);
           },
           children: [
-            HomePage(title: 'Home Page', onNavigate: _onTap),
-            MapHomePage(),
-            const ProfilePage(title: 'Profile Page'),
-            const ForumPage(title: 'Forum Page'),
-            const NotificationPage(title: 'Notification Page'),
+            const HelpListPage(), // Index 0 - Help Requests
+            MapHomePage(), // Index 1 - Map
+            HomePage(
+              title: 'Home Page',
+              onNavigate: _onTap,
+            ), // Index 2 - Home (middle)
+            const ForumPage(title: 'Forum Page'), // Index 3
+            const NotificationPage(title: 'Notification Page'), // Index 4
           ],
         ),
         bottomNavigationBar: CurvedNavigationBar(

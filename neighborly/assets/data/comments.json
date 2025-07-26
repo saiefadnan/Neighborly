@@ -1,115 +1,114 @@
 {
-    "comments": [
-      {
-        "commentID": 0,
-        "timestamp": "2025-07-01T22:00:00Z",
-        "authorID": 1,
-        "postID": 0,
-        "author": "Bundeep",
-        "content": "Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔...Interesting take 🤔",
-        "upvotes": 2,
-        "parentID": null,
-        "reacts": 7
-      },
-      {
-        "commentID": 1,
-        "timestamp": "2025-07-01T22:00:00Z",
-        "authorID": 1,
-        "postID": 0,
-        "author": "Fundeep",
-        "content": "Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔...Interesting take 🤔",
-        "upvotes": 2,
-        "parentID": 0,
-        "reacts": 3
-      },
-      {
-        "commentID": 2,
-        "timestamp": "2025-07-01T22:00:00Z",
-        "authorID": 1,
-        "postID": 0,
-        "author": "Bundeep",
-        "content": "Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔...Interesting take 🤔",
-        "upvotes": 2,
-        "parentID": 1,
-        "reacts": 9
-      },
-      {
-        "commentID": 3,
-        "timestamp": "2025-07-01T22:00:00Z",
-        "authorID": 1,
-        "postID": 0,
-        "author": "Bundeep",
-        "content": "Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔...Interesting take 🤔",
-        "upvotes": 2,
-        "parentID": 2,
-        "reacts": 1
-      },
-      {
-        "commentID": 4,
-        "timestamp": "2025-07-01T22:00:00Z",
-        "authorID": 1,
-        "postID": 0,
-        "author": "Bundeep",
-        "content": "Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔..Interesting take 🤔...Interesting take 🤔",
-        "upvotes": 2,
-        "parentID": 0,
-        "reacts": 5
-      },
-      {
-        "commentID": 5,
-        "timestamp": "2025-07-01T22:00:00Z",
-        "authorID": 1,
-        "postID": 0,
-        "author": "Bundeep",
-        "content": "Interesting take ",
-        "upvotes": 2,
-        "parentID": 4,
-        "reacts": 10
-      },
-      {
-        "commentID": 6,
-        "timestamp": "2025-07-01T22:00:00Z",
-        "authorID": 1,
-        "postID": 0,
-        "author": "Bundeep",
-        "content": "Interesting take 🤔..Interesting take 🤔..Interesting take ",
-        "upvotes": 2,
-        "parentID": null,
-        "reacts": 2
-      },
-      {
-        "commentID": 7,
-        "timestamp": "2025-07-01T22:00:00Z",
-        "authorID": 0,
-        "postID": 0,
-        "author": "Sundeep",
-        "upvotes": 0,
-        "content": "Thanks",
-        "parentID": 6,
-        "reacts": 4
-      },
-      {
-        "commentID": 8,
-        "timestamp": "2025-07-01T22:00:00Z",
-        "authorID": 0,
-        "postID": 1,
-        "author": "Sundeep",
-        "upvotes": 1,
-        "content": "Interesting take 🤔",
-        "parentID": null,
-        "reacts": 6
-      },
-      {
-        "commentID": 9,
-        "timestamp": "2025-07-01T22:00:00Z",
-        "authorID": 1,
-        "postID": 1,
-        "author": "Bundeep",
-        "upvotes": 8,
-        "content": "Thanks",
-        "parentID": 8,
-        "reacts": 8
-      }
-    ]
-  }
-  
+  "comments": [
+    {
+      "commentID": 0,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 1,
+      "postID": 0,
+      "author": "Emily Clark",
+      "content": "I love this perspective. Remote work has definitely changed the game for a lot of us.",
+      "upvotes": 2,
+      "parentID": null,
+      "reacts": 7
+    },
+    {
+      "commentID": 1,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 2,
+      "postID": 0,
+      "author": "Michael Chen",
+      "content": "True! But I feel like not everyone has the setup to stay productive at home.",
+      "upvotes": 2,
+      "parentID": 0,
+      "reacts": 3
+    },
+    {
+      "commentID": 2,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 1,
+      "postID": 0,
+      "author": "Emily Clark",
+      "content": "Yeah, that's a valid point. I had to invest in a good desk and chair just to make it work.",
+      "upvotes": 2,
+      "parentID": 1,
+      "reacts": 9
+    },
+    {
+      "commentID": 3,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 3,
+      "postID": 0,
+      "author": "Liam Patel",
+      "content": "Same here! Ergonomics matter way more than I expected.",
+      "upvotes": 2,
+      "parentID": 2,
+      "reacts": 1
+    },
+    {
+      "commentID": 4,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 2,
+      "postID": 0,
+      "author": "Michael Chen",
+      "content": "Honestly, hybrid models seem like the best middle ground.",
+      "upvotes": 2,
+      "parentID": 0,
+      "reacts": 5
+    },
+    {
+      "commentID": 5,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 4,
+      "postID": 0,
+      "author": "Rachel Singh",
+      "content": "Couldn't agree more.",
+      "upvotes": 2,
+      "parentID": 4,
+      "reacts": 10
+    },
+    {
+      "commentID": 6,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 5,
+      "postID": 0,
+      "author": "David Nguyen",
+      "content": "Working from home is great, but I do miss the watercooler convos at the office.",
+      "upvotes": 2,
+      "parentID": null,
+      "reacts": 2
+    },
+    {
+      "commentID": 7,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 0,
+      "postID": 0,
+      "author": "Alex Morgan",
+      "upvotes": 0,
+      "content": "Haha yes, I totally get that! Virtual meetings just aren’t the same.",
+      "parentID": 6,
+      "reacts": 4
+    },
+    {
+      "commentID": 8,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 0,
+      "postID": 1,
+      "author": "Alex Morgan",
+      "upvotes": 1,
+      "content": "Good breakdown of the frameworks. I’d add Remix to the list too.",
+      "parentID": null,
+      "reacts": 6
+    },
+    {
+      "commentID": 9,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 2,
+      "postID": 1,
+      "author": "Michael Chen",
+      "upvotes": 8,
+      "content": "Thanks! Remix is solid—definitely underrated.",
+      "parentID": 8,
+      "reacts": 8
+    }
+  ]
+}

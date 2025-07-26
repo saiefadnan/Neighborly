@@ -8,6 +8,8 @@ import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/pages/notification.dart';
 import 'package:neighborly/pages/profile.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
+import 'package:neighborly/pages/community_list.dart';
+import 'package:neighborly/pages/help_list.dart';
 import 'package:neighborly/pages/placeHolder.dart';
 import 'chat_screen.dart';
 
@@ -61,7 +63,6 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
     for (int idx = 0; idx < helpRequests.length; idx++) {
       Map<String, dynamic> req = helpRequests[idx];
 
-      // Create custom marker icon
       BitmapDescriptor customIcon = await _createCustomMarker(req['type']);
 
       markers.add(
@@ -86,7 +87,6 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
   }
 
   Future<BitmapDescriptor> _createCustomMarker(String type) async {
-    // Use different colors and icons based on type
     double hue;
     switch (type) {
       case "Emergency":
@@ -406,7 +406,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage> {
                       onSubmit: (helpData) {
                         setState(() {
                           helpRequests.add(helpData);
-                          _createMarkers(); // Recreate markers when new request is added
+                          _createMarkers();
                         });
                       },
                     ),
@@ -448,7 +448,9 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
   String username = "Ali";
   void signOut() {
     ref.read(signedInProvider.notifier).state = false;
-    context.go('/signin');
+    ref.read(hasSeenSplashProvider.notifier).state =
+        true; // Ensure direct auth access
+    context.go('/auth');
   }
 
   return Drawer(
@@ -513,7 +515,7 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
               ),
               ListTile(
                 leading: const Icon(Icons.people, color: Color(0xFFFAF4E8)),
-                title: const Text('Community'),
+                title: const Text('Community List'),
                 textColor: const Color(0xFFFAF4E8),
                 onTap: () {
                   Navigator.pop(context);
@@ -522,7 +524,7 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
                     MaterialPageRoute(
                       builder:
                           (context) =>
-                              const PlaceholderPage(title: 'Community List'),
+                              const CommunityListPage(),
                     ),
                   );
                 },
@@ -538,7 +540,7 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
                     MaterialPageRoute(
                       builder:
                           (context) =>
-                              const PlaceholderPage(title: 'Help Requests'),
+                              const HelpListPage(),
                     ),
                   );
                 },

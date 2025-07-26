@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'NotificationScreen.dart'; // Adjust the path accordingly
+import 'community_list.dart';
+import 'profile.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.title, this.onNavigate});
@@ -104,56 +105,69 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildWelcomeSection() {
-    return GestureDetector(
-      onTap: () {
-        widget.onNavigate?.call(2);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF71BB7B), Color(0xFF5EA968)],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ProfilePage(title: 'Profile'),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF71BB7B), Color(0xFF5EA968)],
+            ),
+            borderRadius: BorderRadius.circular(20),
           ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            const CircleAvatar(
-              radius: 25,
-              backgroundImage: AssetImage('assets/images/dummy.png'),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Welcome back, Ali!',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    'What\'s happening in your neighborhood?',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                ],
+          child: Row(
+            children: [
+              const CircleAvatar(
+                radius: 25,
+                backgroundImage: AssetImage('assets/images/dummy.png'),
               ),
-            ),
-          ],
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Welcome back, Ali!',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'What\'s happening in your neighborhood?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildActionCard(
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -219,6 +233,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 15),
+
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
@@ -228,23 +243,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   'Forum',
                   Icons.chat_bubble_outline,
                   const Color(0xFF4A90E2),
-                  () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NotificationScreen(title: 'Notifications'),
-                      ),
-                    );
-                  },
+                  () => widget.onNavigate?.call(3), // Navigate to Forum tab
                 ),
               ),
               const SizedBox(width: 15),
               Expanded(
                 child: _buildActionCard(
-                  'Help Request',
-                  Icons.help_outline,
-                  const Color(0xFFFF6B6B),
-                  () => widget.onNavigate?.call(1),
+                  'Help List',
+                  Icons.list_alt,
+                  const Color(0xFF9C27B0),
+                  () => widget.onNavigate?.call(
+                    0,
+                  ), // Navigate to Help List tab (now index 0)
                 ),
               ),
             ],
@@ -257,19 +267,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             children: [
               Expanded(
                 child: _buildActionCard(
-                  'Notifications',
-                  Icons.notifications,
-                  const Color(0xFFFFB347),
-                  () => widget.onNavigate?.call(4),
+                  'Community List',
+                  Icons.groups,
+                  const Color(0xFF029D93),
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CommunityListPage(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 15),
               Expanded(
                 child: _buildActionCard(
-                  'Community List',
-                  Icons.groups,
-                  const Color(0xFF029D93),
-                  () => widget.onNavigate?.call(3),
+                  'Notifications',
+                  Icons.notifications,
+                  const Color(0xFFFFB347),
+                  () => widget.onNavigate?.call(4),
                 ),
               ),
             ],
@@ -281,7 +298,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildMapHighlight() {
     return GestureDetector(
-      onTap: () => widget.onNavigate?.call(1),
+      onTap:
+          () => widget.onNavigate?.call(1), // Navigate to Map tab (now index 1)
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20),
         height: 180,
@@ -306,7 +324,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             Positioned(
               right: -20,
               top: -20,
-              child: Icon(Icons.map, size: 120, color: Colors.white.withOpacity(0.1)),
+              child: Icon(
+                Icons.map,
+                size: 120,
+                color: Colors.white.withOpacity(0.1),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(25),
@@ -315,7 +337,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.location_on, color: Colors.white, size: 28),
+                      const Icon(
+                        Icons.location_on,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                       const SizedBox(width: 10),
                       const Text(
                         'Explore Your Area',
@@ -348,7 +374,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                      const Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ],
                   ),
                 ],
@@ -378,7 +408,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
               TextButton(
-                onPressed: () => widget.onNavigate?.call(3),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CommunityListPage(),
+                    ),
+                  );
+                },
                 child: const Text(
                   'View All',
                   style: TextStyle(
@@ -490,9 +527,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _currentCarouselIndex == index
-                    ? const Color(0xFF71BB7B)
-                    : Colors.grey.withOpacity(0.3),
+                color:
+                    _currentCarouselIndex == index
+                        ? const Color(0xFF71BB7B)
+                        : Colors.grey.withOpacity(0.3),
               ),
             ),
           ),
@@ -557,9 +595,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               const SizedBox(height: 20),
               _buildWelcomeSection(),
               const SizedBox(height: 20),
-              _buildQuickActions(),
-              const SizedBox(height: 20),
               _buildMapHighlight(),
+              const SizedBox(height: 20),
+              _buildQuickActions(),
               const SizedBox(height: 20),
               _buildCommunityCarousel(),
               const SizedBox(height: 20),
@@ -573,114 +611,117 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildNotificationPreview() {
-  final List<String> names = [
-    "Jack Conniler",
-    "Sual Canal",
-    "Samuel Badre",
-    "Alice Johnson",
-    "Bob Smith",
-  ];
+    final List<String> names = [
+      "Jack Conniler",
+      "Sual Canal",
+      "Samuel Badre",
+      "Alice Johnson",
+      "Bob Smith",
+    ];
 
-  final List<String> messages = [
-    "Wants Grocery",
-    "Wants Emergency Ambulance Service",
-    "Gave a traffic update",
-    "Has lost her pet cat named Sania",
-    "Needs help with trash pickup",
-  ];
+    final List<String> messages = [
+      "Wants Grocery",
+      "Wants Emergency Ambulance Service",
+      "Gave a traffic update",
+      "Has lost her pet cat named Sania",
+      "Needs help with trash pickup",
+    ];
 
-  final List<String> images = [
-    'assets/images/Image1.jpg',
-    'assets/images/Image2.jpg',
-    'assets/images/Image3.jpg',
-    'assets/images/Image1.jpg',
-    'assets/images/Image2.jpg',
-  ];
+    final List<String> images = [
+      'assets/images/Image1.jpg',
+      'assets/images/Image2.jpg',
+      'assets/images/Image3.jpg',
+      'assets/images/Image1.jpg',
+      'assets/images/Image2.jpg',
+    ];
 
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Latest Notifications',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Latest Notifications',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 100,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: names.length,
-            itemBuilder: (context, index) {
-              return Container(
-                width: 250,
-                margin: const EdgeInsets.only(right: 12),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        images[index],
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 100,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: names.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  width: 250,
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 5,
+                        offset: const Offset(0, 3),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            names[index],
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          Text(
-                            messages[index],
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[700],
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          images[index],
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-                      onPressed: () {
-                        widget.onNavigate?.call(4);
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              names[index],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              messages[index],
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 16,
+                        ),
+                        onPressed: () {
+                          widget.onNavigate?.call(4);
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 }
