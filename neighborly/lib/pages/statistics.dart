@@ -60,7 +60,7 @@ class StatisticsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          _strongestTopicsCard(),
+          _strongestTopicsCard(context),
           const SizedBox(height: 28),
           // Least Contributed Areas (single card)
           const Text(
@@ -74,6 +74,7 @@ class StatisticsPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _topicCard(
+            context: context,
             iconPath: null,
             iconData: Icons.traffic,
             label: 'Traffic Updates',
@@ -162,7 +163,7 @@ class StatisticsPage extends StatelessWidget {
     );
   }
 
-  Widget _strongestTopicsCard() {
+  Widget _strongestTopicsCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
@@ -180,6 +181,7 @@ class StatisticsPage extends StatelessWidget {
       child: Column(
         children: [
           _topicRow(
+            context: context,
             iconPath: null,
             iconData: Icons.directions_car,
             label: 'Transportation',
@@ -189,6 +191,7 @@ class StatisticsPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _topicRow(
+            context: context,
             iconPath: null,
             iconData: Icons.shopping_cart,
             label: 'Groceries',
@@ -198,6 +201,7 @@ class StatisticsPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _topicRow(
+            context: context,
             iconPath: null,
             iconData: Icons.directions,
             label: 'Directional Help',
@@ -211,6 +215,7 @@ class StatisticsPage extends StatelessWidget {
   }
 
   Widget _topicRow({
+    required BuildContext context,
     String? iconPath,
     IconData? iconData,
     required String label,
@@ -251,14 +256,30 @@ class StatisticsPage extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: percent,
-                  minHeight: 8,
-                  backgroundColor: const Color(0xFFF2F2F7),
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                ),
+              // Gradient progress bar
+              Stack(
+                children: [
+                  Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2F2F7),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  Container(
+                    height: 8,
+                    width:
+                        percent *
+                        MediaQuery.of(context).size.width *
+                        0.5, // adjust width factor as needed
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFBF1A), Color(0xFFFF4080)],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -277,6 +298,7 @@ class StatisticsPage extends StatelessWidget {
   }
 
   Widget _topicCard({
+    required BuildContext context,
     String? iconPath,
     IconData? iconData,
     required String label,
@@ -317,14 +339,31 @@ class StatisticsPage extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: percent,
-                    minHeight: 8,
-                    backgroundColor: const Color(0xFFF2F2F7),
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                  ),
+                // Gradient progress bar
+                // Gradient progress bar for Traffic Updates
+                Stack(
+                  children: [
+                    Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F2F7),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    Container(
+                      height: 8,
+                      width:
+                          percent *
+                          MediaQuery.of(context).size.width *
+                          0.5, // adjust width factor as needed
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2FEA9B), Color(0xFF7FDD53)],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
