@@ -338,26 +338,26 @@ class _SignupFormState extends ConsumerState<SignupForm> {
             ),
           ],
         ),
-        SizedBox(height: 20.0),
+        SizedBox(height: 15.0),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FaIcon(FontAwesomeIcons.google, color: Color(0xFF71BB7B), size: 40),
+            FaIcon(FontAwesomeIcons.google, color: Color(0xFF71BB7B), size: 30),
             SizedBox(width: 30.0),
             FaIcon(
               FontAwesomeIcons.facebook,
               color: Color(0xFF71BB7B),
-              size: 40,
+              size: 30,
             ),
             SizedBox(width: 30.0),
             FaIcon(
               FontAwesomeIcons.xTwitter,
               color: Color(0xFF71BB7B),
-              size: 40,
+              size: 30,
             ),
           ],
         ),
-        SizedBox(height: 20.0),
+        SizedBox(height: 15.0),
         // Already have account text
         Center(
           child: RichText(
@@ -370,7 +370,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
               ),
               children: [
                 TextSpan(
-                  text: "Signin",
+                  text: "Sign in",
                   style: TextStyle(
                     color: Color(0xFF71BB7B),
                     fontWeight: FontWeight.w600,

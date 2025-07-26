@@ -49,9 +49,9 @@ class _SigninPageState extends ConsumerState<AuthPage> {
   bool isImageSliding = false;
   bool isFormSliding = false;
   final portraitFactors = {
-    0: 0.3, // Signin
-    1: 0.16, // Signup
-    2: 0.45, // Forget Password
+    0: 0.25, // Signin
+    1: 0.07, // Signup
+    2: 0.40, // Forget Password
     3: 0.4, // Verify Email
     4: 0.3, // New Password
   };
@@ -157,7 +157,7 @@ class _SigninPageState extends ConsumerState<AuthPage> {
 
           /// 🔙 Back button animation
           Positioned(
-            top: 32,
+            top: 24,
             left: 16,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
@@ -171,16 +171,33 @@ class _SigninPageState extends ConsumerState<AuthPage> {
                   ),
               child:
                   (pageNumber != 0 && pageNumber != 1)
-                      ? IconButton(
-                        key: const ValueKey("backButton"),
-                        icon: const Icon(
-                          Icons.arrow_back,
-                          size: 28,
-                          color: Colors.black,
+                      ? Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        onPressed:
-                            () =>
-                                ref.read(pageNumberProvider.notifier).state = 0,
+                        child: IconButton(
+                          key: const ValueKey("backButton"),
+                          padding: EdgeInsets.zero,
+                          icon: const Icon(
+                            Icons.chevron_left,
+                            size: 30,
+                            color: Colors.green,
+                          ),
+                          onPressed:
+                              () =>
+                                  ref.read(pageNumberProvider.notifier).state =
+                                      0,
+                        ),
                       )
                       : const SizedBox.shrink(),
             ),
