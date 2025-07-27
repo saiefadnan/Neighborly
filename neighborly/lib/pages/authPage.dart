@@ -50,7 +50,7 @@ class _SigninPageState extends ConsumerState<AuthPage> {
   bool isFormSliding = false;
   final portraitFactors = {
     0: 0.25, // Signin
-    1: 0.07, // Signup
+    1: 0.18, // Signup
     2: 0.40, // Forget Password
     3: 0.4, // Verify Email
     4: 0.3, // New Password
