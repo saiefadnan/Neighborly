@@ -185,9 +185,9 @@ class FeedbackService {
     double score = avgRating * 20; // Convert 5-star to 100-point scale
 
     // Boost for having more feedback (social proof)
-    if (feedbackCount >= 10)
+    if (feedbackCount >= 10) {
       score += 5;
-    else if (feedbackCount >= 5)
+    } else if (feedbackCount >= 5)
       score += 3;
     else if (feedbackCount >= 1)
       score += 1;
