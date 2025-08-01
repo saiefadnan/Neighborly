@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:neighborly/app_routes.dart';
 import 'package:neighborly/functions/init_pageval.dart';
 import 'package:neighborly/pages/authPage.dart';
+import 'package:http/http.dart' as http;
 
 class SigninForm extends ConsumerStatefulWidget {
   final String title;
@@ -24,10 +27,43 @@ class _SigninFormState extends ConsumerState<SigninForm> {
   bool _isEmailFocused = false;
   bool _isPasswordFocused = false;
 
-  void onTapSignin(BuildContext context) {
-    ref.read(signedInProvider.notifier).state = true;
-    context.go('/appShell');
-    initPageVal(ref);
+  Future<bool> fetchData() async {
+    final url = Uri.parse('http://192.168.0.101:4000/api/test');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "email": _emailController.text,
+          "password": _passwordController.text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // print('Message: ${data['message']}');
+        return true;
+      } else {
+        //print('Error: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      //print('Caught error: $e');
+      return false;
+    }
+  }
+
+  void onTapSignin(BuildContext context) async {
+    final success = true; //await fetchData();
+    if (!context.mounted) return;
+    if (success) {
+      ref.read(signedInProvider.notifier).state = true;
+      context.go('/appShell');
+      initPageVal(ref);
+    } else {
+      print("Login failed. Please check your credentials.");
+    }
   }
 
   @override

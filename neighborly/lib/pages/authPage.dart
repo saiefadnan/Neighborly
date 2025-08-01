@@ -52,12 +52,12 @@ class _SigninPageState extends ConsumerState<AuthPage> {
   //Don't change the values!!!
   final portraitFactors = {
     0: 0.25, // Signin
-    1: 0.18, // Signup
-    2: 0.50, // Forget Password
+    1: 0.15, // Signup
+    2: 0.4, // Forget Password
     3: 0.4, // Verify Email
     4: 0.3, // New Password
   };
-  
+
   Widget _getformWidget(int pagenum) {
     switch (pagenum) {
       case 0:
