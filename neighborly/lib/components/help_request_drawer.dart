@@ -36,6 +36,8 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
     'Traffic Update',
     'Route',
     'Shifting Furniture',
+    'Lost Person',
+    'Lost Item/Pet',
   ];
 
   List<Map<String, dynamic>> _suggestions = [];
@@ -881,6 +883,10 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
         return Colors.purple;
       case 'Shifting Furniture':
         return Colors.teal;
+      case 'Lost Person':
+        return Colors.deepPurple;
+      case 'Lost Item/Pet':
+        return Colors.brown;
       default:
         return Color(0xFF71BB7B);
     }
