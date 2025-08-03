@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:neighborly/app_routes.dart';
 import 'community_list.dart';
 import 'profile.dart';
 import 'chat_screen.dart';
+import 'notification.dart';
+import 'help_list.dart';
+import 'help_history.dart';
+import 'report_feedback.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({
     super.key,
     required this.title,
@@ -17,10 +24,12 @@ class HomePage extends StatefulWidget {
   final VoidCallback? onNavigateToMapWithHelp;
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+class _HomePageState extends ConsumerState<HomePage>
+    with TickerProviderStateMixin {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late AnimationController _animationController;
   late AnimationController _headerAnimationController;
   late Animation<double> _fadeAnimation;
@@ -753,13 +762,450 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildUserSidebar() {
+    String username = "Ali";
+
+    void signOut() {
+      ref.read(signedInProvider.notifier).state = false;
+      ref.read(hasSeenSplashProvider.notifier).state =
+          true; // Ensure direct auth access
+      context.go('/auth');
+    }
+
+    return Container(
+      width: 320,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF71BB7B), Color(0xFF5EA968), Color(0xFF4A9B5A)],
+        ),
+      ),
+      child: Drawer(
+        backgroundColor: Colors.transparent,
+        child: Column(
+          children: [
+            // Header Section
+            Container(
+              padding: const EdgeInsets.only(
+                top: 15,
+                left: 24,
+                right: 24,
+                bottom: 16,
+              ),
+              child: Column(
+                children: [
+                  // Close button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Menu',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // User Profile Section
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const ProfilePage(title: 'Profile'),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  offset: const Offset(0, 3),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: const CircleAvatar(
+                              radius: 26,
+                              backgroundImage: AssetImage(
+                                'assets/images/dummy.png',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hello, $username! 👋',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Tap to view profile',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            color: Colors.white.withOpacity(0.7),
+                            size: 15,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Menu Items
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      offset: const Offset(0, -2),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        children: [
+                          _buildMenuCategory('Quick Actions', Icons.flash_on, [
+                            _buildMenuItem(
+                              'Notifications',
+                              Icons.notifications_rounded,
+                              Colors.orange,
+                              () {
+                                Navigator.pop(context);
+                                widget.onNavigate?.call(4);
+                              },
+                            ),
+                            _buildMenuItem(
+                              'Community List',
+                              Icons.people_rounded,
+                              Colors.blue,
+                              () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => const CommunityListPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildMenuItem(
+                              'Help Requests',
+                              Icons.volunteer_activism,
+                              Colors.pink,
+                              () {
+                                Navigator.pop(context);
+                                widget.onNavigate?.call(0);
+                              },
+                            ),
+                          ]),
+                          const SizedBox(height: 20),
+                          _buildMenuCategory('More Options', Icons.apps, [
+                            _buildMenuItem(
+                              'Help History',
+                              Icons.history,
+                              Colors.purple,
+                              () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => const HelpHistoryPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildMenuItem(
+                              'Report & Feedback',
+                              Icons.feedback_rounded,
+                              Colors.teal,
+                              () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => const ReportFeedbackPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildMenuItem(
+                              'Forum',
+                              Icons.forum_rounded,
+                              Colors.indigo,
+                              () {
+                                Navigator.pop(context);
+                                widget.onNavigate?.call(3);
+                              },
+                            ),
+                          ]),
+                        ],
+                      ),
+                    ),
+
+                    // Logout Section
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(24),
+                          bottomRight: Radius.circular(24),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Divider(color: Colors.grey.shade300),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _showLogoutDialog(signOut);
+                              },
+                              icon: const Icon(Icons.logout_rounded),
+                              label: const Text('Log Out'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade400,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuCategory(String title, IconData icon, List<Widget> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF71BB7B).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: const Color(0xFF71BB7B), size: 18),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ...items,
+      ],
+    );
+  }
+
+  Widget _buildMenuItem(
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withOpacity(0.1), width: 1),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Colors.grey.shade400,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog(VoidCallback signOut) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.logout_rounded,
+                    color: Colors.red.shade400,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text("Confirm Logout"),
+              ],
+            ),
+            content: const Text(
+              "Are you sure you want to log out of your account?",
+            ),
+            actions: [
+              TextButton(
+                child: Text(
+                  "Cancel",
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade400,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  signOut();
+                },
+                child: const Text("Log Out"),
+              ),
+            ],
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFFFAFAFA),
+      endDrawer: _buildUserSidebar(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF71BB7B),
         elevation: 0,
+        automaticallyImplyLeading: false,
         title: AnimatedBuilder(
           animation: _headerSlideAnimation,
           builder: (context, child) {
@@ -831,6 +1277,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   borderRadius: BorderRadius.circular(25),
                 ),
               ),
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(right: 16, top: 6, bottom: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 2,
+              ),
+            ),
+            child: IconButton(
+              onPressed: () {
+                _scaffoldKey.currentState?.openEndDrawer();
+              },
+              icon: const CircleAvatar(
+                radius: 18,
+                backgroundImage: AssetImage('assets/images/dummy.png'),
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
           ),
         ],
