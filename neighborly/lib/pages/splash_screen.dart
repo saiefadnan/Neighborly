@@ -67,7 +67,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       if (mounted) {
         // Mark that splash has been seen
         ref.read(hasSeenSplashProvider.notifier).state = true;
-        context.go('/auth');
+        //context.go('/auth');
       }
     }
   }

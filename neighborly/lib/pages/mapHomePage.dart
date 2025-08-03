@@ -1,9 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:neighborly/app_routes.dart';
+import 'package:neighborly/functions/init_pageval.dart';
+import 'package:neighborly/pages/authPage.dart';
 import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/pages/notification.dart';
 import 'package:neighborly/pages/profile.dart';
@@ -12,6 +16,7 @@ import 'package:neighborly/pages/community_list.dart';
 import 'package:neighborly/pages/help_list.dart';
 import 'package:neighborly/pages/help_history.dart';
 import 'package:neighborly/pages/report_feedback.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MapHomePage extends ConsumerStatefulWidget {
   const MapHomePage({super.key});
@@ -485,11 +490,15 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
 
 Widget _buildDrawer(BuildContext context, WidgetRef ref) {
   String username = "Ali";
-  void signOut() {
-    ref.read(signedInProvider.notifier).state = false;
+  void signOut() async {
     ref.read(hasSeenSplashProvider.notifier).state =
         true; // Ensure direct auth access
-    context.go('/auth');
+    initPageVal(ref);
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('rememberMe', false);
+    ref.read(authUserProvider.notifier).initState();
+    await FirebaseAuth.instance.signOut();
+    if (!context.mounted) return;
   }
 
   return Drawer(
@@ -619,15 +628,15 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
         ),
         ListTile(
           leading: const Icon(Icons.logout, color: Color(0xFFFAF4E8)),
-          title: const Text('Log Out'),
+          title: const Text('Sign Out'),
           textColor: const Color(0xFFFAF4E8),
           onTap: () {
             showDialog(
               context: context,
               builder:
                   (context) => AlertDialog(
-                    title: const Text("Confirm Logout"),
-                    content: const Text("Are you sure you want to log out?"),
+                    title: const Text("Confirm Signout"),
+                    content: const Text("Are you sure you want to Sign out?"),
                     actions: [
                       TextButton(
                         child: const Text(
@@ -642,7 +651,7 @@ Widget _buildDrawer(BuildContext context, WidgetRef ref) {
                         ),
                         onPressed: signOut,
                         child: const Text(
-                          "Log Out",
+                          "Sign Out",
                           style: TextStyle(color: Color(0xFFFAF4E8)),
                         ),
                       ),

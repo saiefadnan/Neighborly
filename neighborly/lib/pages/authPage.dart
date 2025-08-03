@@ -8,8 +8,10 @@ import 'package:neighborly/components/signin_form.dart';
 import 'package:neighborly/components/signup_form.dart';
 import 'package:neighborly/components/success.dart';
 import 'package:neighborly/components/verify_email.dart';
+import 'package:neighborly/functions/auth_user.dart';
 
 final pageNumberProvider = StateProvider<int>((ref) => 0);
+final authUserProvider = AsyncNotifierProvider<AuthUser, bool>(AuthUser.new);
 
 class AuthPage extends ConsumerStatefulWidget {
   final String title;
@@ -19,34 +21,12 @@ class AuthPage extends ConsumerStatefulWidget {
 }
 
 class _SigninPageState extends ConsumerState<AuthPage> {
-  void onTapSignin(BuildContext context) {
-    ref.read(signedInProvider.notifier).state = true;
-    context.go('/mapHomePage');
-  }
+  // void onTapSignin(BuildContext context) {
+  //   ref.read(signedInProvider.notifier).state = true;
+  //   context.go('/mapHomePage');
+  // }
 
   int? _lastPage;
-
-  @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //   final currentPage = ref.watch(pageNumberProvider);
-  //   if (_lastPage != currentPage) {
-  //     setState(() {
-  //       isImageSliding = true;
-  //       isFormSliding = true;
-  //     });
-  //     Future.delayed(const Duration(milliseconds: 100), () {
-  //       if (mounted) {
-  //         setState(() {
-  //           isImageSliding = false;
-  //           isFormSliding = false;
-  //         });
-  //       }
-  //     });
-  //     _lastPage = currentPage;
-  //   }
-  // }
-  bool isImageSliding = false;
   bool isFormSliding = false;
 
   //Don't change the values!!!
@@ -87,17 +67,16 @@ class _SigninPageState extends ConsumerState<AuthPage> {
   @override
   Widget build(BuildContext context) {
     int pageNumber = ref.watch(pageNumberProvider);
+
     ref.listen<int>(pageNumberProvider, (prev, next) {
       if (_lastPage != next) {
         setState(() {
-          isImageSliding = true;
           isFormSliding = true;
         });
 
-        Future.delayed(const Duration(milliseconds: 100), () {
+        Future.delayed(const Duration(milliseconds: 400), () {
           if (mounted) {
             setState(() {
-              isImageSliding = false;
               isFormSliding = false;
             });
           }
@@ -129,14 +108,14 @@ class _SigninPageState extends ConsumerState<AuthPage> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(32, 0, 32, 10),
                   child: AnimatedSlide(
-                    duration: const Duration(milliseconds: 600),
+                    duration: const Duration(milliseconds: 500),
                     curve: Curves.easeInOut,
                     offset:
                         isFormSliding
                             ? const Offset(0, 0.1)
                             : const Offset(0, 0),
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 500),
+                      duration: const Duration(milliseconds: 600),
                       switchInCurve: Curves.easeIn,
                       switchOutCurve: Curves.easeOut,
                       transitionBuilder:
@@ -144,7 +123,7 @@ class _SigninPageState extends ConsumerState<AuthPage> {
                             opacity: animation,
                             child: SlideTransition(
                               position: Tween<Offset>(
-                                begin: const Offset(0, 0.1),
+                                begin: const Offset(0, -0.1),
                                 end: Offset.zero,
                               ).animate(animation),
                               child: child,
@@ -158,7 +137,6 @@ class _SigninPageState extends ConsumerState<AuthPage> {
             ),
           ),
 
-          /// 🔙 Back button animation
           Positioned(
             top: 24,
             left: 16,

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -155,8 +156,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Welcome back, Ali!',
+                    Text(
+                      'Welcome back, ${FirebaseAuth.instance.currentUser?.displayName}',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

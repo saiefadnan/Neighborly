@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import router from './routes/testRoute';
+import router from './routes/authRoute';
 import { initializeApp, cert} from 'firebase-admin/app';
 import { readFileSync } from 'fs'
 import { join } from 'path';
