@@ -1,13 +1,10 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:neighborly/functions/init_pageval.dart';
-import 'package:neighborly/functions/signup_token.dart';
 import 'package:neighborly/functions/valid_email.dart';
 import 'package:neighborly/pages/authPage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class SignupForm extends ConsumerStatefulWidget {
   final String title;

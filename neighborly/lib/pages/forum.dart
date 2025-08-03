@@ -47,15 +47,6 @@ class _ForumPageState extends ConsumerState<ForumPage>
     return Scaffold(
       backgroundColor: const Color(0xFFF7F2E7),
       appBar: AppBar(
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.post_add_outlined),
-            iconSize: 30,
-            onPressed: () {
-              context.push('/addpost');
-            },
-          ),
-        ],
         title: AnimatedBuilder(
           animation: _headerSlideAnimation,
           builder: (context, child) {
@@ -103,6 +94,14 @@ class _ForumPageState extends ConsumerState<ForumPage>
                     : const Center(child: Text("No posts found")),
         error: (e, _) => Center(child: Text('Error: $e')),
         loading: () => const Center(child: CircularProgressIndicator()),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF71BB7B),
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.post_add_outlined),
+        onPressed: () {
+          context.push('/addpost');
+        },
       ),
     );
   }
