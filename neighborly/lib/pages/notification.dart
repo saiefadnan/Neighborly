@@ -489,6 +489,8 @@ class _NotificationPageState extends State<NotificationPage>
     with TickerProviderStateMixin {
   late AnimationController _headerAnimationController;
   late Animation<double> _headerSlideAnimation;
+  late AnimationController _buttonAnimationController;
+  late Animation<double> _buttonScaleAnimation;
 
   String _selectedFilter = 'All';
   final List<String> _filters = ['All', 'Emergency', 'Urgent', 'Normal'];
@@ -586,12 +588,24 @@ class _NotificationPageState extends State<NotificationPage>
       ),
     );
 
+    _buttonAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _buttonScaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(
+        parent: _buttonAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
     _headerAnimationController.forward();
   }
 
   @override
   void dispose() {
     _headerAnimationController.dispose();
+    _buttonAnimationController.dispose();
     super.dispose();
   }
 
@@ -793,50 +807,94 @@ class _NotificationPageState extends State<NotificationPage>
           },
         ),
         actions: [
-          IconButton(
-            onPressed: () {
-              // Mark all as read functionality - actually update the state
-              _markAllAsRead();
+          Container(
+            margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+            child: AnimatedBuilder(
+              animation: _buttonScaleAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _buttonScaleAnimation.value,
+                  child: GestureDetector(
+                    onTapDown: (_) {
+                      _buttonAnimationController.forward();
+                    },
+                    onTapUp: (_) {
+                      _buttonAnimationController.reverse();
+                    },
+                    onTapCancel: () {
+                      _buttonAnimationController.reverse();
+                    },
+                    child: TextButton.icon(
+                      onPressed: () {
+                        // Mark all as read functionality - actually update the state
+                        _markAllAsRead();
 
-              // Clear previous and show new snackbar
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      const Icon(Icons.done_all, color: Colors.white, size: 20),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'All notifications marked as read',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                        // Clear previous and show new snackbar
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(
+                                  Icons.done_all,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text(
+                                    'All notifications marked as read',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF71BB7B),
+                            duration: const Duration(seconds: 3),
+                            behavior: SnackBarBehavior.floating,
+                            margin: const EdgeInsets.all(16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              textColor: Colors.white,
+                              onPressed: () {
+                                // Handle undo action - restore all to unread
+                                _undoMarkAllAsRead();
+                              },
+                            ),
                           ),
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        overlayColor:
+                            Colors.transparent, // Removes default splash
+                      ),
+                      icon: const Icon(Icons.done_all, size: 20),
+                      label: const Text(
+                        'Mark as Read',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                  backgroundColor: const Color(0xFF71BB7B),
-                  duration: const Duration(seconds: 3),
-                  behavior: SnackBarBehavior.floating,
-                  margin: const EdgeInsets.all(16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  action: SnackBarAction(
-                    label: 'Undo',
-                    textColor: Colors.white,
-                    onPressed: () {
-                      // Handle undo action - restore all to unread
-                      _undoMarkAllAsRead();
-                    },
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.done_all, color: Colors.white),
-            tooltip: 'Mark all as read',
+                );
+              },
+            ),
           ),
         ],
       ),
