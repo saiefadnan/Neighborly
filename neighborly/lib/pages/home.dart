@@ -1518,14 +1518,14 @@ class _HomePageState extends ConsumerState<HomePage>
                 end: Alignment.bottomRight,
                 colors: [Color(0xFFE53E3E), Color(0xFFDC2626)],
               ),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(25),
             ),
             child: ElevatedButton.icon(
               onPressed: () {
                 HapticFeedback.heavyImpact();
                 _makeEmergencyCall();
               },
-              icon: const Icon(Icons.emergency, color: Colors.white, size: 14),
+              icon: const Icon(Icons.emergency, color: Colors.white, size: 18),
               label: const Text(
                 'Call 999',
                 style: TextStyle(
