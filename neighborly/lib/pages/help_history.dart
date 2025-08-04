@@ -790,7 +790,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                   ],
 
                   if (help.helpValuePoints > 0) ...[
@@ -823,13 +823,13 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                   ],
 
                   // Fixed width auto-scrolling time duration
                   _buildScrollingTimeContainer(help.duration),
 
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
 
                   _buildActionButton(
                     'Details',
@@ -848,7 +848,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
 
   Widget _buildScrollingTimeContainer(String duration) {
     return Container(
-      width: 100, // Fixed width
+      width: 90, // Fixed width
       height: 24, // Fixed height
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
