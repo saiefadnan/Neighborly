@@ -2,6 +2,107 @@ import 'package:flutter/material.dart';
 import 'package:neighborly/models/feedback_models.dart';
 import 'package:neighborly/pages/report_feedback.dart';
 
+// Custom scrolling text widget for ticker/marquee effect
+class _ScrollingText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+
+  const _ScrollingText({required this.text, required this.style});
+
+  @override
+  State<_ScrollingText> createState() => _ScrollingTextState();
+}
+
+class _ScrollingTextState extends State<_ScrollingText>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+  late ScrollController _scrollController;
+  bool _needsScrolling = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIfScrollingNeeded();
+    });
+  }
+
+  void _checkIfScrollingNeeded() {
+    if (_scrollController.hasClients) {
+      final maxScrollExtent = _scrollController.position.maxScrollExtent;
+      if (maxScrollExtent > 0) {
+        setState(() {
+          _needsScrolling = true;
+        });
+        _startScrolling();
+      }
+    }
+  }
+
+  void _startScrolling() {
+    if (!_needsScrolling || !_scrollController.hasClients) return;
+
+    _animation = Tween<double>(
+      begin: 0.0,
+      end: _scrollController.position.maxScrollExtent,
+    ).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.linear),
+    );
+
+    _animation.addListener(() {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_animation.value);
+      }
+    });
+
+    _animationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            _animationController.reset();
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                _animationController.forward();
+              }
+            });
+          }
+        });
+      }
+    });
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      controller: _scrollController,
+      scrollDirection: Axis.horizontal,
+      physics: const NeverScrollableScrollPhysics(),
+      child: Text(
+        widget.text,
+        style: widget.style,
+        maxLines: 1,
+        overflow: TextOverflow.visible,
+      ),
+    );
+  }
+}
+
 class HelpHistoryPage extends StatefulWidget {
   const HelpHistoryPage({super.key});
 
@@ -725,37 +826,10 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                     const SizedBox(width: 8),
                   ],
 
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 12,
-                          color: Colors.blue,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          help.duration,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Fixed width auto-scrolling time duration
+                  _buildScrollingTimeContainer(help.duration),
 
-                  const Spacer(),
+                  const SizedBox(width: 8),
 
                   _buildActionButton(
                     'Details',
@@ -768,6 +842,38 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildScrollingTimeContainer(String duration) {
+    return Container(
+      width: 100, // Fixed width
+      height: 24, // Fixed height
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.access_time, size: 12, color: Colors.blue),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Center(
+              child: _ScrollingText(
+                text: duration,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
