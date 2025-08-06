@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter_chat_core/flutter_chat_core.dart' show LinkPreviewData;
 
 class AddPostPage extends ConsumerStatefulWidget {
   final String title;
@@ -15,11 +17,26 @@ class AddPostPage extends ConsumerStatefulWidget {
 class _AddPostPageState extends ConsumerState<AddPostPage> {
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
+  final _linkController = TextEditingController();
+  LinkPreviewData? linkPreviewData;
   String _selectedCategory = 'General';
   final ImagePicker _picker = ImagePicker();
   File? _pickedImage;
   File? _pickedVideo;
+  bool _pickedLink = false;
   VideoPlayerController? _videoController;
+  final _linkFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _linkFocusNode.addListener(() {
+      if (!_linkFocusNode.hasFocus) {
+        setState(() {}); // triggers LinkPreview update
+      }
+    });
+  }
+
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
@@ -30,6 +47,7 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
       }
 
       setState(() {
+        _pickedLink = false;
         _pickedImage = File(image.path);
         _pickedVideo = null;
       });
@@ -55,11 +73,21 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
       if (!mounted) return; // avoid setState if widget disposed
 
       setState(() {
+        _pickedLink = false;
         _pickedVideo = file;
         _pickedImage = null;
         _videoController = controller;
       });
     }
+  }
+
+  void _pickLink() {
+    setState(() {
+      _pickedLink = true;
+      _pickedImage = null;
+      _pickedVideo = null;
+      _videoController = null;
+    });
   }
 
   final List<String> categories = [
@@ -77,6 +105,8 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
           _pickImage();
         } else if (icon == Icons.play_arrow_rounded) {
           _pickVideo();
+        } else if (icon == Icons.add_link_rounded) {
+          _pickLink();
         } else {
           ScaffoldMessenger.of(
             context,
@@ -240,12 +270,11 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
                                       },
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          color: Colors.black54,
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(
                                           Icons.cancel,
-                                          color: Colors.white,
+                                          color: Colors.redAccent,
                                           size: 24,
                                         ),
                                       ),
@@ -254,6 +283,66 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
                                 ],
                               );
                             },
+                          ),
+                        ],
+                        if (_pickedLink) ...[
+                          SizedBox(height: 16),
+                          Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _linkController,
+                                      focusNode: _linkFocusNode,
+                                      decoration: const InputDecoration(
+                                        labelText: "Enter link",
+                                        border: OutlineInputBorder(),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _linkController.clear();
+                                        linkPreviewData = null;
+                                        _pickedLink = false;
+                                      });
+                                    },
+                                    child: const Icon(
+                                      Icons.cancel,
+                                      color: Colors.redAccent,
+                                      size: 24,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 6),
+                              LinkPreview(
+                                onLinkPreviewDataFetched: (data) {
+                                  setState(() {
+                                    linkPreviewData = data;
+                                  });
+                                },
+                                text: _linkController.text,
+                                borderRadius: 4,
+                                sideBorderColor: Colors.white,
+                                sideBorderWidth: 4,
+                                insidePadding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  8,
+                                  8,
+                                  8,
+                                ),
+                                outsidePadding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
+                                titleTextStyle: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                         const SizedBox(height: 16),
