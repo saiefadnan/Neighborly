@@ -6,7 +6,6 @@ import 'package:neighborly/pages/authPage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:neighborly/app_routes.dart';
 import 'community_list.dart';
 import 'profile.dart';
