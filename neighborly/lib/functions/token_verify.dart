@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 Future<bool> verifyToken(String? idToken) async {
-  final url = Uri.parse('http://192.168.0.101:4000/api/auth/signin/idtoken');
+  final url = Uri.parse('http://localhost:4000/api/auth/signin/idtoken');
   try {
     final response = await http.post(
       url,

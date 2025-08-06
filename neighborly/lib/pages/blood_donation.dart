@@ -569,11 +569,9 @@ class _BloodDonationPageState extends State<BloodDonationPage>
   Widget _buildDonorsList() {
     return CustomScrollView(
       slivers: [
-        // Search and filters - scrollable
         SliverToBoxAdapter(child: _buildSearchAndFilters()),
         SliverToBoxAdapter(child: const SizedBox(height: 20)),
 
-        // Sticky header for results count
         SliverPersistentHeader(
           pinned: true,
           delegate: _StickyHeaderDelegate(
