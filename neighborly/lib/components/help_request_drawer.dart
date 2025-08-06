@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 
 class HelpRequestDrawer extends StatefulWidget {
@@ -44,6 +44,28 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
   bool _isLoadingSuggestions = false;
   Timer? _debounce;
   LatLng? _selectedLocation;
+
+  // Local Bangladesh locations as fallback
+  final List<Map<String, dynamic>> _localLocations = [
+    {'name': 'Dhaka', 'lat': 23.8103, 'lon': 90.4125, 'type': 'city'},
+    {'name': 'Chittagong', 'lat': 22.3569, 'lon': 91.7832, 'type': 'city'},
+    {'name': 'Sylhet', 'lat': 24.8949, 'lon': 91.8687, 'type': 'city'},
+    {'name': 'Rajshahi', 'lat': 24.3745, 'lon': 88.6042, 'type': 'city'},
+    {'name': 'Khulna', 'lat': 22.8456, 'lon': 89.5403, 'type': 'city'},
+    {'name': 'Barisal', 'lat': 22.7010, 'lon': 90.3535, 'type': 'city'},
+    {'name': 'Rangpur', 'lat': 25.7439, 'lon': 89.2752, 'type': 'city'},
+    {'name': 'Mymensingh', 'lat': 24.7471, 'lon': 90.4203, 'type': 'city'},
+    {'name': 'Dhanmondi', 'lat': 23.7461, 'lon': 90.3742, 'type': 'area'},
+    {'name': 'Gulshan', 'lat': 23.7808, 'lon': 90.4134, 'type': 'area'},
+    {'name': 'Uttara', 'lat': 23.8759, 'lon': 90.3795, 'type': 'area'},
+    {'name': 'Mirpur', 'lat': 23.8223, 'lon': 90.3654, 'type': 'area'},
+    {'name': 'Banani', 'lat': 23.7937, 'lon': 90.4066, 'type': 'area'},
+    {'name': 'Motijheel', 'lat': 23.7337, 'lon': 90.4178, 'type': 'area'},
+    {'name': 'Old Dhaka', 'lat': 23.7104, 'lon': 90.4074, 'type': 'area'},
+    {'name': 'Wari', 'lat': 23.7183, 'lon': 90.4206, 'type': 'area'},
+    {'name': 'Ramna', 'lat': 23.7358, 'lon': 90.3964, 'type': 'area'},
+    {'name': 'Tejgaon', 'lat': 23.7694, 'lon': 90.3917, 'type': 'area'},
+  ];
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -107,9 +129,32 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
   }
 
   void _onAddressChanged(String input) {
+    // Cancel previous debounce timer
     if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    // Clear suggestions if input is too short
+    if (input.length < 2) {
+      setState(() {
+        _suggestions = [];
+        _isLoadingSuggestions = false;
+      });
+      return;
+    }
+
+    // For very short inputs, search locally immediately
+    if (input.length == 2) {
+      setState(() {
+        _suggestions = _getLocalMatches(input);
+        _isLoadingSuggestions = false;
+      });
+      return;
+    }
+
+    // Set up debounce timer with shorter delay for better responsiveness
     _debounce = Timer(const Duration(milliseconds: 300), () {
-      _fetchAddressSuggestions(input);
+      if (mounted) {
+        _fetchAddressSuggestions(input);
+      }
     });
   }
 
@@ -125,64 +170,183 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
     setState(() => _isLoadingSuggestions = true);
     print('Fetching suggestions for: $input');
 
-    // Use Google Places API for better, more specific suggestions
-    const apiKey = 'AIzaSyCpv9DcJoy-AzOCxZRj0IjOfIVaF428TpQ';
-    final url = Uri.parse(
-      'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${Uri.encodeComponent(input)}&key=$apiKey&components=country:bd&language=en&types=address|establishment|geocode',
-    );
-
     try {
-      final response = await http.get(url);
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      // First, try local Bangladesh locations
+      List<Map<String, dynamic>> localMatches = _getLocalMatches(input);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      // Try to fetch from Photon API (free, no API key, better rate limits)
+      List<Map<String, dynamic>> apiSuggestions = await _fetchFromPhotonAPI(
+        input,
+      );
 
-        if (data['status'] == 'OK' && data['predictions'] != null) {
-          final predictions = data['predictions'] as List;
-          print('Predictions: $predictions');
-
-          setState(() {
-            _suggestions =
-                predictions
-                    .map(
-                      (prediction) => {
-                        'description': prediction['description'] as String,
-                        'place_id': prediction['place_id'] as String,
-                        'structured_formatting':
-                            prediction['structured_formatting'] ?? {},
-                        'types': prediction['types'] as List? ?? [],
-                      },
-                    )
-                    .toList();
-            _isLoadingSuggestions = false;
-          });
-
-          print('Suggestions count: ${_suggestions.length}');
-        } else {
-          print(
-            'API Error: ${data['status']} - ${data['error_message'] ?? 'No error message'}',
-          );
-          setState(() {
-            _suggestions = [];
-            _isLoadingSuggestions = false;
-          });
-        }
-      } else {
-        print('HTTP Error: ${response.statusCode}');
-        setState(() {
-          _suggestions = [];
-          _isLoadingSuggestions = false;
-        });
+      // If Photon fails, try LocationIQ free tier
+      if (apiSuggestions.isEmpty) {
+        apiSuggestions = await _fetchFromLocationIQ(input);
       }
-    } catch (e) {
-      print('Exception: $e');
+
+      // Combine local and API results, prioritizing local matches
+      List<Map<String, dynamic>> combinedSuggestions = [...localMatches];
+
+      // Add API suggestions that don't duplicate local ones
+      for (var apiSuggestion in apiSuggestions) {
+        bool isDuplicate = localMatches.any(
+          (local) =>
+              local['display_name'].toLowerCase().contains(
+                apiSuggestion['main_text'].toLowerCase(),
+              ) ||
+              apiSuggestion['main_text'].toLowerCase().contains(
+                local['name'].toLowerCase(),
+              ),
+        );
+
+        if (!isDuplicate && combinedSuggestions.length < 8) {
+          combinedSuggestions.add(apiSuggestion);
+        }
+      }
+
       setState(() {
-        _suggestions = [];
+        _suggestions = combinedSuggestions.take(6).toList();
+        _isLoadingSuggestions = false;
+      });
+
+      print('Total suggestions count: ${_suggestions.length}');
+    } catch (e) {
+      print('Error fetching suggestions: $e');
+      // Fallback to local suggestions only
+      setState(() {
+        _suggestions = _getLocalMatches(input);
         _isLoadingSuggestions = false;
       });
     }
+  }
+
+  List<Map<String, dynamic>> _getLocalMatches(String input) {
+    final inputLower = input.toLowerCase();
+    return _localLocations
+        .where(
+          (location) => location['name'].toLowerCase().contains(inputLower),
+        )
+        .map(
+          (location) => {
+            'display_name': '${location['name']}, Dhaka, Bangladesh',
+            'main_text': location['name'],
+            'secondary_text': 'Dhaka, Bangladesh',
+            'lat': location['lat'],
+            'lon': location['lon'],
+            'type': location['type'],
+            'class': 'place',
+            'address': {},
+            'source': 'local',
+          },
+        )
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchFromPhotonAPI(String input) async {
+    try {
+      // Photon API - free OpenStreetMap-based geocoding
+      final url = Uri.parse(
+        'https://photon.komoot.io/api/?q=${Uri.encodeComponent(input)}&limit=4&lon=90.4125&lat=23.8103&zoom=10',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {'User-Agent': 'NeighborlyApp/1.0 (Flutter community app)'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final features = data['features'] as List? ?? [];
+
+        return features.map<Map<String, dynamic>>((feature) {
+          final properties = feature['properties'] as Map<String, dynamic>;
+          final geometry = feature['geometry'] as Map<String, dynamic>;
+          final coordinates = geometry['coordinates'] as List;
+
+          final name = properties['name'] ?? properties['street'] ?? '';
+          final city =
+              properties['city'] ?? properties['county'] ?? 'Bangladesh';
+          final state = properties['state'] ?? 'Bangladesh';
+
+          return {
+            'display_name': '$name, $city, $state',
+            'main_text': name,
+            'secondary_text': '$city, $state',
+            'lat': coordinates[1],
+            'lon': coordinates[0],
+            'type': properties['osm_value'] ?? 'place',
+            'class': properties['osm_key'] ?? 'place',
+            'address': properties,
+            'source': 'photon',
+          };
+        }).toList();
+      }
+    } catch (e) {
+      print('Photon API error: $e');
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchFromLocationIQ(String input) async {
+    try {
+      // LocationIQ free tier - 5000 requests per day
+      final url = Uri.parse(
+        'https://us1.locationiq.com/v1/search.php?key=pk.a4ac26e5c7b2b7e34ce1a55f1b8c6c5e&q=${Uri.encodeComponent(input)}&format=json&countrycodes=bd&limit=3',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'User-Agent': 'NeighborlyApp/1.0 (Flutter community app)',
+          'Referer': 'https://neighborly.app',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+
+        return data.map<Map<String, dynamic>>((place) {
+          final displayName = place['display_name'] as String;
+          final lat = double.tryParse(place['lat'] as String) ?? 0.0;
+          final lon = double.tryParse(place['lon'] as String) ?? 0.0;
+
+          final parts = displayName.split(', ');
+          final mainText = parts.isNotEmpty ? parts[0] : displayName;
+          final secondaryText =
+              parts.length > 1
+                  ? parts
+                      .sublist(1, parts.length > 3 ? 3 : parts.length)
+                      .join(', ')
+                  : '';
+
+          return {
+            'display_name': displayName,
+            'main_text': mainText,
+            'secondary_text': secondaryText,
+            'lat': lat,
+            'lon': lon,
+            'type': place['type'] ?? 'place',
+            'class': place['class'] ?? 'place',
+            'address': {},
+            'source': 'locationiq',
+          };
+        }).toList();
+      }
+    } catch (e) {
+      print('LocationIQ API error: $e');
+    }
+    return [];
+  }
+
+  @override
+  void dispose() {
+    // Cancel the debounce timer when disposing
+    _debounce?.cancel();
+    _descriptionController.dispose();
+    _timeController.dispose();
+    _usernameController.dispose();
+    _addressController.dispose();
+    super.dispose();
   }
 
   @override
@@ -333,29 +497,25 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
                   _buildSectionHeader("Request Details", Icons.info_outline),
                   SizedBox(height: 16),
 
-                  // Urgency and Help Type in a row
-                  Row(
+                  // Urgency and Help Type in a column for better responsiveness
+                  Column(
                     children: [
-                      Expanded(
-                        child: _buildStyledDropdown(
-                          value: _urgency,
-                          items: _urgencies,
-                          label: "Urgency Level",
-                          icon: Icons.priority_high,
-                          onChanged: (val) => setState(() => _urgency = val!),
-                          getColor: _getUrgencyColor,
-                        ),
+                      _buildStyledDropdown(
+                        value: _urgency,
+                        items: _urgencies,
+                        label: "Urgency Level",
+                        icon: Icons.priority_high,
+                        onChanged: (val) => setState(() => _urgency = val!),
+                        getColor: _getUrgencyColor,
                       ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: _buildStyledDropdown(
-                          value: _helpType,
-                          items: _helpTypes,
-                          label: "Help Category",
-                          icon: Icons.category_outlined,
-                          onChanged: (val) => setState(() => _helpType = val!),
-                          getColor: _getHelpTypeColor,
-                        ),
+                      SizedBox(height: 16),
+                      _buildStyledDropdown(
+                        value: _helpType,
+                        items: _helpTypes,
+                        label: "Help Category",
+                        icon: Icons.category_outlined,
+                        onChanged: (val) => setState(() => _helpType = val!),
+                        getColor: _getHelpTypeColor,
                       ),
                     ],
                   ),
@@ -608,22 +768,48 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
                 Divider(height: 1, color: Color(0xFF71BB7B).withOpacity(0.1)),
         itemBuilder: (context, index) {
           final suggestion = _suggestions[index];
-          final structuredFormatting =
-              suggestion['structured_formatting'] as Map<String, dynamic>?;
-          final types = suggestion['types'] as List?;
+          final mainText = suggestion['main_text'] as String;
+          final secondaryText = suggestion['secondary_text'] as String;
+          final placeType = suggestion['type'] as String? ?? 'place';
+          final placeClass = suggestion['class'] as String? ?? 'place';
+          final source = suggestion['source'] as String? ?? 'unknown';
 
-          final mainText = structuredFormatting?['main_text'] as String?;
-          final secondaryText =
-              structuredFormatting?['secondary_text'] as String?;
-
+          // Determine icon based on place type and class
           IconData icon = Icons.location_on;
-          if (types != null) {
-            if (types.contains('establishment')) {
-              icon = Icons.business;
-            } else if (types.contains('route')) {
-              icon = Icons.directions;
-            } else if (types.contains('locality')) {
+          Color iconColor = Color(0xFF71BB7B);
+
+          if (source == 'local') {
+            iconColor = Color(0xFF71BB7B);
+            if (placeType == 'city') {
               icon = Icons.location_city;
+            } else if (placeType == 'area') {
+              icon = Icons.home_work;
+            }
+          } else {
+            iconColor = Colors.blue.shade600;
+            if (placeClass == 'amenity') {
+              if (placeType == 'hospital' || placeType == 'clinic') {
+                icon = Icons.local_hospital;
+              } else if (placeType == 'restaurant' || placeType == 'cafe') {
+                icon = Icons.restaurant;
+              } else if (placeType == 'school' || placeType == 'university') {
+                icon = Icons.school;
+              } else {
+                icon = Icons.business;
+              }
+            } else if (placeClass == 'highway' || placeType == 'road') {
+              icon = Icons.directions;
+            } else if (placeClass == 'place') {
+              if (placeType == 'city' ||
+                  placeType == 'town' ||
+                  placeType == 'village') {
+                icon = Icons.location_city;
+              } else if (placeType == 'suburb' ||
+                  placeType == 'neighbourhood') {
+                icon = Icons.home_work;
+              }
+            } else if (placeClass == 'building') {
+              icon = Icons.business;
             }
           }
 
@@ -632,23 +818,45 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
             leading: Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Color(0xFF71BB7B).withOpacity(0.1),
+                color: iconColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, size: 16, color: Color(0xFF71BB7B)),
+              child: Icon(icon, size: 16, color: iconColor),
             ),
-            title: Text(
-              mainText ?? suggestion['description'],
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey.shade800,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    mainText,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade800,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (source == 'local')
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF71BB7B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Nearby',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF71BB7B),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             subtitle:
-                secondaryText != null
+                secondaryText.isNotEmpty
                     ? Text(
                       secondaryText,
                       style: TextStyle(
@@ -659,34 +867,19 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
                       overflow: TextOverflow.ellipsis,
                     )
                     : null,
-            onTap: () async {
+            onTap: () {
               final suggestion = _suggestions[index];
-              _addressController.text = suggestion['description'];
+              _addressController.text = suggestion['display_name'];
 
-              try {
-                const apiKey = 'AIzaSyClR4i3ETmbnVmnzFgLluRVYmiRwTa9JUU';
-                final placeId = suggestion['place_id'];
-                final detailsUrl = Uri.parse(
-                  'https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&fields=geometry&key=$apiKey',
-                );
+              // Set the selected location coordinates
+              _selectedLocation = LatLng(
+                (suggestion['lat'] as num).toDouble(),
+                (suggestion['lon'] as num).toDouble(),
+              );
 
-                final detailsResponse = await http.get(detailsUrl);
-
-                if (detailsResponse.statusCode == 200) {
-                  final detailsData = json.decode(detailsResponse.body);
-
-                  if (detailsData['status'] == 'OK') {
-                    final geometry =
-                        detailsData['result']['geometry']['location'];
-                    _selectedLocation = LatLng(
-                      geometry['lat'],
-                      geometry['lng'],
-                    );
-                  }
-                }
-              } catch (e) {
-                print('Error getting place details: $e');
-              }
+              print('Selected location: $_selectedLocation');
+              print('Selected address: ${suggestion['display_name']}');
+              print('Source: ${suggestion['source']}');
 
               setState(() => _suggestions.clear());
             },
@@ -720,6 +913,7 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
       ),
       child: DropdownButtonFormField<String>(
         value: value,
+        isExpanded: true,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: Color(0xFF71BB7B)),
@@ -743,7 +937,13 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
                         ),
                         margin: EdgeInsets.only(right: 8),
                       ),
-                    Text(item),
+                    Expanded(
+                      child: Text(
+                        item,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
                   ],
                 ),
               );
