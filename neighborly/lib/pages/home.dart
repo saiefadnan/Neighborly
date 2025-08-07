@@ -6,7 +6,6 @@ import 'package:neighborly/pages/authPage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:neighborly/app_routes.dart';
 import 'community_list.dart';
 import 'profile.dart';
@@ -564,222 +563,249 @@ class _HomePageState extends ConsumerState<HomePage>
   }
 
   Widget _buildBloodDonationSection() {
-  return Container(
-    margin: const EdgeInsets.symmetric(horizontal: 20),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section Header
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.bloodtype, color: Colors.red, size: 20),
               ),
-              child: const Icon(Icons.bloodtype, color: Colors.red, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Blood Donation',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey[800],
-                letterSpacing: -0.5,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-
-        // Blood Donation Card
-        Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFE53E3E),
-                Color(0xFFDC2626),
-                Color(0xFFB91C1C),
-                Color(0xFF991B1B),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.red.withOpacity(0.4),
-                offset: const Offset(0, 12),
-                blurRadius: 28,
-                spreadRadius: 0,
+              const SizedBox(width: 12),
+              Text(
+                'Blood Donation',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey[800],
+                  letterSpacing: -0.5,
+                ),
               ),
             ],
           ),
-          child: Stack(
-            children: [
-              // Background pattern
-              Positioned(
-                right: -40,
-                top: -40,
-                child: Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: -60,
-                top: -20,
-                child: Icon(
-                  Icons.favorite,
-                  size: 140,
-                  color: Colors.white.withOpacity(0.08),
-                ),
-              ),
-              // Content
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(
-                          Icons.bloodtype,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Text(
-                          'Save Lives Today',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Find blood donors in your area or register yourself as a donor to help your community in emergency situations.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.95),
-                      height: 1.5,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+          const SizedBox(height: 20),
 
-                  // Buttons (Scrollable Row)
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+          // Blood Donation Card
+          Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFE53E3E),
+                  Color(0xFFDC2626),
+                  Color(0xFFB91C1C),
+                  Color(0xFF991B1B),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withOpacity(0.4),
+                  offset: const Offset(0, 12),
+                  blurRadius: 28,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                // Background pattern
+                Positioned(
+                  right: -40,
+                  top: -40,
+                  child: Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: -60,
+                  top: -20,
+                  child: Icon(
+                    Icons.favorite,
+                    size: 140,
+                    color: Colors.white.withOpacity(0.08),
+                  ),
+                ),
+                // Content
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
                       children: [
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const BloodDonationPage(initialTabIndex: 0),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.search, color: Colors.white, size: 16),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Find Donors',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.bloodtype,
+                            color: Colors.white,
+                            size: 28,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const BloodDonationPage(initialTabIndex: 1),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.person_add, color: Colors.white, size: 16),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Become Donor',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Text(
+                            'Save Lives Today',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: -0.5,
                             ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'Find blood donors in your area or register yourself as a donor to help your community in emergency situations.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white.withOpacity(0.95),
+                        height: 1.5,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => const BloodDonationPage(
+                                        initialTabIndex: 0, // Find Donors tab
+                                      ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.search,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      'Find Donors',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => const BloodDonationPage(
+                                        initialTabIndex: 1, // Become Donor tab
+                                      ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.person_add,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      'Join Donors',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildCommunityCarousel() {
     return Column(
@@ -995,7 +1021,6 @@ class _HomePageState extends ConsumerState<HomePage>
       prefs.setBool('rememberMe', false);
       ref.read(authUserProvider.notifier).initState();
       await FirebaseAuth.instance.signOut();
-      if (!context.mounted) return;
     }
 
     return Container(
@@ -1441,56 +1466,51 @@ class _HomePageState extends ConsumerState<HomePage>
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    key: _scaffoldKey,
-    backgroundColor: const Color(0xFFFAFAFA),
-    endDrawer: _buildUserSidebar(),
-    appBar: AppBar(
-      backgroundColor: const Color(0xFF71BB7B),
-      elevation: 0,
-      automaticallyImplyLeading: false,
-      title: AnimatedBuilder(
-        animation: _headerSlideAnimation,
-        builder: (context, child) {
-          return Transform.translate(
-            offset: Offset(_headerSlideAnimation.value, 0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFFAFAFA),
+      endDrawer: _buildUserSidebar(),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF71BB7B),
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: AnimatedBuilder(
+          animation: _headerSlideAnimation,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(_headerSlideAnimation.value, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.home,
+                      color: Color(0xFFFAF4E8),
+                      size: 24,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.home,
-                    color: Color(0xFFFAF4E8),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Flexible(
-                  child: Text(
+                  const SizedBox(width: 12),
+                  const Text(
                     'Neighborly',
-                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Color(0xFFFAF4E8),
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6.0),
-          child: Container(
-            margin: const EdgeInsets.only(right: 10),
+                ],
+              ),
+            );
+          },
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
@@ -1506,10 +1526,10 @@ Widget build(BuildContext context) {
               },
               icon: const Icon(Icons.emergency, color: Colors.white, size: 18),
               label: const Text(
-                '999',
+                'Call 999',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1518,86 +1538,86 @@ Widget build(BuildContext context) {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
+                  borderRadius: BorderRadius.circular(18),
                 ),
               ),
             ),
           ),
-        ),
-        Container(
-          margin: const EdgeInsets.only(right: 12, top: 6, bottom: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(50),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-              width: 2,
+          Container(
+            margin: const EdgeInsets.only(right: 16, top: 6, bottom: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 2,
+              ),
+            ),
+            child: IconButton(
+              onPressed: () {
+                _scaffoldKey.currentState?.openEndDrawer();
+              },
+              icon: const CircleAvatar(
+                radius: 18,
+                backgroundImage: AssetImage('assets/images/dummy.png'),
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
           ),
-          child: IconButton(
-            onPressed: () {
-              _scaffoldKey.currentState?.openEndDrawer();
-            },
-            icon: const CircleAvatar(
-              radius: 18,
-              backgroundImage: AssetImage('assets/images/dummy.png'),
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Use the specialized callback to navigate to map and auto-open help drawer
+          if (widget.onNavigateToMapWithHelp != null) {
+            widget.onNavigateToMapWithHelp!();
+          } else {
+            // Fallback to regular navigation if callback not available
+            widget.onNavigate?.call(1);
+          }
+        },
+        backgroundColor: const Color(0xFF71BB7B),
+        foregroundColor: Colors.white,
+        tooltip: "Add Help Request",
+        child: const Icon(Icons.add, size: 28),
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              const SizedBox(height: 28),
+              _buildWelcomeSection(),
+              const SizedBox(height: 32),
+              _buildMapHighlight(),
+              const SizedBox(height: 40),
+              _buildQuickActions(),
+              const SizedBox(height: 40),
+              _buildBloodDonationSection(),
+              const SizedBox(height: 40),
+              _buildCommunityCarousel(),
+              const SizedBox(height: 32),
+              _buildNotificationPreview(),
+              const SizedBox(height: 40),
+            ],
           ),
-        ),
-      ],
-    ),
-    floatingActionButton: FloatingActionButton(
-      onPressed: () {
-        if (widget.onNavigateToMapWithHelp != null) {
-          widget.onNavigateToMapWithHelp!();
-        } else {
-          widget.onNavigate?.call(1);
-        }
-      },
-      backgroundColor: const Color(0xFF71BB7B),
-      foregroundColor: Colors.white,
-      tooltip: "Add Help Request",
-      child: const Icon(Icons.add, size: 28),
-    ),
-    body: FadeTransition(
-      opacity: _fadeAnimation,
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: [
-            const SizedBox(height: 28),
-            _buildWelcomeSection(),
-            const SizedBox(height: 32),
-            _buildMapHighlight(),
-            const SizedBox(height: 40),
-            _buildQuickActions(),
-            const SizedBox(height: 40),
-            _buildBloodDonationSection(),
-            const SizedBox(height: 40),
-            _buildCommunityCarousel(),
-            const SizedBox(height: 32),
-            _buildNotificationPreview(),
-            const SizedBox(height: 40),
-          ],
         ),
       ),
-    ),
-  );
-}
- 
- Widget _buildNotificationPreview() {
-  final List<String> names = [
-    "Jack Conniler",
-    "Sual Canal",
-    "Samuel Badre",
-    "Alice Johnson",
-    "Bob Smith",
-  ];
+    );
+  }
 
+  Widget _buildNotificationPreview() {
+  final List<String> names = [
+    "Ali",
+    "Sara",
+    "Ahmed",
+    "Fatima",
+    "Omar",
+  ];
   final List<String> messages = [
     "Wants Grocery",
     "Wants Emergency Ambulance Service",
@@ -1605,7 +1625,6 @@ Widget build(BuildContext context) {
     "Has lost her pet cat named Sania",
     "Needs help with trash pickup",
   ];
-
   final List<String> images = [
     'assets/images/Image1.jpg',
     'assets/images/Image2.jpg',
@@ -1729,7 +1748,7 @@ Widget build(BuildContext context) {
                   MaterialPageRoute(builder: (_) => AdminLogin()),
                 );
               },
-              icon: const Icon(Icons.admin_panel_settings_rounded, size: 8),
+              icon: const Icon(Icons.admin_panel_settings_rounded, size: 18),
               label: const Text("Login as Admin"),
             ),
           ],
@@ -1837,7 +1856,7 @@ Widget build(BuildContext context) {
           ),
         ),
       ],
-    ),
+    )
   );
+  }
 }
-    }

@@ -777,29 +777,33 @@ class _NotificationPageState extends State<NotificationPage>
                     child: const Icon(
                       Icons.notifications_active,
                       color: Colors.white,
-                      size: 24,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        '$_unreadCount unread messages',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
+                        Text(
+                          '$_unreadCount unread messages',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -808,7 +812,7 @@ class _NotificationPageState extends State<NotificationPage>
         ),
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
             child: AnimatedBuilder(
               animation: _buttonScaleAnimation,
               builder: (context, child) {
@@ -873,8 +877,8 @@ class _NotificationPageState extends State<NotificationPage>
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                          horizontal: 12,
+                          vertical: 6,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -882,11 +886,11 @@ class _NotificationPageState extends State<NotificationPage>
                         overlayColor:
                             Colors.transparent, // Removes default splash
                       ),
-                      icon: const Icon(Icons.done_all, size: 20),
+                      icon: const Icon(Icons.done_all, size: 18),
                       label: const Text(
                         'Mark as Read',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
