@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
-
+//announcement page added and connected to database
 class AnnouncementsPage extends StatefulWidget {
   const AnnouncementsPage({super.key});
 
