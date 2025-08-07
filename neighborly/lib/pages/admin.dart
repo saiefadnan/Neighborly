@@ -4,7 +4,7 @@ import 'package:neighborly/pages/community_list.dart';
 import 'users.dart';
 import 'announcements.dart';
 import 'team.dart';
-
+//included backend connection
 class AdminHomePage extends StatefulWidget {
   final void Function(int)? onNavigate;
   const AdminHomePage({super.key, this.onNavigate});
