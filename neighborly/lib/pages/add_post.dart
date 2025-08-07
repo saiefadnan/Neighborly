@@ -1,8 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:neighborly/functions/post_notifier.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_chat_core/flutter_chat_core.dart' show LinkPreviewData;
 
@@ -24,7 +26,13 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
   File? _pickedImage;
   File? _pickedVideo;
   bool _pickedLink = false;
+  bool _pickedPoll = false;
   VideoPlayerController? _videoController;
+  TextEditingController pollTitleController = TextEditingController();
+  List<TextEditingController> optionsController = [
+    TextEditingController(),
+    TextEditingController(),
+  ];
   final _linkFocusNode = FocusNode();
 
   @override
@@ -47,6 +55,7 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
       }
 
       setState(() {
+        _pickedPoll = false;
         _pickedLink = false;
         _pickedImage = File(image.path);
         _pickedVideo = null;
@@ -73,6 +82,7 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
       if (!mounted) return; // avoid setState if widget disposed
 
       setState(() {
+        _pickedPoll = false;
         _pickedLink = false;
         _pickedVideo = file;
         _pickedImage = null;
@@ -83,7 +93,18 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
 
   void _pickLink() {
     setState(() {
+      _pickedPoll = false;
       _pickedLink = true;
+      _pickedImage = null;
+      _pickedVideo = null;
+      _videoController = null;
+    });
+  }
+
+  void _pickPoll() {
+    setState(() {
+      _pickedPoll = true;
+      _pickedLink = false;
       _pickedImage = null;
       _pickedVideo = null;
       _videoController = null;
@@ -98,6 +119,26 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
     'News',
   ];
 
+  void postSubmission() {
+    final postID = DateTime.now().millisecondsSinceEpoch;
+    final newPost = {
+      "postID": postID,
+      "timestamp": "2025-07-01T22:00:00Z",
+      "authorID": 5,
+      "author": FirebaseAuth.instance.currentUser!.displayName.toString(),
+      "title": _titleController.text.trim(),
+      "content": _bodyController.text.trim(),
+      "imagePath": _pickedImage?.path,
+      "upvotes": 0,
+      "downvotes": 0,
+      "link": "https://example.com/post$postID",
+      "totalComments": 0,
+      "reacts": 0,
+      "category": _selectedCategory,
+    };
+    ref.read(postsProvider.notifier).addPosts(newPost);
+  }
+
   Widget _buildMediaButton(IconData icon) {
     return OutlinedButton(
       onPressed: () {
@@ -108,9 +149,7 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
         } else if (icon == Icons.add_link_rounded) {
           _pickLink();
         } else {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("Not implemented")));
+          _pickPoll();
         }
       },
       style: OutlinedButton.styleFrom(
@@ -146,6 +185,7 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
         actions: [
           ElevatedButton(
             onPressed: () {
+              postSubmission();
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(const SnackBar(content: Text("Post Submitted!")));
@@ -340,6 +380,89 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
                                 ),
                                 titleTextStyle: const TextStyle(
                                   fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (_pickedPoll) ...[
+                          Stack(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                margin: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Create a Poll",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                    SizedBox(height: 12),
+                                    TextField(
+                                      controller: pollTitleController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Poll title',
+                                      ),
+                                    ),
+                                    ...optionsController.map(
+                                      (optionController) => TextField(
+                                        controller: optionController,
+                                        decoration: InputDecoration(
+                                          labelText: 'Poll option',
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton.icon(
+                                      icon: Icon(Icons.add),
+                                      onPressed:
+                                          () => setState(() {
+                                            optionsController.add(
+                                              TextEditingController(),
+                                            );
+                                          }),
+
+                                      label: Text("Add options"),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Positioned(
+                                top: 24,
+                                right: 16,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    for (var optCntrl in optionsController) {
+                                      optCntrl.dispose();
+                                    }
+                                    optionsController = [
+                                      TextEditingController(),
+                                      TextEditingController(),
+                                    ];
+                                    setState(() {
+                                      _pickedPoll = false;
+                                    });
+                                  },
+                                  child: Icon(
+                                    Icons.cancel,
+                                    color: Colors.redAccent,
+                                  ),
                                 ),
                               ),
                             ],

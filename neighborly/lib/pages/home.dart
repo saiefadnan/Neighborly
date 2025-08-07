@@ -1020,7 +1020,6 @@ class _HomePageState extends ConsumerState<HomePage>
       prefs.setBool('rememberMe', false);
       ref.read(authUserProvider.notifier).initState();
       await FirebaseAuth.instance.signOut();
-      if (!context.mounted) return;
     }
 
     return Container(

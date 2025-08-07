@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:flutter_polls/flutter_polls.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_widget/config/all.dart';
@@ -109,7 +110,7 @@ class _PostCardState extends ConsumerState<PostCard> {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Author Info Row
             Row(
@@ -146,7 +147,6 @@ class _PostCardState extends ConsumerState<PostCard> {
                   ],
                 ),
                 Spacer(),
-                Spacer(), // push category chip right
 
                 Chip(
                   label: Row(
@@ -166,7 +166,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                   ),
                   backgroundColor: _getCategoryColor(
                     widget.post['category'],
-                  ).toOpacity(0.75          ),
+                  ).toOpacity(0.75),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 12,
@@ -247,6 +247,15 @@ class _PostCardState extends ConsumerState<PostCard> {
                 ),
               ),
             ],
+            if (widget.post['imagePath'] != null &&
+                widget.post['imagePath'].isNotEmpty) ...[
+              const SizedBox(height: 18),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(File(widget.post['imagePath'])),
+              ),
+            ],
+
             if (widget.post['poll'] != null) ...[
               const SizedBox(height: 20),
               FlutterPolls(

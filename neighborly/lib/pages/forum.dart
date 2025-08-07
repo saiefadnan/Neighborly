@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:neighborly/components/post_card.dart';
-import 'package:neighborly/functions/fetchData.dart';
+import 'package:neighborly/functions/post_notifier.dart';
 
 class ForumPage extends ConsumerStatefulWidget {
   const ForumPage({super.key, required this.title});
@@ -163,7 +163,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
         body: TabBarView(
           children:
               categories.map((category) {
-                final asyncPosts = ref.watch(fetchData('posts'));
+                final asyncPosts = ref.watch(postsProvider);
                 return asyncPosts.when(
                   data: (posts) {
                     final filtered =
@@ -175,7 +175,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
                     return filtered.isNotEmpty
                         ? RefreshIndicator(
                           onRefresh: () async {
-                            ref.invalidate(fetchData('posts'));
+                            ref.invalidate(postsProvider);
                           },
                           child: ListView.builder(
                             physics: AlwaysScrollableScrollPhysics(),
@@ -188,7 +188,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
                   error:
                       (e, _) => RefreshIndicator(
                         onRefresh: () async {
-                          ref.invalidate(fetchData('posts'));
+                          ref.invalidate(postsProvider);
                         },
                         child: ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
