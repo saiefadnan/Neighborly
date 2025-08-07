@@ -8,9 +8,16 @@ import 'package:neighborly/components/help_request_drawer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MapHomePage extends ConsumerStatefulWidget {
-  const MapHomePage({super.key, this.autoOpenHelpDrawer = false});
+  const MapHomePage({
+    super.key,
+    this.autoOpenHelpDrawer = false,
+    this.targetLocation,
+    this.targetLocationName,
+  });
 
   final bool autoOpenHelpDrawer;
+  final LatLng? targetLocation;
+  final String? targetLocationName;
 
   @override
   _MapHomePageState createState() => _MapHomePageState();
@@ -78,6 +85,17 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
         });
       });
     }
+
+    // Handle target location navigation
+    if (widget.targetLocation != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted && _mapController != null) {
+            _navigateToTargetLocation();
+          }
+        });
+      });
+    }
   }
 
   @override
@@ -89,6 +107,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   Future<void> _createMarkers() async {
     Set<Marker> markers = {};
 
+    // Add regular help request markers
     for (int idx = 0; idx < helpRequests.length; idx++) {
       Map<String, dynamic> req = helpRequests[idx];
 
@@ -110,9 +129,82 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       );
     }
 
+    // Add target location marker if provided
+    if (widget.targetLocation != null) {
+      BitmapDescriptor targetIcon = await BitmapDescriptor.fromAssetImage(
+        const ImageConfiguration(size: Size(48, 48)),
+        'assets/images/dummy.png', // You can replace this with a special icon
+      ).catchError(
+        (_) => BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+      );
+
+      markers.add(
+        Marker(
+          markerId: const MarkerId('target_location'),
+          position: widget.targetLocation!,
+          infoWindow: InfoWindow(
+            title: widget.targetLocationName ?? 'Selected Location',
+            snippet: 'Notification target location',
+          ),
+          icon: targetIcon,
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'You are viewing ${widget.targetLocationName ?? "the selected location"}',
+                ),
+                backgroundColor: const Color(0xFF71BB7B),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
     setState(() {
       _markers = markers;
     });
+  }
+
+  Future<void> _navigateToTargetLocation() async {
+    if (widget.targetLocation != null && _mapController != null) {
+      await _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: widget.targetLocation!,
+            zoom: 16.0, // Zoom closer to show the specific location
+          ),
+        ),
+      );
+
+      // Show a snackbar to indicate navigation
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.location_on, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Showing location: ${widget.targetLocationName ?? "Selected location"}',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF71BB7B),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<BitmapDescriptor> _createCustomMarker(String type) async {
@@ -411,17 +503,6 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     );
   }
 
-  Color _getTypeColor(String type) {
-    switch (type) {
-      case "Emergency":
-        return Colors.red;
-      case "Urgent":
-        return Colors.orange;
-      default:
-        return Color(0xFF71BB7B);
-    }
-  }
-
   Color _getUrgencyColor(String urgency) {
     switch (urgency) {
       case 'Emergency':
@@ -632,12 +713,20 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
               )
               : GoogleMap(
                 initialCameraPosition: CameraPosition(
-                  target: LatLng(23.8103, 90.4125),
-                  zoom: 14.0,
+                  target: widget.targetLocation ?? LatLng(23.8103, 90.4125),
+                  zoom: widget.targetLocation != null ? 16.0 : 14.0,
                 ),
                 markers: _markers,
                 onMapCreated: (GoogleMapController controller) {
                   _mapController = controller;
+                  // If we have a target location, navigate to it after map is created
+                  if (widget.targetLocation != null) {
+                    Future.delayed(const Duration(milliseconds: 500), () {
+                      if (mounted) {
+                        _navigateToTargetLocation();
+                      }
+                    });
+                  }
                 },
                 mapType: MapType.normal,
                 myLocationEnabled: true,

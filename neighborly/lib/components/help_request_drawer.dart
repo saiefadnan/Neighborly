@@ -7,6 +7,9 @@ import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import '../providers/notification_provider.dart';
+import '../providers/help_request_provider.dart';
 
 class HelpRequestDrawer extends StatefulWidget {
   final Function(Map<String, dynamic>) onSubmit;
@@ -124,10 +127,37 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
         "image": _image,
       };
 
+      // Add notification using the provider
+      final notificationProvider = Provider.of<NotificationProvider>(
+        context,
+        listen: false,
+      );
+      notificationProvider.addHelpRequestNotification(
+        name: _usernameController.text.trim(),
+        message: '$_helpType help needed: $description',
+        helpType: _helpType,
+        urgency: _urgency,
+        location: address,
+        coordinates: coordinates,
+        phone: phone,
+        imageUrl: _image != null ? 'assets/images/dummy.png' : null,
+      );
+
+      // Add help request to global provider
+      final helpRequestProvider = Provider.of<HelpRequestProvider>(
+        context,
+        listen: false,
+      );
+      helpRequestProvider.addHelpRequestFromMap(helpData);
+
       widget.onSubmit(helpData);
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Help request submitted successfully!")),
+        const SnackBar(
+          content: Text(
+            "Help request submitted successfully! Check notifications and help list.",
+          ),
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
