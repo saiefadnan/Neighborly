@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MapHomePage extends ConsumerStatefulWidget {
   const MapHomePage({super.key, this.autoOpenHelpDrawer = false});
@@ -176,7 +178,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Anonymous User', // Default name
+                            helpData['username'] ?? 'Anonymous User',
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -320,13 +322,22 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                           const Icon(Icons.phone, size: 20, color: Colors.grey),
                           const SizedBox(width: 12),
                           Text(
-                            '+880 1XXX-XXXXXX',
+                            helpData['phone'] ?? '+880 1XXX-XXXXXX',
                             style: const TextStyle(fontSize: 14),
                           ),
                           const Spacer(),
                           InkWell(
                             onTap: () {
-                              // Call functionality
+                              final phoneNumber = helpData['phone'] ?? '';
+                              if (phoneNumber.isNotEmpty) {
+                                _makePhoneCall(phoneNumber);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('No phone number available'),
+                                  ),
+                                );
+                              }
                             },
                             child: Container(
                               padding: const EdgeInsets.all(8),
@@ -452,6 +463,70 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
         return Icons.help;
       default:
         return Icons.help_outline;
+    }
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    // Clean and format the phone number
+    String cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+
+    // Ensure the number starts with + for international format
+    if (!cleanedNumber.startsWith('+')) {
+      // If it's a Bangladesh number starting with 01, add country code
+      if (cleanedNumber.startsWith('01')) {
+        cleanedNumber = '+880${cleanedNumber.substring(1)}';
+      } else if (!cleanedNumber.startsWith('880') &&
+          cleanedNumber.length >= 10) {
+        // Add + if it doesn't have it
+        cleanedNumber = '+$cleanedNumber';
+      }
+    }
+
+    final Uri phoneUri = Uri(scheme: 'tel', path: cleanedNumber);
+    print('Attempting to call: $cleanedNumber');
+    print('URI: $phoneUri');
+
+    try {
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(
+          phoneUri,
+          mode: LaunchMode.externalApplication, // Force external app
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'No phone app found to make call to $cleanedNumber',
+              ),
+              action: SnackBarAction(
+                label: 'Copy Number',
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: cleanedNumber));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Phone number copied to clipboard'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Phone call error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Unable to make phone call. Please dial manually: $cleanedNumber',
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 

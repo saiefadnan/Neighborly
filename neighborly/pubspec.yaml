@@ -26,7 +26,7 @@ dependencies:
   # 📍 Geocoding
   geocoding: ^2.1.0
 
-  # 🔀 Routing
+  # �🔀 Routing
   go_router: ^15.1.3
 
   # 🧱 UI / Feed Rendering

@@ -20,6 +20,8 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
   final _descriptionController = TextEditingController();
   final _timeController = TextEditingController();
   final _usernameController = TextEditingController(text: 'Ali');
+  final _phoneController =
+      TextEditingController(); // Add phone number controller
   final _addressController = TextEditingController(
     text: '123, Dhanmondi, Dhaka',
   );
@@ -81,8 +83,12 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
     final String address = _addressController.text.trim();
     final String time = _timeController.text.trim();
     final String description = _descriptionController.text.trim();
+    final String phone = _phoneController.text.trim();
 
-    if (address.isEmpty || time.isEmpty || description.isEmpty) {
+    if (address.isEmpty ||
+        time.isEmpty ||
+        description.isEmpty ||
+        phone.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
@@ -113,6 +119,8 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
         "title": _helpType,
         "priority": _urgency.toLowerCase(),
         "address": address,
+        "username": _usernameController.text.trim(),
+        "phone": phone,
         "image": _image,
       };
 
@@ -345,6 +353,7 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
     _descriptionController.dispose();
     _timeController.dispose();
     _usernameController.dispose();
+    _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
   }
@@ -481,6 +490,13 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
                                 controller: _usernameController,
                                 label: "Your Name",
                                 icon: Icons.person_outline,
+                              ),
+                              SizedBox(height: 16),
+                              _buildStyledTextField(
+                                controller: _phoneController,
+                                label: "Phone Number",
+                                icon: Icons.phone_outlined,
+                                hint: "e.g., +880 1234-567890",
                               ),
                               SizedBox(height: 16),
                               _buildAddressField(),
