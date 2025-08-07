@@ -3,7 +3,7 @@ import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_card.dart';
 import 'package:neighborly/components/comment_tree.dart';
-import 'package:neighborly/functions/comment_state.dart';
+import 'package:neighborly/functions/comment_notifier.dart';
 import 'package:neighborly/functions/fetchData.dart';
 
 final Map<int, GlobalKey> commentKeys = {};

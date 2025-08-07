@@ -21,13 +21,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final isGoingToSplash = state.uri.path == '/splash';
       final isGoingToAuth = state.uri.path == '/auth';
       final isGoingToAppShell = state.uri.path == '/appShell';
+      final isGoingToAddPost = state.uri.path == '/addPost';
       final signedIn = verified is AsyncData && verified.value == true;
       // If user is signed in but trying to go to auth or splash, redirect to appShell
       if (signedIn && (isGoingToAuth || isGoingToSplash)) {
         return '/appShell';
       }
       // If user is signed in and going to appShell, allow it
-      if (signedIn && isGoingToAppShell) {
+      if (signedIn && (isGoingToAppShell || isGoingToAddPost)) {
         return null;
       }
       // First time app launch - show splash
@@ -62,7 +63,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/appShell', builder: (context, state) => AppShell()),
       GoRoute(
-        path: '/addpost',
+        path: '/addPost',
         builder:
             (context, state) => const AddPostPage(title: 'Post Submission'),
       ),
