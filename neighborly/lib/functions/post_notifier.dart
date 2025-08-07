@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/functions/fetchData.dart';
 
@@ -16,8 +17,10 @@ class PostNotifier
 
   Future<void> loadPosts() async {
     try {
-      final response = await ref.read(fetchData('posts').future);
-      state = AsyncData(response);
+      final querySnapshot =
+          await FirebaseFirestore.instance.collection('posts').get();
+      final posts = querySnapshot.docs.map((doc) => {...doc.data()}).toList();
+      state = AsyncData(posts);
     } catch (e, st) {
       state = AsyncError(e, st);
     }
@@ -29,6 +32,10 @@ class PostNotifier
       error: (e, st) => state,
       loading: () => state,
     );
+  }
+
+  List<Map<String, dynamic>> getPosts() {
+    return state.maybeWhen(data: (posts) => posts, orElse: () => []);
   }
 
   void clearPosts() {

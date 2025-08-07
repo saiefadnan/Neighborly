@@ -170,20 +170,39 @@ class _ForumPageState extends ConsumerState<ForumPage>
                         category == 'all'
                             ? posts
                             : posts
-                                .where((post) => post['category'] == category)
+                                .where(
+                                  (post) =>
+                                      post['category']
+                                          .toString()
+                                          .toLowerCase() ==
+                                      category,
+                                )
                                 .toList();
-                    return filtered.isNotEmpty
-                        ? RefreshIndicator(
-                          onRefresh: () async {
-                            ref.invalidate(postsProvider);
-                          },
-                          child: ListView.builder(
-                            physics: AlwaysScrollableScrollPhysics(),
-                            itemCount: filtered.length,
-                            itemBuilder: (_, i) => PostCard(post: filtered[i]),
-                          ),
-                        )
-                        : const Center(child: Text("No posts found"));
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        ref.invalidate(postsProvider);
+                      },
+                      child:
+                          filtered.isNotEmpty
+                              ? ListView.builder(
+                                physics: AlwaysScrollableScrollPhysics(),
+                                itemCount: filtered.length,
+                                itemBuilder:
+                                    (_, i) => PostCard(post: filtered[i]),
+                              )
+                              : ListView(
+                                // wrapped in a ListView so RefreshIndicator still works
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                children: const [
+                                  Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.only(top: 300),
+                                      child: Text("No posts found"),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                    );
                   },
                   error:
                       (e, _) => RefreshIndicator(
@@ -225,7 +244,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
           backgroundColor: const Color(0xFF71BB7B),
           foregroundColor: Colors.white,
           child: const Icon(Icons.post_add_rounded),
-          onPressed: () {
+          onPressed: () async {
             context.push('/addPost');
           },
         ),

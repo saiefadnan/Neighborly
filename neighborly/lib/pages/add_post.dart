@@ -1,9 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:neighborly/functions/media_upload.dart';
 import 'package:neighborly/functions/post_notifier.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_chat_core/flutter_chat_core.dart' show LinkPreviewData;
@@ -119,24 +122,31 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
     'News',
   ];
 
-  void postSubmission() {
-    final postID = DateTime.now().millisecondsSinceEpoch;
+  void postSubmission() async {
+    print('post submitting...');
+    final mediaLink = await uploadFile(_pickedImage);
     final newPost = {
-      "postID": postID,
-      "timestamp": "2025-07-01T22:00:00Z",
-      "authorID": 5,
-      "author": FirebaseAuth.instance.currentUser!.displayName.toString(),
-      "title": _titleController.text.trim(),
-      "content": _bodyController.text.trim(),
-      "imagePath": _pickedImage?.path,
-      "upvotes": 0,
-      "downvotes": 0,
-      "link": "https://example.com/post$postID",
-      "totalComments": 0,
-      "reacts": 0,
-      "category": _selectedCategory,
+      'timestamp': FieldValue.serverTimestamp(),
+      'authorID': 5,
+      'author': FirebaseAuth.instance.currentUser!.displayName.toString(),
+      'title': _titleController.text.trim(),
+      'content': _bodyController.text.trim(),
+      'imageUrl': mediaLink,
+      'upvotes': 0,
+      'downvotes': 0,
+      'link': "https://example.com/post/dummy",
+      'totalComments': 0,
+      'reacts': 0,
+      'category': _selectedCategory,
     };
+    final docRef = await FirebaseFirestore.instance
+        .collection('posts')
+        .add(newPost);
+    await docRef.update({'postID': docRef.id});
+    newPost['postID'] = docRef.id;
     ref.read(postsProvider.notifier).addPosts(newPost);
+    if (!mounted) return;
+    context.go('/forum');
   }
 
   Widget _buildMediaButton(IconData icon) {

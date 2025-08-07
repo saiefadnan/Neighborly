@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:flutter_polls/flutter_polls.dart';
@@ -137,7 +138,13 @@ class _PostCardState extends ConsumerState<PostCard> {
                       ),
                     ),
                     Text(
-                      _getFormattedTime(widget.post['timestamp']),
+                      widget.post['timestamp'] is Timestamp
+                          ? _getFormattedTime(
+                            (widget.post['timestamp'] as Timestamp)
+                                .toDate()
+                                .toIso8601String(),
+                          )
+                          : 'Just now', // fallback if null or still FieldValue
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontStyle: FontStyle.italic,
@@ -283,7 +290,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                 Row(
                   children: [
                     LikeButton(
-                      isLiked: true,
+                      isLiked: false,
                       likeCount: widget.post['reacts'],
                       countPostion: CountPostion.right,
                       size: 26,
