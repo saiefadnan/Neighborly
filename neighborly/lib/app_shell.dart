@@ -57,6 +57,29 @@ class _AppShellState extends State<AppShell> {
         }
       },
       child: Scaffold(
+        /**appBar: AppBar(
+          backgroundColor: const Color(0xFF71BB7B),
+          title: Text(_appBarTitles[_currentIndex]),
+          actions: [
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfilePage(title: 'Profile'),
+                  ),
+                );
+              },
+              child: const Padding(
+                padding: EdgeInsets.only(right: 12.0),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundImage: AssetImage('assets/images/dummy.png'),
+                ),
+              ),
+            ),
+          ],
+        ),**/
         body: PageView(
           controller: _pageController,
           physics: NeverScrollableScrollPhysics(),
