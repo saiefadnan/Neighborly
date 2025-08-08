@@ -2,6 +2,127 @@ import 'package:flutter/material.dart';
 import 'activityPage.dart';
 import 'editProfile.dart';
 import 'statistics.dart';
+import 'package:lottie/lottie.dart';
+import 'dart:math' as math;
+
+class MilestoneData {
+  final String label;
+  final String cert;
+  final Color color;
+  final IconData? icon;
+  final int current;
+  final int total;
+  final String? lottiePath; // <-- Add this
+
+  MilestoneData({
+    required this.label,
+    required this.cert,
+    required this.color,
+    this.icon,
+    required this.current,
+    required this.total,
+    this.lottiePath, // <-- Add this
+  });
+}
+
+final List<MilestoneData> milestones = [
+  MilestoneData(
+    label: 'Rookie Hero',
+    cert: 'Bronze Certified',
+    color: Colors.brown[400]!,
+    icon: Icons.emoji_events,
+    current: 2,
+    total: 5,
+  ),
+  MilestoneData(
+    label: 'Silver Surfer',
+    cert: 'Silver Certified',
+    color: Colors.blueGrey[400]!,
+    icon: Icons.emoji_events,
+    current: 3,
+    total: 5,
+  ),
+  MilestoneData(
+    label: 'Guardian',
+    cert: 'Gold Certified',
+    color: Colors.amber[400]!,
+    icon: null, // No icon, use Lottie
+    current: 5,
+    total: 5,
+    lottiePath: 'assets/images/WelldoneGolden.json', // <-- Add this
+  ),
+];
+
+class BadgeData {
+  final String label;
+  final String description;
+  final String? lottiePath;
+  final bool unlocked;
+
+  BadgeData({
+    required this.label,
+    required this.description,
+    this.lottiePath,
+    this.unlocked = false,
+  });
+}
+
+double getResponsiveCardWidth(
+  BuildContext context, {
+  double fraction = 0.28,
+  double min = 100,
+  double max = 180,
+}) {
+  final width = MediaQuery.of(context).size.width;
+  final cardWidth = width * fraction;
+  return cardWidth.clamp(min, max);
+}
+
+class _CircleProgressPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _CircleProgressPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeWidth = 6.0;
+    final rect = Offset.zero & size;
+    final center = size.center(Offset.zero);
+    final radius = (size.width - strokeWidth) / 2;
+
+    // Background circle
+    final bgPaint =
+        Paint()
+          ..color = color.withOpacity(0.15)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth;
+
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Foreground arc with rounded ends
+    final fgPaint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round;
+
+    final startAngle = -math.pi / 2;
+    final sweepAngle = 2 * math.pi * progress;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      fgPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key, required this.title});
@@ -74,6 +195,9 @@ class ProfilePage extends StatelessWidget {
                         children: [
                           // Level Card
                           Container(
+                            width:
+                                MediaQuery.of(context).size.width *
+                                0.92, // almost full width, responsive
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: Colors.white,
@@ -298,18 +422,21 @@ class ProfilePage extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
                               _medalCard(
+                                context,
                                 'Gold',
                                 24,
                                 Colors.amber,
                                 'assets/images/GoldMedal.png',
                               ),
                               _medalCard(
+                                context,
                                 'Silver',
                                 18,
                                 Colors.blueGrey[200]!,
                                 'assets/images/SilverMedal.png',
                               ),
                               _medalCard(
+                                context,
                                 'Bronze',
                                 11,
                                 Colors.brown[300]!,
@@ -323,38 +450,73 @@ class ProfilePage extends StatelessWidget {
                           // Certifications Section
                           _sectionTitle('MILESTONES', 8),
                           const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _certCard(
-                                'Rookie\nHero',
-                                'Bronze Certified',
-                                Colors.brown[200]!,
-                              ),
-                              _certCard(
-                                'Silver \nSurfer',
-                                'Silver Certified',
-                                Colors.blueGrey[200]!,
-                              ),
-                              _certCard(
-                                'Guardian\n',
-                                'Gold Certified',
-                                Colors.amber[200]!,
-                              ),
-                            ],
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children:
+                                  milestones.map((milestone) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                      ),
+                                      child: _certCard(
+                                        context,
+                                        milestone.label,
+                                        milestone.cert,
+                                        milestone.color,
+                                        milestone.current,
+                                        milestone.total,
+                                        //icon: milestone.icon,
+                                      ),
+                                    );
+                                  }).toList(),
+                            ),
                           ),
+
                           const SizedBox(height: 24),
 
                           // Badges Section
+                          // Badges Section
                           _sectionTitle('BADGES', 0),
                           const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              _badgeCard(Icons.star, 'Top Contributor'),
-                              const SizedBox(width: 12),
-                              _badgeCard(Icons.fireplace, 'Community Hero'),
-                            ],
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _badgeCircle(
+                                  BadgeData(
+                                    label: 'Top Contributor',
+                                    description: 'Help 10 neighbors',
+                                    lottiePath: 'assets/images/eP6yULpjL9.json',
+                                    unlocked: true,
+                                  ),
+                                ),
+                                _badgeCircle(
+                                  BadgeData(
+                                    label: 'Community Hero',
+                                    description: 'Help 25 neighbors',
+                                    lottiePath:
+                                        'assets/images/Knightsglove.json',
+                                    unlocked: true,
+                                  ),
+                                ),
+                                _badgeCircle(
+                                  BadgeData(
+                                    label: 'Neighborhood Helper',
+                                    description: 'Help 50 neighbors',
+                                    unlocked: false,
+                                  ),
+                                ),
+                                _badgeCircle(
+                                  BadgeData(
+                                    label: 'Kindness Star',
+                                    description: 'Help 100 neighbors',
+                                    unlocked: false,
+                                  ),
+                                ),
+                                // Add more locked/unlocked badges as needed
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -396,9 +558,20 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _medalCard(String label, int count, Color color, String imagePath) {
+  Widget _medalCard(
+    BuildContext context,
+    String label,
+    int count,
+    Color color,
+    String imagePath,
+  ) {
     return Container(
-      width: 110, // card sizing
+      width: getResponsiveCardWidth(
+        context,
+        fraction: 0.28,
+        min: 90,
+        max: 140,
+      ), // card sizing
       padding: const EdgeInsets.symmetric(
         vertical: 10,
       ), //vertically resize kore
@@ -439,9 +612,135 @@ class ProfilePage extends StatelessWidget {
   }
 
   // Certification Card Widget
-  Widget _certCard(String title, String cert, Color color) {
+  Widget _certCard(
+    BuildContext context,
+    String title,
+    String cert,
+    Color color,
+    int current,
+    int total,
+  ) {
+    double progress = current / total;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Circular progress indicator (only the progress color)
+              SizedBox(
+                width: 120,
+                height: 120,
+                child: CustomPaint(
+                  painter: _CircleProgressPainter(
+                    progress: progress,
+                    color: color,
+                  ),
+                ),
+              ),
+              // Icon inside circle with border
+              (current == 5 && total == 5 && cert == 'Gold Certified')
+                  ? Container(
+                    width: 108,
+                    height: 108,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(
+                        color: color.withOpacity(0.18),
+                        width: 2,
+                      ),
+                    ),
+                    child: Lottie.asset(
+                      'assets/images/Goldcoin.json',
+                      fit: BoxFit.contain,
+                      repeat: true,
+                    ),
+                  )
+                  : Container(
+                    width: 86,
+                    height: 86,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(
+                        color: color.withOpacity(0.18),
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(Icons.verified, color: color, size: 54),
+                  ),
+              // Progress text at the bottom inside the circle
+              Positioned(
+                bottom: -4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 2,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '$current/$total',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Title text
+          SizedBox(
+            width: 90,
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Color(0xFF222222),
+              ),
+            ),
+          ),
+          // Certification text
+          SizedBox(
+            width: 90,
+            child: Text(
+              cert,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Badge Card Widget
+  Widget _badgeCard(
+    BuildContext context,
+    String label, {
+    String? imagePath,
+    IconData? icon,
+    String? lottiePath,
+  }) {
     return Container(
-      width: 110,
+      width: getResponsiveCardWidth(context, fraction: 0.28, min: 90, max: 140),
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
@@ -452,55 +751,99 @@ class ProfilePage extends StatelessWidget {
         ],
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.verified, color: color, size: 32),
-          const SizedBox(height: 8),
+          if (lottiePath != null)
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: Lottie.asset(
+                lottiePath,
+                fit: BoxFit.contain,
+                repeat: true,
+              ),
+            )
+          else if (imagePath != null)
+            ClipOval(
+              child: Image.asset(
+                imagePath,
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+              ),
+            )
+          else if (icon != null)
+            Icon(icon, color: Colors.purple, size: 44),
+          const SizedBox(height: 10),
           Text(
-            title,
+            label,
             textAlign: TextAlign.center,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              cert,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
           ),
         ],
       ),
     );
   }
 
-  // Badge Card Widget
-  Widget _badgeCard(IconData icon, String label) {
-    return Container(
-      width: 120,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Row(
+  Widget _badgeCircle(BadgeData badge) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Column(
         children: [
-          Icon(icon, color: Colors.purple, size: 28),
-          const SizedBox(width: 8),
-          Flexible(
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: badge.unlocked ? Colors.white : Colors.grey[200],
+                  border: Border.all(
+                    color:
+                        badge.unlocked ? Color(0xFF5B5B7E) : Colors.grey[300]!,
+                    width: 2,
+                  ),
+                ),
+                child:
+                    badge.unlocked && badge.lottiePath != null
+                        ? Lottie.asset(
+                          badge.lottiePath!,
+                          fit: BoxFit.contain,
+                          repeat: true,
+                        )
+                        : Icon(Icons.lock, color: Colors.grey[400], size: 32),
+              ),
+              if (!badge.unlocked)
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: 80,
             child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              badge.label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: badge.unlocked ? Color(0xFF5B5B7E) : Colors.grey,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 80,
+            child: Text(
+              badge.description,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, color: Colors.grey),
             ),
           ),
         ],
