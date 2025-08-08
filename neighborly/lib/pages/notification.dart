@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../providers/notification_provider.dart';
 
 // Enhanced Notification Model
 class NotificationData {
@@ -477,9 +480,16 @@ class _NotificationCardState extends State<NotificationCard>
 }
 
 class NotificationPage extends StatefulWidget {
-  const NotificationPage({super.key, required this.title, this.onNavigate});
+  const NotificationPage({
+    super.key,
+    required this.title,
+    this.onNavigate,
+    this.onLocationNavigate,
+  });
   final String title;
   final Function(int)? onNavigate;
+  final Function(LatLng, String)?
+  onLocationNavigate; // Callback for location navigation
 
   @override
   State<NotificationPage> createState() => _NotificationPageState();
@@ -489,88 +499,11 @@ class _NotificationPageState extends State<NotificationPage>
     with TickerProviderStateMixin {
   late AnimationController _headerAnimationController;
   late Animation<double> _headerSlideAnimation;
+  late AnimationController _buttonAnimationController;
+  late Animation<double> _buttonScaleAnimation;
 
   String _selectedFilter = 'All';
   final List<String> _filters = ['All', 'Emergency', 'Urgent', 'Normal'];
-
-  List<NotificationData> _notifications = [
-    NotificationData(
-      id: '1',
-      name: 'Jack Conniler',
-      message:
-          'Needs immediate medical assistance. Please help if you\'re nearby with medical training.',
-      image: 'assets/images/Image1.jpg',
-      urgency: 'emergency',
-      type: 'help_request',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-      location: 'Dhanmondi 15, Dhaka',
-    ),
-    NotificationData(
-      id: '2',
-      name: 'Sual Canal',
-      message:
-          'Emergency ambulance service required immediately. Patient is unconscious.',
-      image: 'assets/images/Image2.jpg',
-      urgency: 'emergency',
-      type: 'help_request',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-      location: 'Gulshan 2, Dhaka',
-    ),
-    NotificationData(
-      id: '3',
-      name: 'Samuel Badre',
-      message: 'Looking for help with grocery shopping for elderly neighbor.',
-      image: 'assets/images/Image3.jpg',
-      urgency: 'urgent',
-      type: 'help_request',
-      timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-      location: 'Bashundhara R/A, Dhaka',
-    ),
-    NotificationData(
-      id: '4',
-      name: 'Alice Johnson',
-      message:
-          'Traffic jam reported on main road. Alternative routes suggested.',
-      image: 'assets/images/Image1.jpg',
-      urgency: 'normal',
-      type: 'traffic_update',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      location: 'Dhanmondi 27, Dhaka',
-    ),
-    NotificationData(
-      id: '5',
-      name: 'Bob Smith',
-      message:
-          'Lost pet cat named Sania. Last seen near the park. Please help find her.',
-      image: 'assets/images/Image2.jpg',
-      urgency: 'urgent',
-      type: 'lost_pet',
-      timestamp: DateTime.now().subtract(const Duration(hours: 3)),
-      location: 'Wari, Dhaka',
-    ),
-    NotificationData(
-      id: '6',
-      name: 'Charlie Davis',
-      message:
-          'Community meeting scheduled for tomorrow evening. All neighbors welcome.',
-      image: 'assets/images/Image3.jpg',
-      urgency: 'normal',
-      type: 'community',
-      timestamp: DateTime.now().subtract(const Duration(hours: 5)),
-      location: 'Community Center, Dhanmondi',
-    ),
-    NotificationData(
-      id: '7',
-      name: 'Dana White',
-      message:
-          'Need help moving furniture to 4th floor. Willing to provide refreshments.',
-      image: 'assets/images/Image1.jpg',
-      urgency: 'normal',
-      type: 'help_request',
-      timestamp: DateTime.now().subtract(const Duration(days: 1)),
-      location: 'Mirpur 10, Dhaka',
-    ),
-  ];
 
   @override
   void initState() {
@@ -586,60 +519,46 @@ class _NotificationPageState extends State<NotificationPage>
       ),
     );
 
+    _buttonAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _buttonScaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(
+        parent: _buttonAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
     _headerAnimationController.forward();
   }
 
   @override
   void dispose() {
     _headerAnimationController.dispose();
+    _buttonAnimationController.dispose();
     super.dispose();
   }
 
   // Method to mark all notifications as read
   void _markAllAsRead() {
-    setState(() {
-      _notifications =
-          _notifications
-              .map((notification) => notification.copyWith(isRead: true))
-              .toList();
-    });
+    Provider.of<NotificationProvider>(context, listen: false).markAllAsRead();
   }
 
   // Method to mark a single notification as read
   void _markAsRead(String notificationId) {
-    setState(() {
-      _notifications =
-          _notifications
-              .map(
-                (notification) =>
-                    notification.id == notificationId
-                        ? notification.copyWith(isRead: true)
-                        : notification,
-              )
-              .toList();
-    });
+    Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    ).markAsRead(notificationId);
   }
 
   // Method to undo mark all as read
   void _undoMarkAllAsRead() {
-    setState(() {
-      _notifications =
-          _notifications
-              .map((notification) => notification.copyWith(isRead: false))
-              .toList();
-    });
-  }
-
-  List<NotificationData> get _filteredNotifications {
-    if (_selectedFilter == 'All') return _notifications;
-    return _notifications.where((notification) {
-      return notification.urgency.toLowerCase() ==
-          _selectedFilter.toLowerCase();
-    }).toList();
-  }
-
-  int get _unreadCount {
-    return _notifications.where((n) => !n.isRead).length;
+    Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    ).undoMarkAllAsRead();
   }
 
   Color _getNotificationColor(String urgency) {
@@ -653,12 +572,12 @@ class _NotificationPageState extends State<NotificationPage>
     }
   }
 
-  Widget _buildFilterChip(String filter) {
+  Widget _buildFilterChip(String filter, NotificationProvider provider) {
     final isSelected = _selectedFilter == filter;
     final count =
         filter == 'All'
-            ? _notifications.length
-            : _notifications
+            ? provider.notifications.length
+            : provider.notifications
                 .where((n) => n.urgency.toLowerCase() == filter.toLowerCase())
                 .length;
 
@@ -740,7 +659,12 @@ class _NotificationPageState extends State<NotificationPage>
 
   @override
   Widget build(BuildContext context) {
-    final filteredNotifications = _filteredNotifications;
+    // Get the provider directly without Consumer for now
+    final notificationProvider = Provider.of<NotificationProvider>(context);
+    final filteredNotifications = notificationProvider.getFilteredNotifications(
+      _selectedFilter,
+    );
+    final unreadCount = notificationProvider.unreadCount;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F2E7),
@@ -763,29 +687,33 @@ class _NotificationPageState extends State<NotificationPage>
                     child: const Icon(
                       Icons.notifications_active,
                       color: Colors.white,
-                      size: 24,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        '$_unreadCount unread messages',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
+                        Text(
+                          '$unreadCount unread messages',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -793,50 +721,94 @@ class _NotificationPageState extends State<NotificationPage>
           },
         ),
         actions: [
-          IconButton(
-            onPressed: () {
-              // Mark all as read functionality - actually update the state
-              _markAllAsRead();
+          Container(
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+            child: AnimatedBuilder(
+              animation: _buttonScaleAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _buttonScaleAnimation.value,
+                  child: GestureDetector(
+                    onTapDown: (_) {
+                      _buttonAnimationController.forward();
+                    },
+                    onTapUp: (_) {
+                      _buttonAnimationController.reverse();
+                    },
+                    onTapCancel: () {
+                      _buttonAnimationController.reverse();
+                    },
+                    child: TextButton.icon(
+                      onPressed: () {
+                        // Mark all as read functionality - actually update the state
+                        _markAllAsRead();
 
-              // Clear previous and show new snackbar
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      const Icon(Icons.done_all, color: Colors.white, size: 20),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'All notifications marked as read',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                        // Clear previous and show new snackbar
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(
+                                  Icons.done_all,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text(
+                                    'All notifications marked as read',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF71BB7B),
+                            duration: const Duration(seconds: 3),
+                            behavior: SnackBarBehavior.floating,
+                            margin: const EdgeInsets.all(16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              textColor: Colors.white,
+                              onPressed: () {
+                                // Handle undo action - restore all to unread
+                                _undoMarkAllAsRead();
+                              },
+                            ),
                           ),
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        overlayColor:
+                            Colors.transparent, // Removes default splash
+                      ),
+                      icon: const Icon(Icons.done_all, size: 18),
+                      label: const Text(
+                        'Mark as Read',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                  backgroundColor: const Color(0xFF71BB7B),
-                  duration: const Duration(seconds: 3),
-                  behavior: SnackBarBehavior.floating,
-                  margin: const EdgeInsets.all(16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  action: SnackBarAction(
-                    label: 'Undo',
-                    textColor: Colors.white,
-                    onPressed: () {
-                      // Handle undo action - restore all to unread
-                      _undoMarkAllAsRead();
-                    },
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.done_all, color: Colors.white),
-            tooltip: 'Mark all as read',
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -849,7 +821,13 @@ class _NotificationPageState extends State<NotificationPage>
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: _filters.map(_buildFilterChip).toList(),
+              children:
+                  _filters
+                      .map(
+                        (filter) =>
+                            _buildFilterChip(filter, notificationProvider),
+                      )
+                      .toList(),
             ),
           ),
 
@@ -857,7 +835,7 @@ class _NotificationPageState extends State<NotificationPage>
           Expanded(
             child:
                 filteredNotifications.isEmpty
-                    ? _buildEmptyState()
+                    ? _buildEmptyState(_selectedFilter)
                     : ListView.builder(
                       padding: const EdgeInsets.only(bottom: 16),
                       itemCount: filteredNotifications.length,
@@ -939,8 +917,32 @@ class _NotificationPageState extends State<NotificationPage>
                             );
                           },
                           onAction: () {
-                            // Navigate directly to map tab (index 1)
-                            widget.onNavigate?.call(1);
+                            // Handle view location action
+                            if (notification.extraData != null &&
+                                notification.extraData!['coordinates'] !=
+                                    null) {
+                              final coords =
+                                  notification.extraData!['coordinates']
+                                      as Map<String, dynamic>;
+                              final location = LatLng(
+                                coords['lat'].toDouble(),
+                                coords['lng'].toDouble(),
+                              );
+
+                              // Navigate to map with location
+                              if (widget.onLocationNavigate != null) {
+                                widget.onLocationNavigate!(
+                                  location,
+                                  notification.name,
+                                );
+                              } else {
+                                // Fallback to just navigate to map tab
+                                widget.onNavigate?.call(1);
+                              }
+                            } else {
+                              // Fallback to just navigate to map tab
+                              widget.onNavigate?.call(1);
+                            }
                           },
                         );
                       },
@@ -951,7 +953,7 @@ class _NotificationPageState extends State<NotificationPage>
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(String selectedFilter) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -970,7 +972,7 @@ class _NotificationPageState extends State<NotificationPage>
           ),
           const SizedBox(height: 24),
           Text(
-            'No ${_selectedFilter.toLowerCase()} notifications',
+            'No ${selectedFilter.toLowerCase()} notifications',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,

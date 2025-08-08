@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:neighborly/app_routes.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -67,7 +66,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       if (mounted) {
         // Mark that splash has been seen
         ref.read(hasSeenSplashProvider.notifier).state = true;
-        context.go('/auth');
+        //context.go('/auth');
       }
     }
   }

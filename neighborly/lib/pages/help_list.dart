@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../providers/help_request_provider.dart';
 
 class HelpListPage extends StatefulWidget {
   const HelpListPage({super.key});
@@ -31,124 +33,7 @@ class _HelpListPageState extends State<HelpListPage>
   ];
   final List<String> _urgencyLevels = ['All', 'Emergency', 'Urgent', 'General'];
 
-  final List<HelpRequest> _communityHelps = [
-    HelpRequest(
-      id: '1',
-      title: 'Emergency Medical Help',
-      description:
-          'My elderly neighbor has fallen and needs immediate medical attention. Please help!',
-      helpType: 'Medical',
-      urgency: 'Emergency',
-      location: 'Dhanmondi 15, Dhaka',
-      distance: '0.2 km',
-      timePosted: '5 min ago',
-      requesterName: 'Sarah Ahmed',
-      requesterImage: 'assets/images/Image1.jpg',
-      contactNumber: '+880171234567',
-      isResponded: false,
-      responderCount: 0,
-    ),
-    HelpRequest(
-      id: '2',
-      title: 'House Fire Alert',
-      description:
-          'There\'s a fire in building 23. Fire service has been called but need community help for evacuation.',
-      helpType: 'Fire',
-      urgency: 'Emergency',
-      location: 'Gulshan 2, Dhaka',
-      distance: '1.5 km',
-      timePosted: '8 min ago',
-      requesterName: 'Karim Hassan',
-      requesterImage: 'assets/images/Image2.jpg',
-      contactNumber: '+880171234568',
-      isResponded: true,
-      responderCount: 3,
-    ),
-    HelpRequest(
-      id: '3',
-      title: 'Grocery Shopping Help',
-      description:
-          'I\'m sick and unable to go out. Need someone to buy groceries for my family.',
-      helpType: 'Grocery',
-      urgency: 'Urgent',
-      location: 'Dhanmondi 27, Dhaka',
-      distance: '0.8 km',
-      timePosted: '25 min ago',
-      requesterName: 'Fatima Khan',
-      requesterImage: 'assets/images/Image3.jpg',
-      contactNumber: '+880171234569',
-      isResponded: false,
-      responderCount: 1,
-    ),
-    HelpRequest(
-      id: '4',
-      title: 'Furniture Moving',
-      description:
-          'Need help moving furniture to the 4th floor. Heavy items involved.',
-      helpType: 'Shifting Furniture',
-      urgency: 'General',
-      location: 'Bashundhara R/A, Dhaka',
-      distance: '3.2 km',
-      timePosted: '1 hour ago',
-      requesterName: 'Abdul Rahman',
-      requesterImage: 'assets/images/Image1.jpg',
-      contactNumber: '+880171234570',
-      isResponded: false,
-      responderCount: 2,
-    ),
-    HelpRequest(
-      id: '5',
-      title: 'Traffic Jam Update',
-      description:
-          'Major accident on Mirpur road. Traffic completely blocked. Find alternative routes.',
-      helpType: 'Traffic Update',
-      urgency: 'Urgent',
-      location: 'Mirpur 10, Dhaka',
-      distance: '5.1 km',
-      timePosted: '45 min ago',
-      requesterName: 'Nasir Ahmed',
-      requesterImage: 'assets/images/Image2.jpg',
-      contactNumber: '+880171234571',
-      isResponded: true,
-      responderCount: 5,
-    ),
-  ];
-
-  final List<HelpRequest> _myHelps = [
-    HelpRequest(
-      id: '6',
-      title: 'Looking for Tutoring Help',
-      description:
-          'Need a math tutor for my 10th grade son. Preferably someone nearby.',
-      helpType: 'General',
-      urgency: 'General',
-      location: 'Dhanmondi 15, Dhaka',
-      distance: '0 km',
-      timePosted: '2 hours ago',
-      requesterName: 'Ali Rahman',
-      requesterImage: 'assets/images/dummy.png',
-      contactNumber: '+880171234572',
-      isResponded: false,
-      responderCount: 0,
-    ),
-    HelpRequest(
-      id: '7',
-      title: 'Pet Care While Away',
-      description:
-          'Going out of town for 3 days. Need someone to take care of my cat.',
-      helpType: 'General',
-      urgency: 'Urgent',
-      location: 'Dhanmondi 15, Dhaka',
-      distance: '0 km',
-      timePosted: '1 day ago',
-      requesterName: 'Ali Rahman',
-      requesterImage: 'assets/images/dummy.png',
-      contactNumber: '+880171234572',
-      isResponded: true,
-      responderCount: 2,
-    ),
-  ];
-
+  // Initialize with some default help requests for demo
   @override
   void initState() {
     super.initState();
@@ -166,7 +51,6 @@ class _HelpListPageState extends State<HelpListPage>
     );
 
     _headerAnimationController.forward();
-    _sortHelpsByUrgency();
   }
 
   @override
@@ -177,23 +61,7 @@ class _HelpListPageState extends State<HelpListPage>
     super.dispose();
   }
 
-  void _sortHelpsByUrgency() {
-    final urgencyPriority = {'Emergency': 0, 'Urgent': 1, 'General': 2};
-
-    _communityHelps.sort((a, b) {
-      int priorityA = urgencyPriority[a.urgency] ?? 3;
-      int priorityB = urgencyPriority[b.urgency] ?? 3;
-      return priorityA.compareTo(priorityB);
-    });
-
-    _myHelps.sort((a, b) {
-      int priorityA = urgencyPriority[a.urgency] ?? 3;
-      int priorityB = urgencyPriority[b.urgency] ?? 3;
-      return priorityA.compareTo(priorityB);
-    });
-  }
-
-  List<HelpRequest> _getFilteredHelps(List<HelpRequest> helps) {
+  List<HelpRequestData> _getFilteredHelps(List<HelpRequestData> helps) {
     return helps.where((help) {
       bool matchesSearch =
           _searchQuery.isEmpty ||
@@ -401,7 +269,7 @@ class _HelpListPageState extends State<HelpListPage>
     );
   }
 
-  Widget _buildHelpCard(HelpRequest help, bool isMyHelp) {
+  Widget _buildHelpCard(HelpRequestData help, bool isMyHelp) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -695,7 +563,7 @@ class _HelpListPageState extends State<HelpListPage>
     );
   }
 
-  Widget _buildHelpList(List<HelpRequest> helps, bool isMyHelp) {
+  Widget _buildHelpList(List<HelpRequestData> helps, bool isMyHelp) {
     final filteredHelps = _getFilteredHelps(helps);
 
     if (filteredHelps.isEmpty) {
@@ -742,7 +610,7 @@ class _HelpListPageState extends State<HelpListPage>
     );
   }
 
-  void _respondToHelp(HelpRequest help) {
+  void _respondToHelp(HelpRequestData help) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -812,10 +680,15 @@ class _HelpListPageState extends State<HelpListPage>
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        setState(() {
-                          help.isResponded = true;
-                          help.responderCount++;
-                        });
+                        final helpProvider = Provider.of<HelpRequestProvider>(
+                          context,
+                          listen: false,
+                        );
+                        helpProvider.updateHelpRequest(
+                          help.id,
+                          isResponded: true,
+                          responderCount: help.responderCount + 1,
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -846,7 +719,7 @@ class _HelpListPageState extends State<HelpListPage>
     );
   }
 
-  void _showHelpDetails(HelpRequest help) {
+  void _showHelpDetails(HelpRequestData help) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1199,8 +1072,17 @@ class _HelpListPageState extends State<HelpListPage>
                 children: [
                   const Icon(Icons.public),
                   const SizedBox(width: 8),
-                  Text(
-                    'Community (${_getFilteredHelps(_communityHelps).length})',
+                  Consumer<HelpRequestProvider>(
+                    builder: (context, helpProvider, child) {
+                      final communityHelps = helpProvider.getFilteredHelps(
+                        helpType: _selectedHelpType,
+                        urgency: _selectedUrgency,
+                        searchQuery: _searchQuery,
+                        nearbyOnly: _nearbyOnly,
+                        isMyHelp: false,
+                      );
+                      return Text('Community (${communityHelps.length})');
+                    },
                   ),
                 ],
               ),
@@ -1211,7 +1093,12 @@ class _HelpListPageState extends State<HelpListPage>
                 children: [
                   const Icon(Icons.person),
                   const SizedBox(width: 8),
-                  Text('My Requests (${_myHelps.length})'),
+                  Consumer<HelpRequestProvider>(
+                    builder: (context, helpProvider, child) {
+                      final myHelps = helpProvider.myHelps;
+                      return Text('My Requests (${myHelps.length})');
+                    },
+                  ),
                 ],
               ),
             ),
@@ -1222,48 +1109,35 @@ class _HelpListPageState extends State<HelpListPage>
         children: [
           _buildFilterSection(),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildHelpList(_communityHelps, false),
-                _buildHelpList(_myHelps, true),
-              ],
+            child: Consumer<HelpRequestProvider>(
+              builder: (context, helpProvider, child) {
+                final communityHelps = helpProvider.getFilteredHelps(
+                  helpType: _selectedHelpType,
+                  urgency: _selectedUrgency,
+                  searchQuery: _searchQuery,
+                  nearbyOnly: _nearbyOnly,
+                  isMyHelp: false,
+                );
+                final myHelps = helpProvider.getFilteredHelps(
+                  helpType: _selectedHelpType,
+                  urgency: _selectedUrgency,
+                  searchQuery: _searchQuery,
+                  nearbyOnly: _nearbyOnly,
+                  isMyHelp: true,
+                );
+
+                return TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildHelpList(communityHelps, false),
+                    _buildHelpList(myHelps, true),
+                  ],
+                );
+              },
             ),
           ),
         ],
       ),
     );
   }
-}
-
-class HelpRequest {
-  final String id;
-  final String title;
-  final String description;
-  final String helpType;
-  final String urgency;
-  final String location;
-  final String distance;
-  final String timePosted;
-  final String requesterName;
-  final String requesterImage;
-  final String contactNumber;
-  bool isResponded;
-  int responderCount;
-
-  HelpRequest({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.helpType,
-    required this.urgency,
-    required this.location,
-    required this.distance,
-    required this.timePosted,
-    required this.requesterName,
-    required this.requesterImage,
-    required this.contactNumber,
-    required this.isResponded,
-    required this.responderCount,
-  });
 }

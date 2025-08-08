@@ -3,7 +3,7 @@ import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_card.dart';
 import 'package:neighborly/components/comment_tree.dart';
-import 'package:neighborly/functions/comment_state.dart';
+import 'package:neighborly/functions/comment_notifier.dart';
 import 'package:neighborly/functions/fetchData.dart';
 
 final Map<int, GlobalKey> commentKeys = {};
@@ -19,7 +19,7 @@ final commentFocusNodeProvider = Provider<FocusNode>((ref) {
 final hintTextProvider = StateProvider<String>((ref) => '');
 
 class BottomCommentSheet extends ConsumerStatefulWidget {
-  final int postID;
+  final String postID;
   final ScrollController? scrollController;
   const BottomCommentSheet({
     super.key,
@@ -88,7 +88,7 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
   }
 }
 
-void showCommentBox(BuildContext context, WidgetRef ref, int postId) {
+void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
   bool canSend = false;
   ref.read(hintTextProvider.notifier).state = ""; // Reset reply target
   showModalBottomSheet(

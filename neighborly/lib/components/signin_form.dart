@@ -1,14 +1,11 @@
-import 'dart:convert';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:go_router/go_router.dart';
-import 'package:neighborly/app_routes.dart';
-import 'package:neighborly/functions/init_pageval.dart';
+import 'package:neighborly/functions/valid_email.dart';
 import 'package:neighborly/pages/authPage.dart';
-import 'package:http/http.dart' as http;
+
+bool rememberMe = true;
 
 class SigninForm extends ConsumerStatefulWidget {
   final String title;
@@ -19,51 +16,32 @@ class SigninForm extends ConsumerStatefulWidget {
 
 class _SigninFormState extends ConsumerState<SigninForm> {
   bool _obscurePassword = true;
-  bool _rememberMe = false;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
+  String email = '';
+  String pswd = '';
   bool _isEmailFocused = false;
   bool _isPasswordFocused = false;
 
-  Future<bool> fetchData() async {
-    final url = Uri.parse('http://192.168.0.101:4000/api/test');
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "email": _emailController.text,
-          "password": _passwordController.text,
-        }),
+  Future<void> onTapSignin(BuildContext context) async {
+    email = _emailController.text.trim();
+    pswd = _passwordController.text.trim();
+    if (email.isEmpty || pswd.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All fields must be filled!')),
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        // print('Message: ${data['message']}');
-        return true;
-      } else {
-        //print('Error: ${response.statusCode}');
-        return false;
-      }
-    } catch (e) {
-      //print('Caught error: $e');
-      return false;
+      return;
+    } else if (!isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email!')),
+      );
+      return;
     }
-  }
-
-  void onTapSignin(BuildContext context) async {
-    final success = true; //await fetchData();
+    final authNotifier = ref.read(authUserProvider.notifier);
+    await authNotifier.userAuthentication(email: email, password: pswd);
     if (!context.mounted) return;
-    if (success) {
-      ref.read(signedInProvider.notifier).state = true;
-      context.go('/appShell');
-      initPageVal(ref);
-    } else {
-      print("Login failed. Please check your credentials.");
-    }
   }
 
   @override
@@ -90,8 +68,7 @@ class _SigninFormState extends ConsumerState<SigninForm> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget buildSignInForm(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,7 +193,7 @@ class _SigninFormState extends ConsumerState<SigninForm> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             GestureDetector(
-              onTap: () => setState(() => _rememberMe = !_rememberMe),
+              onTap: () => setState(() => rememberMe = !rememberMe),
               behavior: HitTestBehavior.opaque,
               child: Row(
                 children: [
@@ -225,12 +202,12 @@ class _SigninFormState extends ConsumerState<SigninForm> {
                     height: 18.0,
                     decoration: BoxDecoration(
                       color:
-                          _rememberMe ? Color(0xFF71BB7B) : Colors.transparent,
+                          rememberMe ? Color(0xFF71BB7B) : Colors.transparent,
                       border: Border.all(color: Color(0xFF71BB7B), width: 2.0),
                       borderRadius: BorderRadius.circular(3.0),
                     ),
                     child:
-                        _rememberMe
+                        rememberMe
                             ? Icon(Icons.check, color: Colors.white, size: 12.0)
                             : null,
                   ),
@@ -356,6 +333,36 @@ class _SigninFormState extends ConsumerState<SigninForm> {
           ),
         ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asyncAuthUser = ref.watch(authUserProvider);
+    return asyncAuthUser.when(
+      data: (isAuthenticated) {
+        if (!isAuthenticated) {
+          return buildSignInForm(context);
+        } else {
+          return SizedBox.shrink();
+        }
+      },
+      loading: () {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          alignment: Alignment.center,
+          child: const CircularProgressIndicator(color: Colors.green),
+        );
+      },
+      error: (error, stackTrace) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid user credentials!')),
+          );
+          ref.read(authUserProvider.notifier).initState();
+        });
+        return buildSignInForm(context);
+      },
     );
   }
 }

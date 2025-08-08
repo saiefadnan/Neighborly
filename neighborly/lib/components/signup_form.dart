@@ -2,10 +2,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:go_router/go_router.dart';
-import 'package:neighborly/app_routes.dart';
-import 'package:neighborly/functions/init_pageval.dart';
+import 'package:neighborly/functions/valid_email.dart';
 import 'package:neighborly/pages/authPage.dart';
+
 
 class SignupForm extends ConsumerStatefulWidget {
   final String title;
@@ -33,10 +32,47 @@ class _SignupFormState extends ConsumerState<SignupForm> {
   bool _isPasswordFocused = false;
   bool _isConfirmPasswordFocused = false;
 
-  void onTapSignup(BuildContext context) {
-    ref.read(signedInProvider.notifier).state = true;
-    context.go('/appShell');
-    initPageVal(ref);
+  String name = '', email = '', pswd = '', cnfrmPswd = '';
+
+  void onTapSignup(BuildContext context) async {
+    name = _usernameController.text.trim();
+    email = _emailController.text.trim();
+    pswd = _passwordController.text.trim();
+    cnfrmPswd = _confirmPasswordController.text.trim();
+    if (name.isEmpty || email.isEmpty || pswd.isEmpty || cnfrmPswd.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All fields must be filled!')),
+      );
+      return;
+    } else if (!isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email')),
+      );
+      return;
+    } else if (name.length < 3) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name is too short!')));
+      return;
+    } else if (pswd.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Password must be at least of 6 characters long!"),
+        ),
+      );
+      return;
+    } else if (pswd != cnfrmPswd) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Passwords don't match. Try again!")),
+      );
+      return;
+    }
+    final authNotifier = ref.read(authUserProvider.notifier);
+    await authNotifier.userAuthentication(
+      name: name,
+      email: email,
+      password: pswd,
+    );
   }
 
   @override
@@ -77,8 +113,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget buildSignUpForm(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,6 +421,36 @@ class _SignupFormState extends ConsumerState<SignupForm> {
           ),
         ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asyncAuthUser = ref.watch(authUserProvider);
+    return asyncAuthUser.when(
+      data: (isAuthenticated) {
+        if (!isAuthenticated) {
+          return buildSignUpForm(context);
+        } else {
+          return SizedBox.shrink();
+        }
+      },
+      loading: () {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          alignment: Alignment.center,
+          child: const CircularProgressIndicator(color: Colors.green),
+        );
+      },
+      error: (error, stackTrace) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sign in failed! Try again.')),
+          );
+          ref.read(authUserProvider.notifier).initState();
+        });
+        return buildSignUpForm(context);
+      },
     );
   }
 }

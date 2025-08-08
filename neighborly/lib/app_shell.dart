@@ -18,6 +18,7 @@ class _AppShellState extends State<AppShell> {
     initialPage: 2,
   ); // Start from home (middle)
   int _currentIndex = 2; // Start from home
+  bool _shouldAutoOpenHelpDrawer = false; // Flag for auto-opening help drawer
 
   final GlobalKey<CurvedNavigationBarState> _navKey = GlobalKey();
 
@@ -32,7 +33,16 @@ class _AppShellState extends State<AppShell> {
   void _onTap(int index) {
     setState(() {
       _currentIndex = index;
+      _shouldAutoOpenHelpDrawer = false; // Reset flag
       _pageController.jumpToPage(index);
+    });
+  }
+
+  void _navigateToMapWithHelpDrawer() {
+    setState(() {
+      _currentIndex = 1; // Map page index
+      _shouldAutoOpenHelpDrawer = true; // Set flag to auto-open drawer
+      _pageController.jumpToPage(1);
     });
   }
 
@@ -47,29 +57,6 @@ class _AppShellState extends State<AppShell> {
         }
       },
       child: Scaffold(
-        /**appBar: AppBar(
-          backgroundColor: const Color(0xFF71BB7B),
-          title: Text(_appBarTitles[_currentIndex]),
-          actions: [
-            InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfilePage(title: 'Profile'),
-                  ),
-                );
-              },
-              child: const Padding(
-                padding: EdgeInsets.only(right: 12.0),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundImage: AssetImage('assets/images/dummy.png'),
-                ),
-              ),
-            ),
-          ],
-        ),**/
         body: PageView(
           controller: _pageController,
           physics: NeverScrollableScrollPhysics(),
@@ -78,10 +65,13 @@ class _AppShellState extends State<AppShell> {
           },
           children: [
             const HelpListPage(), // Index 0 - Help Requests
-            MapHomePage(), // Index 1 - Map
+            MapHomePage(
+              autoOpenHelpDrawer: _shouldAutoOpenHelpDrawer,
+            ), // Index 1 - Map
             HomePage(
               title: 'Home Page',
               onNavigate: _onTap,
+              onNavigateToMapWithHelp: _navigateToMapWithHelpDrawer,
             ), // Index 2 - Home (middle)
             const ForumPage(title: 'Community Hub'), // Index 3
             NotificationPage(

@@ -1,5 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:flutter_polls/flutter_polls.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown_widget/config/all.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 import 'package:like_button/like_button.dart';
 import 'package:readmore/readmore.dart';
@@ -49,6 +53,54 @@ class _PostCardState extends ConsumerState<PostCard> {
     return months[month - 1];
   }
 
+  Icon _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'urgent':
+        return const Icon(
+          Icons.schedule_outlined,
+          size: 16,
+          color: Colors.white,
+        );
+      case 'emergency':
+        return const Icon(
+          Icons.warning_amber_outlined,
+          size: 16,
+          color: Colors.white,
+        );
+      case 'ask':
+        return const Icon(Icons.help_outline, size: 16, color: Colors.white);
+      case 'news':
+        return const Icon(
+          Icons.newspaper_outlined,
+          size: 16,
+          color: Colors.white,
+        );
+      case 'general':
+      default:
+        return const Icon(
+          Icons.chat_bubble_outline,
+          size: 16,
+          color: Colors.white,
+        );
+    }
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'urgent':
+        return Colors.redAccent;
+      case 'emergency':
+        return Colors.deepOrange;
+      case 'ask':
+        return Colors.blueAccent;
+      case 'news':
+        return Colors.green;
+      case 'general':
+      default:
+        return Colors.teal; // <---- switched to teal here
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -86,7 +138,13 @@ class _PostCardState extends ConsumerState<PostCard> {
                       ),
                     ),
                     Text(
-                      _getFormattedTime(widget.post['timestamp']),
+                      widget.post['timestamp'] is Timestamp
+                          ? _getFormattedTime(
+                            (widget.post['timestamp'] as Timestamp)
+                                .toDate()
+                                .toIso8601String(),
+                          )
+                          : 'Just now', // fallback if null or still FieldValue
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontStyle: FontStyle.italic,
@@ -95,19 +153,48 @@ class _PostCardState extends ConsumerState<PostCard> {
                     ),
                   ],
                 ),
+                Spacer(),
+
+                Chip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _getCategoryIcon(widget.post['category']),
+                      const SizedBox(width: 6),
+                      Text(
+                        widget.post['category'].toString().toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: _getCategoryColor(
+                    widget.post['category'],
+                  ).toOpacity(0.75),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 12,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 24),
-
-            // Title
-            Text(
-              widget.post['title'],
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Colors.indigo[800],
-                fontSize: 22,
+            SizedBox(
+              width: MediaQuery.of(context).size.width,
+              child: Text(
+                widget.post['title'],
+                textAlign: TextAlign.start,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.indigo[800],
+                  fontSize: 22,
+                ),
               ),
             ),
+            // Title
             const SizedBox(height: 12),
 
             // Content with ReadMore
@@ -130,17 +217,17 @@ class _PostCardState extends ConsumerState<PostCard> {
             if (widget.post['imageUrl'] != null) ...[
               const SizedBox(height: 18),
               ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 child: Image.network(
                   widget.post['imageUrl'],
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
+                  // width: 300,
+                  // height: 300,
+                  // fit: BoxFit.cover,
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return SizedBox(
-                      width: double.infinity,
-                      height: 400,
+                      width: 300,
+                      height: 300,
                       child: Center(
                         child: CircularProgressIndicator(
                           value:
@@ -167,9 +254,35 @@ class _PostCardState extends ConsumerState<PostCard> {
                 ),
               ),
             ],
+            if (widget.post['imagePath'] != null &&
+                widget.post['imagePath'].isNotEmpty) ...[
+              const SizedBox(height: 18),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(File(widget.post['imagePath'])),
+              ),
+            ],
 
+            if (widget.post['poll'] != null) ...[
+              const SizedBox(height: 20),
+              FlutterPolls(
+                pollId: widget.post['postID'].toString(),
+                onVoted: (PollOption option, int selectedIndex) async {
+                  return true;
+                },
+                pollTitle: Text(widget.post['poll']['question']),
+                pollOptions:
+                    widget.post['poll']['options']
+                        .map<PollOption>(
+                          (option) => PollOption(
+                            title: Text(option['title']),
+                            votes: option['votes'],
+                          ),
+                        )
+                        .toList(),
+              ),
+            ],
             const SizedBox(height: 20),
-
             // Actions row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -177,7 +290,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                 Row(
                   children: [
                     LikeButton(
-                      isLiked: true,
+                      isLiked: false,
                       likeCount: widget.post['reacts'],
                       countPostion: CountPostion.right,
                       size: 26,

@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:neighborly/app_routes.dart';
 import 'package:neighborly/pages/forum.dart';
-import 'package:neighborly/pages/notification.dart';
-import 'package:neighborly/pages/profile.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
-import 'package:neighborly/pages/community_list.dart';
-import 'package:neighborly/pages/help_list.dart';
-import 'package:neighborly/pages/help_history.dart';
-import 'package:neighborly/pages/report_feedback.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MapHomePage extends ConsumerStatefulWidget {
-  const MapHomePage({super.key});
+  const MapHomePage({
+    super.key,
+    this.autoOpenHelpDrawer = false,
+    this.targetLocation,
+    this.targetLocationName,
+  });
+
+  final bool autoOpenHelpDrawer;
+  final LatLng? targetLocation;
+  final String? targetLocationName;
 
   @override
   _MapHomePageState createState() => _MapHomePageState();
@@ -70,6 +73,29 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
 
     _headerAnimationController.forward();
     _createMarkers();
+
+    // Auto-open help drawer if requested
+    if (widget.autoOpenHelpDrawer) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Add a small delay to ensure the page is fully loaded
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            _openHelpRequestDrawer();
+          }
+        });
+      });
+    }
+
+    // Handle target location navigation
+    if (widget.targetLocation != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted && _mapController != null) {
+            _navigateToTargetLocation();
+          }
+        });
+      });
+    }
   }
 
   @override
@@ -81,6 +107,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   Future<void> _createMarkers() async {
     Set<Marker> markers = {};
 
+    // Add regular help request markers
     for (int idx = 0; idx < helpRequests.length; idx++) {
       Map<String, dynamic> req = helpRequests[idx];
 
@@ -102,9 +129,82 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       );
     }
 
+    // Add target location marker if provided
+    if (widget.targetLocation != null) {
+      BitmapDescriptor targetIcon = await BitmapDescriptor.fromAssetImage(
+        const ImageConfiguration(size: Size(48, 48)),
+        'assets/images/dummy.png', // You can replace this with a special icon
+      ).catchError(
+        (_) => BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+      );
+
+      markers.add(
+        Marker(
+          markerId: const MarkerId('target_location'),
+          position: widget.targetLocation!,
+          infoWindow: InfoWindow(
+            title: widget.targetLocationName ?? 'Selected Location',
+            snippet: 'Notification target location',
+          ),
+          icon: targetIcon,
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'You are viewing ${widget.targetLocationName ?? "the selected location"}',
+                ),
+                backgroundColor: const Color(0xFF71BB7B),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
     setState(() {
       _markers = markers;
     });
+  }
+
+  Future<void> _navigateToTargetLocation() async {
+    if (widget.targetLocation != null && _mapController != null) {
+      await _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: widget.targetLocation!,
+            zoom: 16.0, // Zoom closer to show the specific location
+          ),
+        ),
+      );
+
+      // Show a snackbar to indicate navigation
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.location_on, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Showing location: ${widget.targetLocationName ?? "Selected location"}',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF71BB7B),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<BitmapDescriptor> _createCustomMarker(String type) async {
@@ -128,148 +228,403 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => Container(
-            height: MediaQuery.of(context).size.height * 0.6,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(25),
-                topRight: Radius.circular(25),
-              ),
-            ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.8,
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Handle bar
-                Container(
-                  margin: EdgeInsets.only(top: 10),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getTypeColor(helpData['type']),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                helpData['type'],
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                            Spacer(),
-                            Text(
-                              helpData['time'] ?? '',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 15),
-                        Text(
-                          helpData['title'] ?? helpData['type'],
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          helpData['description'],
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[700],
-                            height: 1.5,
-                          ),
-                        ),
-                        SizedBox(height: 30),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                  // Add chat functionality here
-                                },
-                                icon: Icon(Icons.message, color: Colors.white),
-                                label: Text('Message'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFF71BB7B),
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(vertical: 15),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 15),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                  // Add offer help functionality here
-                                },
-                                icon: Icon(
-                                  Icons.volunteer_activism,
-                                  color: Color(0xFF71BB7B),
-                                ),
-                                label: Text('Offer Help'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Color(0xFF71BB7B),
-                                  padding: EdgeInsets.symmetric(vertical: 15),
-                                  side: BorderSide(color: Color(0xFF71BB7B)),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
+                const SizedBox(height: 20),
+
+                // Header
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/images/dummy.png', // Default user image
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            helpData['username'] ?? 'Anonymous User',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Dhanmondi Area', // Default location
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getUrgencyColor(helpData['type']),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        helpData['type'],
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Help Type
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF71BB7B).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getHelpTypeIcon(helpData['type']),
+                        size: 18,
+                        color: const Color(0xFF71BB7B),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        helpData['type'],
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF71BB7B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Title
+                Text(
+                  helpData['title'] ?? helpData['type'],
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2C3E50),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Description
+                Text(
+                  'Description:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  helpData['description'],
+                  style: const TextStyle(fontSize: 14, height: 1.4),
+                ),
+                const SizedBox(height: 20),
+
+                // Details
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time,
+                            size: 20,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Posted: ${helpData['time'] ?? 'Just now'}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 20,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Dhanmondi Area (0.5 km away)',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.phone, size: 20, color: Colors.grey),
+                          const SizedBox(width: 12),
+                          Text(
+                            helpData['phone'] ?? '+880 1XXX-XXXXXX',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          const Spacer(),
+                          InkWell(
+                            onTap: () {
+                              final phoneNumber = helpData['phone'] ?? '';
+                              if (phoneNumber.isNotEmpty) {
+                                _makePhoneCall(phoneNumber);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('No phone number available'),
+                                  ),
+                                );
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF71BB7B).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.call,
+                                size: 16,
+                                color: Color(0xFF71BB7B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Response status
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.people, color: Colors.blue),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${(helpData['responders'] ?? 2)} people are responding to this request',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Action button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      // Add respond functionality here
+                    },
+                    icon: const Icon(Icons.reply),
+                    label: const Text('Respond to Help Request'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF71BB7B),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
               ],
             ),
           ),
+        );
+      },
     );
   }
 
-  Color _getTypeColor(String type) {
-    switch (type) {
-      case "Emergency":
+  Color _getUrgencyColor(String urgency) {
+    switch (urgency) {
+      case 'Emergency':
         return Colors.red;
-      case "Urgent":
+      case 'Urgent':
         return Colors.orange;
+      case 'General':
+        return Colors.green;
       default:
-        return Color(0xFF71BB7B);
+        return Colors.grey;
     }
+  }
+
+  IconData _getHelpTypeIcon(String helpType) {
+    switch (helpType) {
+      case 'Medical':
+        return Icons.local_hospital;
+      case 'Fire':
+        return Icons.local_fire_department;
+      case 'Grocery':
+        return Icons.shopping_cart;
+      case 'Shifting House':
+        return Icons.home;
+      case 'Shifting Furniture':
+        return Icons.chair;
+      case 'Traffic Update':
+        return Icons.traffic;
+      case 'Route':
+        return Icons.directions;
+      case 'Lost Person':
+        return Icons.person_search;
+      case 'Lost Item/Pet':
+        return Icons.pets;
+      case 'Emergency':
+        return Icons.emergency;
+      case 'Urgent':
+        return Icons.priority_high;
+      case 'General':
+        return Icons.help;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    // Clean and format the phone number
+    String cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+
+    // Ensure the number starts with + for international format
+    if (!cleanedNumber.startsWith('+')) {
+      // If it's a Bangladesh number starting with 01, add country code
+      if (cleanedNumber.startsWith('01')) {
+        cleanedNumber = '+880${cleanedNumber.substring(1)}';
+      } else if (!cleanedNumber.startsWith('880') &&
+          cleanedNumber.length >= 10) {
+        // Add + if it doesn't have it
+        cleanedNumber = '+$cleanedNumber';
+      }
+    }
+
+    final Uri phoneUri = Uri(scheme: 'tel', path: cleanedNumber);
+    print('Attempting to call: $cleanedNumber');
+    print('URI: $phoneUri');
+
+    try {
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(
+          phoneUri,
+          mode: LaunchMode.externalApplication, // Force external app
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'No phone app found to make call to $cleanedNumber',
+              ),
+              action: SnackBarAction(
+                label: 'Copy Number',
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: cleanedNumber));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Phone number copied to clipboard'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Phone call error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Unable to make phone call. Please dial manually: $cleanedNumber',
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
+  void _openHelpRequestDrawer() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder:
+          (_) => HelpRequestDrawer(
+            onSubmit: (helpData) {
+              setState(() {
+                helpRequests.add(helpData);
+                _createMarkers();
+              });
+            },
+          ),
+    );
   }
 
   @override
@@ -358,12 +713,20 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
               )
               : GoogleMap(
                 initialCameraPosition: CameraPosition(
-                  target: LatLng(23.8103, 90.4125),
-                  zoom: 14.0,
+                  target: widget.targetLocation ?? LatLng(23.8103, 90.4125),
+                  zoom: widget.targetLocation != null ? 16.0 : 14.0,
                 ),
                 markers: _markers,
                 onMapCreated: (GoogleMapController controller) {
                   _mapController = controller;
+                  // If we have a target location, navigate to it after map is created
+                  if (widget.targetLocation != null) {
+                    Future.delayed(const Duration(milliseconds: 500), () {
+                      if (mounted) {
+                        _navigateToTargetLocation();
+                      }
+                    });
+                  }
                 },
                 mapType: MapType.normal,
                 myLocationEnabled: true,
@@ -402,24 +765,10 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           ),
           SizedBox(height: 10),
 
-          // ➕ Add Help Request (Unchanged)
+          // ➕ Add Help Request (Updated to use new method)
           FloatingActionButton(
             heroTag: "addHelp",
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder:
-                    (_) => HelpRequestDrawer(
-                      onSubmit: (helpData) {
-                        setState(() {
-                          helpRequests.add(helpData);
-                          _createMarkers();
-                        });
-                      },
-                    ),
-              );
-            },
+            onPressed: _openHelpRequestDrawer,
             backgroundColor: const Color(0xFF71BB7B),
             foregroundColor: const Color(0xFFFAF4E8),
             tooltip: "Add Help Request",
@@ -468,190 +817,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
         ),
         backgroundColor: const Color(0xFFFAF4E8),
         foregroundColor: const Color.fromARGB(179, 0, 0, 0),
-        leading: Builder(
-          builder:
-              (context) => IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  Scaffold.of(context).openDrawer();
-                },
-              ),
-        ),
       ),
-      drawer: _buildDrawer(context, ref),
     );
   }
-}
-
-Widget _buildDrawer(BuildContext context, WidgetRef ref) {
-  String username = "Ali";
-  void signOut() {
-    ref.read(signedInProvider.notifier).state = false;
-    ref.read(hasSeenSplashProvider.notifier).state =
-        true; // Ensure direct auth access
-    context.go('/auth');
-  }
-
-  return Drawer(
-    backgroundColor: const Color(0xFF71BB7B),
-    child: Column(
-      children: [
-        GestureDetector(
-          onTap: () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ProfilePage(title: 'Profile'),
-              ),
-            );
-          },
-          child: DrawerHeader(
-            decoration: const BoxDecoration(color: Color(0xFF71BB7B)),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  radius: 30,
-                  backgroundImage: AssetImage('assets/images/dummy.png'),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Hello, $username',
-                    style: const TextStyle(
-                      color: Color(0xFFFAF4E8),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.notifications,
-                  color: Color(0xFFFAF4E8),
-                ),
-                title: const Text('Notifications'),
-                textColor: const Color(0xFFFAF4E8),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              const NotificationPage(title: 'Notifications'),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.people, color: Color(0xFFFAF4E8)),
-                title: const Text('Community List'),
-                textColor: const Color(0xFFFAF4E8),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CommunityListPage(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.list_alt, color: Color(0xFFFAF4E8)),
-                title: const Text('Help Requests'),
-                textColor: const Color(0xFFFAF4E8),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const HelpListPage(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.history, color: Color(0xFFFAF4E8)),
-                title: const Text('Help History'),
-                textColor: const Color(0xFFFAF4E8),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const HelpHistoryPage(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.feedback, color: Color(0xFFFAF4E8)),
-                title: const Text('Report & Feedback'),
-                textColor: const Color(0xFFFAF4E8),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ReportFeedbackPage(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-        const Divider(
-          color: Color(0xFFFAF4E8),
-          thickness: 1,
-          indent: 16,
-          endIndent: 16,
-        ),
-        ListTile(
-          leading: const Icon(Icons.logout, color: Color(0xFFFAF4E8)),
-          title: const Text('Log Out'),
-          textColor: const Color(0xFFFAF4E8),
-          onTap: () {
-            showDialog(
-              context: context,
-              builder:
-                  (context) => AlertDialog(
-                    title: const Text("Confirm Logout"),
-                    content: const Text("Are you sure you want to log out?"),
-                    actions: [
-                      TextButton(
-                        child: const Text(
-                          "Cancel",
-                          style: TextStyle(color: Color(0xFF71BB7B)),
-                        ),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF71BB7B),
-                        ),
-                        onPressed: signOut,
-                        child: const Text(
-                          "Log Out",
-                          style: TextStyle(color: Color(0xFFFAF4E8)),
-                        ),
-                      ),
-                    ],
-                  ),
-            );
-          },
-        ),
-      ],
-    ),
-  );
 }

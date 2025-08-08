@@ -1,34 +1,38 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:neighborly/appShell.dart';
+import 'package:neighborly/app_shell.dart';
 import 'package:neighborly/pages/add_post.dart';
 import 'package:neighborly/pages/authPage.dart';
+import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/pages/splash_screen.dart';
 
-final signedInProvider = StateProvider<bool>((ref) => false);
+final authStateChanges = StreamProvider<User?>(
+  (ref) => FirebaseAuth.instance.authStateChanges(),
+);
 final hasSeenSplashProvider = StateProvider<bool>((ref) => false);
 
-GoRouter createRouter(WidgetRef ref) {
-  final signedIn = ref.watch(signedInProvider);
+final goRouterProvider = Provider<GoRouter>((ref) {
+  //final authAsync = ref.watch(authStateChanges);
   final hasSeenSplash = ref.watch(hasSeenSplashProvider);
-
+  final verified = ref.watch(authUserProvider);
   return GoRouter(
     initialLocation: '/splash',
     redirect: (context, state) {
       final isGoingToSplash = state.uri.path == '/splash';
       final isGoingToAuth = state.uri.path == '/auth';
       final isGoingToAppShell = state.uri.path == '/appShell';
-
+      final isGoingToAddPost = state.uri.path == '/addPost';
+      final isGoingForum = state.uri.path == '/forum';
+      final signedIn = verified is AsyncData && verified.value == true;
       // If user is signed in but trying to go to auth or splash, redirect to appShell
       if (signedIn && (isGoingToAuth || isGoingToSplash)) {
         return '/appShell';
       }
-
       // If user is signed in and going to appShell, allow it
-      if (signedIn && isGoingToAppShell) {
+      if (signedIn && (isGoingToAppShell || isGoingToAddPost || isGoingForum)) {
         return null;
       }
-
       // First time app launch - show splash
       if (!hasSeenSplash && isGoingToSplash) {
         return null;
@@ -48,7 +52,6 @@ GoRouter createRouter(WidgetRef ref) {
       if (!signedIn && hasSeenSplash && !isGoingToAuth) {
         return '/auth';
       }
-
       return null;
     },
     routes: [
@@ -62,9 +65,14 @@ GoRouter createRouter(WidgetRef ref) {
       ),
       GoRoute(path: '/appShell', builder: (context, state) => AppShell()),
       GoRoute(
-        path: '/addpost',
-        builder: (context, state) => const AddPostPage(title: 'Post Submission'),
+        path: '/addPost',
+        builder:
+            (context, state) => const AddPostPage(title: 'Post Submission'),
+      ),
+      GoRoute(
+        path: '/forum',
+        builder: (context, state) => const ForumPage(title: 'Forum'),
       ),
     ],
   );
-}
+});
