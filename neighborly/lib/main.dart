@@ -20,7 +20,8 @@ void main() async {
   final helpRequestProvider = HelpRequestProvider();
   helpRequestProvider.initializeSampleData(); // Initialize with sample data
 
-  runApp(
+  runApp( 
+    
     provider.MultiProvider(
       providers: [
         provider.ChangeNotifierProvider(create: (_) => NotificationProvider()),

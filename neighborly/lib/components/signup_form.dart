@@ -2,9 +2,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:neighborly/components/snackbar.dart';
 import 'package:neighborly/functions/valid_email.dart';
 import 'package:neighborly/pages/authPage.dart';
-
 
 class SignupForm extends ConsumerStatefulWidget {
   final String title;
@@ -40,31 +40,22 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     pswd = _passwordController.text.trim();
     cnfrmPswd = _confirmPasswordController.text.trim();
     if (name.isEmpty || email.isEmpty || pswd.isEmpty || cnfrmPswd.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('All fields must be filled!')),
-      );
+      showSnackBarError(context, 'All fields must be filled!');
       return;
     } else if (!isValidEmail(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid email')),
-      );
+      showSnackBarError(context, 'Please enter a valid email');
       return;
     } else if (name.length < 3) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Name is too short!')));
+      showSnackBarError(context, 'Name is too short!');
       return;
     } else if (pswd.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Password must be at least of 6 characters long!"),
-        ),
+      showSnackBarError(
+        context,
+        "Password must be at least of 6 characters long!",
       );
       return;
     } else if (pswd != cnfrmPswd) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Passwords don't match. Try again!")),
-      );
+      showSnackBarError(context, "Passwords don't match. Try again!");
       return;
     }
     final authNotifier = ref.read(authUserProvider.notifier);
