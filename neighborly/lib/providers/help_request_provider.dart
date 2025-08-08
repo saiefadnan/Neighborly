@@ -355,7 +355,6 @@ class HelpRequestProvider with ChangeNotifier {
         coordinates: const LatLng(23.7600, 90.3980),
         responderCount: 12,
       ),
-      // Add some "My Requests" samples for Ali Rahman to test urgency colors
       HelpRequestData(
         id: 'my_sample_1',
         title: 'Emergency - Need immediate help!',
