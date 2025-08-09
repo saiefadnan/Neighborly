@@ -1,95 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
+//import 'package:image_picker/image_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'EditNotifications.dart';
 import 'PrivacyPolicyPage.dart';
 import 'EditInfosPage.dart';
 import 'SecurityPage.dart';
+import '../components/profile_header.dart';
 
-class CurvedHeaderClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    Path path = Path();
-    path.lineTo(0, size.height - 60);
-    path.quadraticBezierTo(
-      size.width / 2,
-      size.height,
-      size.width,
-      size.height - 60,
-    );
-    path.lineTo(size.width, 0);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
-}
-
-class ProfileAvatar extends StatefulWidget {
-  const ProfileAvatar({super.key});
-
-  @override
-  State<ProfileAvatar> createState() => _ProfileAvatarState();
-}
-
-//for profile pic changing..........................................................................................
-class _ProfileAvatarState extends State<ProfileAvatar> {
-  File? _imageFile;
-
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: 115,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircleAvatar(
-            radius: 54,
-            backgroundColor: Colors.white,
-            child: CircleAvatar(
-              radius: 50,
-              backgroundImage:
-                  _imageFile != null
-                      ? FileImage(_imageFile!)
-                      : const AssetImage('assets/images/dummy.png')
-                          as ImageProvider,
-            ),
-          ),
-          Positioned(
-            bottom: -6,
-            right: -4,
-            child: Material(
-              color: Colors.white,
-              shape: const CircleBorder(),
-              child: IconButton(
-                icon: const Icon(CupertinoIcons.camera, size: 22),
-                onPressed: _pickImage,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 //for profile pic changing..........................................................................................
 
 //profile page content.................................................................................................
@@ -120,40 +38,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
         children: [
           // Curved header background
           // Curved header and avatar overlap using Stack and ClipPath
-          Stack(
-            alignment: Alignment.topCenter,
-            children: [
-              // Curved header background (Changed to match clipper color)
-              ClipPath(
-                clipper: CurvedHeaderClipper(),
-                child: Container(
-                  height: 220,
-                  color: const Color(0xFFEFF3F9), // Keep this color
-                ),
-              ),
-              // Profile avatar with edit icon, overlapping the curve
-              ProfileAvatar(),
-            ],
-          ),
-          // Name and info
-          Transform.translate(
-            offset: const Offset(0, 03), // Adjusted offset to prevent overlap
-            child: Column(
-              children: const [
-                Text(
-                  'Mir Sayef',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Welldone@gmail.com | +016789011',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 12),
-              ],
-            ),
-          ),
+          // Curved header background
+          // Using the shared header component
+          ProfileHeader(showUserInfo: true),
           // Main card sections
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -167,8 +54,32 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => EditInfosPage(),
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  const EditInfosPage(),
+                          transitionsBuilder: (
+                            context,
+                            animation,
+                            secondaryAnimation,
+                            child,
+                          ) {
+                            const begin = Offset(1.0, 0.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+
+                            var tween = Tween(
+                              begin: begin,
+                              end: end,
+                            ).chain(CurveTween(curve: curve));
+                            var offsetAnimation = animation.drive(tween);
+
+                            return SlideTransition(
+                              position: offsetAnimation,
+                              child: child,
+                            );
+                          },
+                          transitionDuration: const Duration(milliseconds: 300),
                         ),
                       );
                     },
@@ -283,11 +194,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     VoidCallback? onTap,
   }) {
     return ListTile(
-      leading: Icon(icon),
+      leading: Icon(icon, size: 28, color: Colors.black, weight: 800),
       title: Text(title),
       trailing: trailing,
       onTap: onTap,
-      contentPadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       horizontalTitleGap: 10,
     );
   }

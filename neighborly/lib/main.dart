@@ -3,13 +3,30 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/app_routes.dart';
+import 'package:neighborly/firebase_options.dart';
 import 'package:neighborly/pages/authPage.dart';
+import 'package:neighborly/providers/notification_provider.dart';
+import 'package:neighborly/providers/help_request_provider.dart';
+import 'package:provider/provider.dart' as provider;
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(ProviderScope(child: const MyApp()));
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  print("✅ Firebase initialized!");
+  // Create providers
+  final helpRequestProvider = HelpRequestProvider();
+  helpRequestProvider.initializeSampleData(); // Initialize with sample data
+
+  runApp(
+    provider.MultiProvider(
+      providers: [
+        provider.ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        provider.ChangeNotifierProvider.value(value: helpRequestProvider),
+      ],
+      child: ProviderScope(child: const MyApp()),
+    ),
+  );
 }
 
 class MyApp extends ConsumerStatefulWidget {

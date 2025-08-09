@@ -1,9 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:neighborly/appShell.dart';
+import 'package:neighborly/app_shell.dart';
+import 'package:neighborly/models/event.dart';
+import 'package:neighborly/pages/addEvent.dart';
 import 'package:neighborly/pages/add_post.dart';
 import 'package:neighborly/pages/authPage.dart';
+import 'package:neighborly/pages/event_details.dart';
+import 'package:neighborly/pages/event_plan.dart';
 import 'package:neighborly/pages/splash_screen.dart';
 
 final authStateChanges = StreamProvider<User?>(
@@ -22,13 +26,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final isGoingToAuth = state.uri.path == '/auth';
       final isGoingToAppShell = state.uri.path == '/appShell';
       final isGoingToAddPost = state.uri.path == '/addPost';
+      final isGoingPlanEvent = state.uri.path == '/eventPlan';
+      final isGoingtoAddEvent = state.uri.path == '/addEvent';
+      final isGoingtoSeeEventDetails = state.uri.path == '/eventDetails';
       final signedIn = verified is AsyncData && verified.value == true;
       // If user is signed in but trying to go to auth or splash, redirect to appShell
       if (signedIn && (isGoingToAuth || isGoingToSplash)) {
         return '/appShell';
       }
       // If user is signed in and going to appShell, allow it
-      if (signedIn && (isGoingToAppShell || isGoingToAddPost)) {
+      if (signedIn &&
+          (isGoingToAppShell ||
+              isGoingToAddPost ||
+              isGoingPlanEvent ||
+              isGoingtoAddEvent ||
+              isGoingtoSeeEventDetails)) {
         return null;
       }
       // First time app launch - show splash
@@ -66,6 +78,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/addPost',
         builder:
             (context, state) => const AddPostPage(title: 'Post Submission'),
+      ),
+      GoRoute(
+        path: '/eventPlan',
+        builder: (context, state) => const EventPlan(title: 'Events'),
+      ),
+      GoRoute(
+        path: '/addEvent',
+        builder: (context, state) => const CreateEventPage(title: 'Upcoming Events'),
+      ),
+      GoRoute(
+        path: '/eventDetails',
+        builder: (context, state) {
+          final newEvent = state.extra as EventModel;
+          return EventDetailsPage(event: newEvent);
+        },
       ),
     ],
   );

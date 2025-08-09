@@ -13,6 +13,7 @@ import 'chat_screen.dart';
 import 'help_history.dart';
 import 'report_feedback.dart';
 import 'blood_donation.dart';
+import 'admin.dart';
 import 'admin_login.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -1242,6 +1243,20 @@ class _HomePageState extends ConsumerState<HomePage>
                               },
                             ),
                             _buildMenuItem(
+                              'Admin Dashboard',
+                              Icons.admin_panel_settings_rounded,
+                              Colors.deepPurple,
+                              () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const AdminHomePage(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildMenuItem(
                               'Forum',
                               Icons.forum_rounded,
                               Colors.indigo,
@@ -1611,252 +1626,246 @@ class _HomePageState extends ConsumerState<HomePage>
   }
 
   Widget _buildNotificationPreview() {
-  final List<String> names = [
-    "Ali",
-    "Sara",
-    "Ahmed",
-    "Fatima",
-    "Omar",
-  ];
-  final List<String> messages = [
-    "Wants Grocery",
-    "Wants Emergency Ambulance Service",
-    "Gave a traffic update",
-    "Has lost her pet cat named Sania",
-    "Needs help with trash pickup",
-  ];
-  final List<String> images = [
-    'assets/images/Image1.jpg',
-    'assets/images/Image2.jpg',
-    'assets/images/Image3.jpg',
-    'assets/images/Image1.jpg',
-    'assets/images/Image2.jpg',
-  ];
+    final List<String> names = ["Ali", "Sara", "Ahmed", "Fatima", "Omar"];
+    final List<String> messages = [
+      "Wants Grocery",
+      "Wants Emergency Ambulance Service",
+      "Gave a traffic update",
+      "Has lost her pet cat named Sania",
+      "Needs help with trash pickup",
+    ];
+    final List<String> images = [
+      'assets/images/Image1.jpg',
+      'assets/images/Image2.jpg',
+      'assets/images/Image3.jpg',
+      'assets/images/Image1.jpg',
+      'assets/images/Image2.jpg',
+    ];
 
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /// 1. Top Row - NeighborBot + Ask AI
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.deepPurple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// 1. Top Row - NeighborBot + Ask AI
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.smart_toy_outlined,
+                      color: Colors.deepPurple,
+                      size: 20,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.smart_toy_outlined,
-                    color: Colors.deepPurple,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'NeighborBot',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey[800],
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF8B5CF6), Color(0xFFDB2777)],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.deepPurple.withOpacity(0.3),
-                    offset: const Offset(0, 4),
-                    blurRadius: 12,
+                  const SizedBox(width: 12),
+                  Text(
+                    'NeighborBot',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey[800],
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ],
               ),
-              child: TextButton.icon(
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF8B5CF6), Color(0xFFDB2777)],
                   ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.deepPurple.withOpacity(0.3),
+                      offset: const Offset(0, 4),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ChatScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.chat_bubble_rounded, size: 18),
+                  label: const Text(
+                    "Ask AI",
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          /// 2. Notification Title + Admin Login Button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF71BB7B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.notifications_active_rounded,
+                      color: Color(0xFF71BB7B),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Latest Notifications',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey[800],
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
+              ),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red.shade400,
                 ),
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => ChatScreen()),
+                    MaterialPageRoute(builder: (_) => AdminLogin()),
                   );
                 },
-                icon: const Icon(Icons.chat_bubble_rounded, size: 18),
-                label: const Text(
-                  "Ask AI",
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
+                icon: const Icon(Icons.admin_panel_settings_rounded, size: 18),
+                label: const Text("Login as Admin"),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
 
-        const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-        /// 2. Notification Title + Admin Login Button
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
+          /// 3. Notification Cards
+          SizedBox(
+            height: 120,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: names.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  width: 280,
+                  margin: const EdgeInsets.only(right: 16),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF71BB7B).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        offset: const Offset(0, 4),
+                        blurRadius: 16,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                    border: Border.all(
+                      color: Colors.grey.withOpacity(0.1),
+                      width: 1,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.notifications_active_rounded,
-                    color: Color(0xFF71BB7B),
-                    size: 20,
+                  child: Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              offset: const Offset(0, 2),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            images[index],
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              names[index],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              messages[index],
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                                height: 1.3,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF71BB7B).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: GestureDetector(
+                          onTap: () => widget.onNavigate?.call(4),
+                          child: const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 16,
+                            color: Color(0xFF71BB7B),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Latest Notifications',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey[800],
-                    letterSpacing: -0.3,
-                  ),
-                ),
-              ],
-            ),
-            TextButton.icon(
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red.shade400,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => AdminLogin()),
                 );
               },
-              icon: const Icon(Icons.admin_panel_settings_rounded, size: 8),
-              label: const Text("Login as Admin"),
             ),
-          ],
-        ),
-
-        const SizedBox(height: 16),
-
-        /// 3. Notification Cards
-        SizedBox(
-          height: 120,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: names.length,
-            itemBuilder: (context, index) {
-              return Container(
-                width: 280,
-                margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      offset: const Offset(0, 4),
-                      blurRadius: 16,
-                      spreadRadius: 0,
-                    ),
-                  ],
-                  border: Border.all(
-                    color: Colors.grey.withOpacity(0.1),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            offset: const Offset(0, 2),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          images[index],
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            names[index],
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            messages[index],
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                              height: 1.3,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 2,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF71BB7B).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: GestureDetector(
-                        onTap: () => widget.onNavigate?.call(4),
-                        child: const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 16,
-                          color: Color(0xFF71BB7B),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
           ),
-        ),
-      ],
-    )
-  );
+        ],
+      ),
+    );
   }
 }

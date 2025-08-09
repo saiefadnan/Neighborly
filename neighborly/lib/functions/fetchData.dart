@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 
+
 final fetchData = FutureProvider.family<List<Map<String, dynamic>>, String>((
   ref,
   type,

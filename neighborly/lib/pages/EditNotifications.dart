@@ -22,94 +22,129 @@ class _EditNotificationsPageState extends State<EditNotificationsPage> {
   bool newServiceAvailable = false;
   bool newTipsAvailable = true;
 
-  Widget sectionHeader(String title) => Padding(
-    padding: const EdgeInsets.only(top: 20, bottom: 12),
-    child: Text(
-      title,
-      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-    ),
-  );
-
-  Widget cupertinoTile(String label, bool value, Function(bool) onChanged) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            Expanded(child: Text(label)),
-            CupertinoSwitch(value: value, onChanged: onChanged),
-          ],
+  Widget _notificationTile(String label, bool value, Function(bool) onChanged) {
+    return ListTile(
+      title: Text(label, style: const TextStyle(fontSize: 16)),
+      trailing: Transform.scale(
+        scale: 0.85,
+        child: CupertinoSwitch(
+          value: value,
+          onChanged: onChanged,
+          activeColor: Colors.green,
         ),
-      );
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+    );
+  }
+
+  Widget _profileSection(String title, List<Widget> children) {
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      elevation: 0,
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 16, top: 16, bottom: 8),
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+          ...children,
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(
+        0xFFF7F7FA,
+      ), // Match editProfile.dart background
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Notifications',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        leading: BackButton(color: Colors.black),
+        backgroundColor: const Color(
+          0xFFEFF3F9,
+        ), // Match editProfile.dart AppBar color
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: ListView(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         children: [
-          sectionHeader("Common"),
-          cupertinoTile(
-            'General Notification',
-            generalNotification,
-            (v) => setState(() => generalNotification = v),
-          ),
-          cupertinoTile('Sound', sound, (v) => setState(() => sound = v)),
-          cupertinoTile('Vibrate', vibrate, (v) => setState(() => vibrate = v)),
-          const SizedBox(height: 8),
-          Divider(thickness: 1, height: 32),
+          _profileSection('Common', [
+            _notificationTile(
+              'General Notification',
+              generalNotification,
+              (v) => setState(() => generalNotification = v),
+            ),
+            _notificationTile('Sound', sound, (v) => setState(() => sound = v)),
+            _notificationTile(
+              'Vibrate',
+              vibrate,
+              (v) => setState(() => vibrate = v),
+            ),
+          ]),
 
-          sectionHeader("System & services update"),
-          cupertinoTile(
-            'App updates',
-            appUpdates,
-            (v) => setState(() => appUpdates = v),
-          ),
-          cupertinoTile(
-            'Bill Reminder',
-            billReminder,
-            (v) => setState(() => billReminder = v),
-          ),
-          cupertinoTile(
-            'Promotion',
-            promotion,
-            (v) => setState(() => promotion = v),
-          ),
-          cupertinoTile(
-            'Discount Avaible',
-            discountAvailable,
-            (v) => setState(() => discountAvailable = v),
-          ),
-          cupertinoTile(
-            'Payment Request',
-            paymentRequest,
-            (v) => setState(() => paymentRequest = v),
-          ),
-          const SizedBox(height: 8),
-          Divider(thickness: 1, height: 32),
+          const SizedBox(height: 16),
 
-          sectionHeader("Others"),
-          cupertinoTile(
-            'New Service Available',
-            newServiceAvailable,
-            (v) => setState(() => newServiceAvailable = v),
-          ),
-          cupertinoTile(
-            'New Tips Available',
-            newTipsAvailable,
-            (v) => setState(() => newTipsAvailable = v),
-          ),
+          _profileSection('System & services update', [
+            _notificationTile(
+              'App updates',
+              appUpdates,
+              (v) => setState(() => appUpdates = v),
+            ),
+            _notificationTile(
+              'Bill Reminder',
+              billReminder,
+              (v) => setState(() => billReminder = v),
+            ),
+            _notificationTile(
+              'Promotion',
+              promotion,
+              (v) => setState(() => promotion = v),
+            ),
+            _notificationTile(
+              'Discount Available',
+              discountAvailable,
+              (v) => setState(() => discountAvailable = v),
+            ),
+            _notificationTile(
+              'Payment Request',
+              paymentRequest,
+              (v) => setState(() => paymentRequest = v),
+            ),
+          ]),
+
+          const SizedBox(height: 16),
+
+          _profileSection('Others', [
+            _notificationTile(
+              'New Service Available',
+              newServiceAvailable,
+              (v) => setState(() => newServiceAvailable = v),
+            ),
+            _notificationTile(
+              'New Tips Available',
+              newTipsAvailable,
+              (v) => setState(() => newTipsAvailable = v),
+            ),
+          ]),
         ],
       ),
     );

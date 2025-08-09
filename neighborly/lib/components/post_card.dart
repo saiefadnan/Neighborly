@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'dart:io';
 import 'package:flutter_polls/flutter_polls.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,8 @@ import 'package:like_button/like_button.dart';
 import 'package:readmore/readmore.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 class PostCard extends ConsumerStatefulWidget {
   final dynamic post;
@@ -17,6 +21,8 @@ class PostCard extends ConsumerStatefulWidget {
 }
 
 class _PostCardState extends ConsumerState<PostCard> {
+  VideoPlayerController? _videoController;
+  Future<void>? _initializeVideoPlayerFuture;
   Future<bool> OnTap(bool isLiked) async {
     return !isLiked;
   }
@@ -101,6 +107,24 @@ class _PostCardState extends ConsumerState<PostCard> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.post['type'] == 'video' && widget.post['mediaUrl'] != null) {
+      _videoController = VideoPlayerController.networkUrl(
+        Uri.parse(widget.post['mediaUrl']),
+      );
+      _initializeVideoPlayerFuture = _videoController!.initialize();
+      _videoController!.setLooping(true);
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _videoController?.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
@@ -137,7 +161,13 @@ class _PostCardState extends ConsumerState<PostCard> {
                       ),
                     ),
                     Text(
-                      _getFormattedTime(widget.post['timestamp']),
+                      widget.post['timestamp'] is Timestamp
+                          ? _getFormattedTime(
+                            (widget.post['timestamp'] as Timestamp)
+                                .toDate()
+                                .toIso8601String(),
+                          )
+                          : 'Just now', // fallback if null or still FieldValue
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontStyle: FontStyle.italic,
@@ -153,15 +183,15 @@ class _PostCardState extends ConsumerState<PostCard> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _getCategoryIcon(widget.post['category']),
-                      const SizedBox(width: 6),
-                      Text(
-                        widget.post['category'].toString().toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
+                      // const SizedBox(width: 6),
+                      // Text(
+                      //   widget.post['category'].toString().toUpperCase(),
+                      //   style: const TextStyle(
+                      //     color: Colors.white,
+                      //     fontWeight: FontWeight.bold,
+                      //     fontSize: 12,
+                      //   ),
+                      // ),
                     ],
                   ),
                   backgroundColor: _getCategoryColor(
@@ -207,12 +237,12 @@ class _PostCardState extends ConsumerState<PostCard> {
               ),
             ),
             // Image if exists
-            if (widget.post['imageUrl'] != null) ...[
+            if (widget.post['type'] == 'image') ...[
               const SizedBox(height: 18),
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.network(
-                  widget.post['imageUrl'],
+                  widget.post['mediaUrl'],
                   // width: 300,
                   // height: 300,
                   // fit: BoxFit.cover,
@@ -247,16 +277,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                 ),
               ),
             ],
-            if (widget.post['imagePath'] != null &&
-                widget.post['imagePath'].isNotEmpty) ...[
-              const SizedBox(height: 18),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(File(widget.post['imagePath'])),
-              ),
-            ],
-
-            if (widget.post['poll'] != null) ...[
+            if (widget.post['type'] == 'poll') ...[
               const SizedBox(height: 20),
               FlutterPolls(
                 pollId: widget.post['postID'].toString(),
@@ -275,6 +296,98 @@ class _PostCardState extends ConsumerState<PostCard> {
                         .toList(),
               ),
             ],
+            if (widget.post['type'] == 'link') ...[
+              const SizedBox(height: 20),
+              // ElevatedButton(
+              //   onPressed: () async {
+              //     final url = Uri.parse("https://www.google.com");
+              //     if (await canLaunchUrl(url)) {
+              //       await launchUrl(url, mode: LaunchMode.externalApplication);
+              //     } else {
+              //       print("Can't launch URL");
+              //     }
+              //   },
+              //   child: Text("Open Google"),
+              // ),
+              GestureDetector(
+                onTap: () async {
+                  final url = Uri.parse(widget.post['url']);
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  } else {
+                    print('not possible!');
+                  }
+                },
+                child: LinkPreview(
+                  onLinkPreviewDataFetched: (data) {},
+                  text: widget.post['url'] ?? '',
+                  borderRadius: 4,
+                  sideBorderColor: Colors.white,
+                  sideBorderWidth: 4,
+                  insidePadding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                  outsidePadding: const EdgeInsets.symmetric(vertical: 4),
+                  titleTextStyle: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+            if (widget.post['type'] == 'video') ...[
+              const SizedBox(height: 18),
+              _videoController != null
+                  ? FutureBuilder(
+                    future: _initializeVideoPlayerFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.done) {
+                        return AspectRatio(
+                          aspectRatio: _videoController!.value.aspectRatio,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _videoController!.value.isPlaying
+                                        ? _videoController!.pause()
+                                        : null;
+                                  });
+                                },
+                                child: VideoPlayer(_videoController!),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _videoController!.value.isPlaying
+                                        ? _videoController!.pause()
+                                        : _videoController!.play();
+                                  });
+                                },
+                                child:
+                                    !_videoController!.value.isPlaying
+                                        ? Icon(
+                                          Icons.play_circle,
+                                          size: 64,
+                                          color: Colors.white,
+                                        )
+                                        : null,
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                child: VideoProgressIndicator(
+                                  _videoController!,
+                                  allowScrubbing: true,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      } else {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                    },
+                  )
+                  : const Text('No video url'),
+            ],
             const SizedBox(height: 20),
             // Actions row
             Row(
@@ -283,7 +396,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                 Row(
                   children: [
                     LikeButton(
-                      isLiked: true,
+                      isLiked: false,
                       likeCount: widget.post['reacts'],
                       countPostion: CountPostion.right,
                       size: 26,

@@ -1,9 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:neighborly/components/snackbar.dart';
+import 'package:neighborly/functions/media_upload.dart';
 import 'package:neighborly/functions/post_notifier.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_chat_core/flutter_chat_core.dart' show LinkPreviewData;
@@ -59,6 +63,7 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
         _pickedLink = false;
         _pickedImage = File(image.path);
         _pickedVideo = null;
+        _videoController = null;
       });
     }
   }
@@ -119,24 +124,59 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
     'News',
   ];
 
-  void postSubmission() {
-    final postID = DateTime.now().millisecondsSinceEpoch;
+  void postSubmission(String type) async {
+    final title = _titleController.text.trim();
+    final body = _bodyController.text.trim();
+
+    if (title.isEmpty) {
+      showSnackBarError(context, "Please fill up the title");
+      return;
+    }
+    final mediaUrl =
+        type == 'image'
+            ? await uploadFile(_pickedImage)
+            : (type == 'video' ? await uploadFile(_pickedVideo) : null);
     final newPost = {
-      "postID": postID,
-      "timestamp": "2025-07-01T22:00:00Z",
-      "authorID": 5,
-      "author": FirebaseAuth.instance.currentUser!.displayName.toString(),
-      "title": _titleController.text.trim(),
-      "content": _bodyController.text.trim(),
-      "imagePath": _pickedImage?.path,
-      "upvotes": 0,
-      "downvotes": 0,
-      "link": "https://example.com/post$postID",
-      "totalComments": 0,
-      "reacts": 0,
-      "category": _selectedCategory,
+      'timestamp': FieldValue.serverTimestamp(),
+      'authorID': FirebaseAuth.instance.currentUser!.uid,
+      'author': FirebaseAuth.instance.currentUser!.displayName.toString(),
+      'title': title,
+      'content': body,
+      'type': type,
+      if (mediaUrl != null) 'mediaUrl': mediaUrl,
+      if (type == 'poll')
+        "poll": {
+          "question": pollTitleController.text.trim(),
+          "options":
+              List.generate(optionsController.length, (index) {
+                final option = optionsController[index];
+                return option.text.trim().isNotEmpty
+                    ? {
+                      "id": index.toString(),
+                      "title": option.text.trim(),
+                      "votes": 0,
+                    }
+                    : null;
+              }).whereType<Map<String, dynamic>>().toList(),
+          "hasVoted": false,
+          "userVotedOptionId": null,
+        },
+      if (type == 'link') 'url': _linkController.text.trim(),
+      'upvotes': 0,
+      'downvotes': 0,
+      'link': "https://example.com/post/dummy",
+      'totalComments': 0,
+      'reacts': 0,
+      'category': _selectedCategory,
     };
+    final docRef = await FirebaseFirestore.instance
+        .collection('posts')
+        .add(newPost);
+    await docRef.update({'postID': docRef.id});
+    newPost['postID'] = docRef.id;
     ref.read(postsProvider.notifier).addPosts(newPost);
+    if (!mounted) return;
+    context.go('/appShell');
   }
 
   Widget _buildMediaButton(IconData icon) {
@@ -185,7 +225,17 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
         actions: [
           ElevatedButton(
             onPressed: () {
-              postSubmission();
+              if (_pickedImage != null) {
+                postSubmission("image"); //done
+              } else if (_pickedVideo != null) {
+                postSubmission("video"); //done
+              } else if (_pickedPoll) {
+                postSubmission("poll"); //done
+              } else if (_pickedLink) {
+                postSubmission("link"); //done
+              } else {
+                postSubmission(''); //done
+              }
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(const SnackBar(content: Text("Post Submitted!")));

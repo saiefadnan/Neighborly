@@ -1,8 +1,8 @@
 import {signin } from '../controllers/authController';
 import { Hono } from 'hono';
 
-const router = new Hono();
+const authRouter = new Hono();
 
-router.post('/auth/signin/idtoken', signin);
+authRouter.post('/signin/idtoken', signin);
 
-export default router;
+export default authRouter;
