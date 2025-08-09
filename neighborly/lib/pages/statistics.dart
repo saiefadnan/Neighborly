@@ -16,25 +16,21 @@ class StatisticsPage extends StatelessWidget {
           Row(
             children: [
               _statCard(
-                iconData: Icons.flash_on,
+                iconData: Icons.flash_on_outlined,
                 label: '55',
                 subLabel: 'Helped\nRequests',
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFFFE082), Color(0xFFFFB300)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFFF9C64), Color(0xFFFF9C64)],
                 ),
                 iconColor: Colors.white,
               ),
               const SizedBox(width: 16),
               _statCard(
-                iconData: Icons.leaderboard,
+                iconData: Icons.leaderboard_outlined,
                 label: '#2',
-                subLabel: 'Leaderboard',
+                subLabel: 'Leaderboard\nRank',
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFB388FF), Color(0xFF7C4DFF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFB084F4), Color(0xFFB084F4)],
                 ),
                 iconColor: Colors.white,
               ),
@@ -44,25 +40,21 @@ class StatisticsPage extends StatelessWidget {
           Row(
             children: [
               _statCard(
-                iconData: Icons.check_circle,
+                iconData: Icons.check_circle_outlined,
                 label: '83%',
                 subLabel: 'Help Response\nSuccess',
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFB9F6CA), Color(0xFF69F0AE)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFB8F46C), Color(0xFFB8F46C)],
                 ),
                 iconColor: Colors.white,
               ),
               const SizedBox(width: 16),
               _statCard(
-                iconData: Icons.location_on,
+                iconData: Icons.location_on_outlined,
                 label: '2 km',
                 subLabel: 'Help Range\nRadius',
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFB7D6F9), Color(0xFFD6F7FE)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF94D4FA), Color(0xFF94D4FA)],
                 ),
                 iconColor: Colors.white,
               ),
@@ -113,15 +105,27 @@ class StatisticsPage extends StatelessWidget {
     required String label,
     required String subLabel,
     required IconData iconData,
-    required Gradient gradient,
+    required Gradient gradient, // <-- keep for compatibility, but ignore
     Color iconColor = Colors.white,
   }) {
+    // Map each stat card to its solid color
+    Color cardColor = Colors.white;
+    if (label == '55') {
+      cardColor = const Color(0xFFFF9C64); // Helped Requests
+    } else if (label == '#2') {
+      cardColor = const Color(0xFFB084F4); // Leaderboard
+    } else if (label == '83%') {
+      cardColor = const Color(0xFFB8F46C); // Help Response Success
+    } else if (label == '2 km') {
+      cardColor = const Color(0xFF94D4FA); // Help Range Radius
+    }
+
     return Expanded(
       child: Container(
-        height: 100,
+        height: 135,
         margin: const EdgeInsets.only(bottom: 4),
         decoration: BoxDecoration(
-          gradient: gradient,
+          color: cardColor,
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
@@ -131,51 +135,47 @@ class StatisticsPage extends StatelessWidget {
             ),
           ],
         ),
-        child: Stack(
-          children: [
-            // Faded background icon
-            Positioned(
-              right: -20,
-              top: 0,
-              bottom: 0,
-              child: Icon(
-                iconData,
-                size: 60,
-                color: Colors.white.withOpacity(0.18),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title
+              Text(
+                subLabel,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Colors.black,
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
+              const SizedBox(height: 10),
+              // Icon and value row
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 22,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        subLabel,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          height: 1.2,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(iconData, size: 28, color: Colors.black),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 28,
+                      color: Colors.black,
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
