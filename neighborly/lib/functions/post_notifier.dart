@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:neighborly/functions/fetchData.dart';
 
 final postsProvider =
     StateNotifierProvider<PostNotifier, AsyncValue<List<Map<String, dynamic>>>>(

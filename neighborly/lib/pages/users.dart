@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UsersPage extends StatefulWidget {
-  const UsersPage({Key? key}) : super(key: key);
+  const UsersPage({super.key});
 
   @override
   State<UsersPage> createState() => _UsersPageState();
@@ -21,7 +21,7 @@ class _UsersPageState extends State<UsersPage> {
   Future<void> fetchUsers() async {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('users').get();
-      final users = snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+      final users = snapshot.docs.map((doc) => doc.data()).toList();
       setState(() {
         allUsers = users;
         isLoading = false;

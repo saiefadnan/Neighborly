@@ -38,7 +38,7 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Event Details"),
-        backgroundColor: Colors.deepOrange,
+        backgroundColor: const Color(0xFF71BB7B),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 24),
@@ -189,8 +189,11 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
                       height: 200,
                       child: FlutterMap(
                         options: MapOptions(
-                          center: LatLng(23.8103, 90.4125), // Demo: Dhaka
-                          zoom: 13,
+                          initialCenter: LatLng(
+                            event.lat,
+                            event.lng,
+                          ), // Demo: Dhaka
+                          initialZoom: 13,
                         ),
                         children: [
                           TileLayer(
@@ -203,7 +206,7 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
                               Marker(
                                 width: 80,
                                 height: 80,
-                                point: LatLng(23.8103, 90.4125),
+                                point: LatLng(event.lat, event.lng),
                                 child: const Icon(
                                   Icons.location_pin,
                                   color: Colors.red,

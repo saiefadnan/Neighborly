@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 //Backend Provided
 class TeamPage extends StatefulWidget {
-  const TeamPage({Key? key}) : super(key: key);
+  const TeamPage({super.key});
 
   @override
   State<TeamPage> createState() => _TeamPageState();

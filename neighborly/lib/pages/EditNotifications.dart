@@ -30,7 +30,7 @@ class _EditNotificationsPageState extends State<EditNotificationsPage> {
         child: CupertinoSwitch(
           value: value,
           onChanged: onChanged,
-          activeColor: Colors.green,
+          activeTrackColor: Colors.green,
         ),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),

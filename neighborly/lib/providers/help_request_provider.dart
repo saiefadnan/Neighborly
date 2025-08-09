@@ -37,7 +37,7 @@ class HelpRequestData {
   // Convert from old HelpRequest format
   static HelpRequestData fromLegacyFormat(Map<String, dynamic> helpData) {
     // Helper function to capitalize urgency properly
-    String _capitalizeUrgency(String priority) {
+    String capitalizeUrgency(String priority) {
       switch (priority.toLowerCase()) {
         case 'emergency':
           return 'Emergency';
@@ -55,7 +55,7 @@ class HelpRequestData {
       title: helpData['title'] ?? 'Help Request',
       description: helpData['description'] ?? '',
       helpType: helpData['title'] ?? 'General',
-      urgency: _capitalizeUrgency(helpData['priority'] ?? 'General'),
+      urgency: capitalizeUrgency(helpData['priority'] ?? 'General'),
       location: helpData['address'] ?? '',
       distance: '0 km', // Default distance for new requests
       timePosted: 'Just now',

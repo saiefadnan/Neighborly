@@ -31,6 +31,7 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
   File? _pickedVideo;
   bool _pickedLink = false;
   bool _pickedPoll = false;
+  bool isLoading = false;
   VideoPlayerController? _videoController;
   TextEditingController pollTitleController = TextEditingController();
   List<TextEditingController> optionsController = [
@@ -132,6 +133,9 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
       showSnackBarError(context, "Please fill up the title");
       return;
     }
+    setState(() {
+      isLoading = true;
+    });
     final mediaUrl =
         type == 'image'
             ? await uploadFile(_pickedImage)
@@ -175,7 +179,11 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
     await docRef.update({'postID': docRef.id});
     newPost['postID'] = docRef.id;
     ref.read(postsProvider.notifier).addPosts(newPost);
+    // setState(() {
+    //   isLoading = false;
+    // });
     if (!mounted) return;
+    showSnackBarSuccess(context, "Post submitted!");
     context.go('/appShell');
   }
 
@@ -223,35 +231,40 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
         ),
         backgroundColor: Color(0xFFF7F2E7),
         actions: [
-          ElevatedButton(
-            onPressed: () {
-              if (_pickedImage != null) {
-                postSubmission("image"); //done
-              } else if (_pickedVideo != null) {
-                postSubmission("video"); //done
-              } else if (_pickedPoll) {
-                postSubmission("poll"); //done
-              } else if (_pickedLink) {
-                postSubmission("link"); //done
-              } else {
-                postSubmission(''); //done
-              }
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text("Post Submitted!")));
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF71BB7B),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              "Post",
-              style: TextStyle(fontSize: 18, color: Colors.white),
-            ),
-          ),
+          !isLoading
+              ? ElevatedButton(
+                onPressed: () async {
+                  if (_pickedImage != null) {
+                    postSubmission("image"); //done
+                  } else if (_pickedVideo != null) {
+                    postSubmission("video"); //done
+                  } else if (_pickedPoll) {
+                    postSubmission("poll"); //done
+                  } else if (_pickedLink) {
+                    postSubmission("link"); //done
+                  } else {
+                    postSubmission(''); //done
+                  }
+                  // ScaffoldMessenger.of(context).showSnackBar(
+                  //   const SnackBar(content: Text("Post Submitted!")),
+                  // );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF71BB7B),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  "Post",
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
+              )
+              : SizedBox.shrink(),
           const SizedBox(width: 12),
         ],
       ),
@@ -260,299 +273,303 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
           builder: (context, constraints) {
             final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-            return Column(
-              children: [
-                // Scrollable form content
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 24,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        DropdownButtonFormField<String>(
-                          value: _selectedCategory,
-                          decoration: const InputDecoration(
-                            labelText: "Select Category",
-                            border: OutlineInputBorder(),
-                          ),
-                          items:
-                              categories
-                                  .map(
-                                    (cat) => DropdownMenuItem(
-                                      value: cat,
-                                      child: Text(cat),
-                                    ),
-                                  )
-                                  .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() => _selectedCategory = value);
-                            }
-                          },
+            return !isLoading
+                ? Column(
+                  children: [
+                    // Scrollable form content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 24,
                         ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _titleController,
-                          decoration: const InputDecoration(
-                            labelText: "Title",
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        if (_pickedImage != null ||
-                            (_pickedVideo != null &&
-                                _videoController != null)) ...[
-                          SizedBox(height: 16),
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              // Max width available in the parent widget
-                              final maxWidth = constraints.maxWidth;
-
-                              double? aspectRatio;
-                              if (_pickedImage != null) {
-                                aspectRatio = 1; // or whatever fallback
-                              } else if (_videoController != null) {
-                                aspectRatio =
-                                    _videoController!.value.aspectRatio;
-                              }
-
-                              double width = maxWidth;
-                              double height =
-                                  aspectRatio != null
-                                      ? width / aspectRatio
-                                      : 200;
-
-                              return Stack(
-                                children: [
-                                  SizedBox(
-                                    width: width,
-                                    height: height,
-                                    child:
-                                        _pickedImage != null
-                                            ? Image.file(
-                                              _pickedImage!,
-                                              fit: BoxFit.cover,
-                                            )
-                                            : AspectRatio(
-                                              aspectRatio: aspectRatio ?? 1,
-                                              child: VideoPlayer(
-                                                _videoController!,
-                                              ),
-                                            ),
-                                  ),
-                                  Positioned(
-                                    top: 4,
-                                    right: 4,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        if (_videoController != null) {
-                                          _videoController!.pause();
-                                          _videoController!.dispose();
-                                          _videoController = null;
-                                        }
-                                        setState(() {
-                                          _pickedImage = null;
-                                          _pickedVideo = null;
-                                        });
-                                      },
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            DropdownButtonFormField<String>(
+                              value: _selectedCategory,
+                              decoration: const InputDecoration(
+                                labelText: "Select Category",
+                                border: OutlineInputBorder(),
+                              ),
+                              items:
+                                  categories
+                                      .map(
+                                        (cat) => DropdownMenuItem(
+                                          value: cat,
+                                          child: Text(cat),
                                         ),
+                                      )
+                                      .toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _selectedCategory = value);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _titleController,
+                              decoration: const InputDecoration(
+                                labelText: "Title",
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            if (_pickedImage != null ||
+                                (_pickedVideo != null &&
+                                    _videoController != null)) ...[
+                              SizedBox(height: 16),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  // Max width available in the parent widget
+                                  final maxWidth = constraints.maxWidth;
+
+                                  double? aspectRatio;
+                                  if (_pickedImage != null) {
+                                    aspectRatio = 1; // or whatever fallback
+                                  } else if (_videoController != null) {
+                                    aspectRatio =
+                                        _videoController!.value.aspectRatio;
+                                  }
+
+                                  double width = maxWidth;
+                                  double height =
+                                      aspectRatio != null
+                                          ? width / aspectRatio
+                                          : 200;
+
+                                  return Stack(
+                                    children: [
+                                      SizedBox(
+                                        width: width,
+                                        height: height,
+                                        child:
+                                            _pickedImage != null
+                                                ? Image.file(
+                                                  _pickedImage!,
+                                                  fit: BoxFit.cover,
+                                                )
+                                                : AspectRatio(
+                                                  aspectRatio: aspectRatio ?? 1,
+                                                  child: VideoPlayer(
+                                                    _videoController!,
+                                                  ),
+                                                ),
+                                      ),
+                                      Positioned(
+                                        top: 4,
+                                        right: 4,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            if (_videoController != null) {
+                                              _videoController!.pause();
+                                              _videoController!.dispose();
+                                              _videoController = null;
+                                            }
+                                            setState(() {
+                                              _pickedImage = null;
+                                              _pickedVideo = null;
+                                            });
+                                          },
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.cancel,
+                                              color: Colors.redAccent,
+                                              size: 24,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                            if (_pickedLink) ...[
+                              SizedBox(height: 16),
+                              Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _linkController,
+                                          focusNode: _linkFocusNode,
+                                          decoration: const InputDecoration(
+                                            labelText: "Enter link",
+                                            border: OutlineInputBorder(),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _linkController.clear();
+                                            linkPreviewData = null;
+                                            _pickedLink = false;
+                                          });
+                                        },
                                         child: const Icon(
                                           Icons.cancel,
                                           color: Colors.redAccent,
                                           size: 24,
                                         ),
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                        if (_pickedLink) ...[
-                          SizedBox(height: 16),
-                          Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _linkController,
-                                      focusNode: _linkFocusNode,
-                                      decoration: const InputDecoration(
-                                        labelText: "Enter link",
-                                        border: OutlineInputBorder(),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () {
+                                  SizedBox(height: 6),
+                                  LinkPreview(
+                                    onLinkPreviewDataFetched: (data) {
                                       setState(() {
-                                        _linkController.clear();
-                                        linkPreviewData = null;
-                                        _pickedLink = false;
+                                        linkPreviewData = data;
                                       });
                                     },
-                                    child: const Icon(
-                                      Icons.cancel,
-                                      color: Colors.redAccent,
-                                      size: 24,
+                                    text: _linkController.text,
+                                    borderRadius: 4,
+                                    sideBorderColor: Colors.white,
+                                    sideBorderWidth: 4,
+                                    insidePadding: const EdgeInsets.fromLTRB(
+                                      12,
+                                      8,
+                                      8,
+                                      8,
+                                    ),
+                                    outsidePadding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    titleTextStyle: const TextStyle(
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 6),
-                              LinkPreview(
-                                onLinkPreviewDataFetched: (data) {
-                                  setState(() {
-                                    linkPreviewData = data;
-                                  });
-                                },
-                                text: _linkController.text,
-                                borderRadius: 4,
-                                sideBorderColor: Colors.white,
-                                sideBorderWidth: 4,
-                                insidePadding: const EdgeInsets.fromLTRB(
-                                  12,
-                                  8,
-                                  8,
-                                  8,
-                                ),
-                                outsidePadding: const EdgeInsets.symmetric(
-                                  vertical: 4,
-                                ),
-                                titleTextStyle: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
                             ],
-                          ),
-                        ],
-                        if (_pickedPoll) ...[
-                          Stack(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                margin: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 6,
-                                      offset: Offset(0, 2),
+                            if (_pickedPoll) ...[
+                              Stack(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 12,
                                     ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Create a Poll",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                      ),
-                                    ),
-                                    SizedBox(height: 12),
-                                    TextField(
-                                      controller: pollTitleController,
-                                      decoration: InputDecoration(
-                                        labelText: 'Poll title',
-                                      ),
-                                    ),
-                                    ...optionsController.map(
-                                      (optionController) => TextField(
-                                        controller: optionController,
-                                        decoration: InputDecoration(
-                                          labelText: 'Poll option',
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black12,
+                                          blurRadius: 6,
+                                          offset: Offset(0, 2),
                                         ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Create a Poll",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                        SizedBox(height: 12),
+                                        TextField(
+                                          controller: pollTitleController,
+                                          decoration: InputDecoration(
+                                            labelText: 'Poll title',
+                                          ),
+                                        ),
+                                        ...optionsController.map(
+                                          (optionController) => TextField(
+                                            controller: optionController,
+                                            decoration: InputDecoration(
+                                              labelText: 'Poll option',
+                                            ),
+                                          ),
+                                        ),
+                                        TextButton.icon(
+                                          icon: Icon(Icons.add),
+                                          onPressed:
+                                              () => setState(() {
+                                                optionsController.add(
+                                                  TextEditingController(),
+                                                );
+                                              }),
+
+                                          label: Text("Add options"),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 24,
+                                    right: 16,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        for (var optCntrl
+                                            in optionsController) {
+                                          optCntrl.dispose();
+                                        }
+                                        optionsController = [
+                                          TextEditingController(),
+                                          TextEditingController(),
+                                        ];
+                                        setState(() {
+                                          _pickedPoll = false;
+                                        });
+                                      },
+                                      child: Icon(
+                                        Icons.cancel,
+                                        color: Colors.redAccent,
                                       ),
                                     ),
-                                    TextButton.icon(
-                                      icon: Icon(Icons.add),
-                                      onPressed:
-                                          () => setState(() {
-                                            optionsController.add(
-                                              TextEditingController(),
-                                            );
-                                          }),
-
-                                      label: Text("Add options"),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Positioned(
-                                top: 24,
-                                right: 16,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    for (var optCntrl in optionsController) {
-                                      optCntrl.dispose();
-                                    }
-                                    optionsController = [
-                                      TextEditingController(),
-                                      TextEditingController(),
-                                    ];
-                                    setState(() {
-                                      _pickedPoll = false;
-                                    });
-                                  },
-                                  child: Icon(
-                                    Icons.cancel,
-                                    color: Colors.redAccent,
                                   ),
-                                ),
+                                ],
                               ),
                             ],
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _bodyController,
-                          maxLines: 5,
-                          decoration: const InputDecoration(
-                            labelText: "Body text (optional)",
-                            border: OutlineInputBorder(),
-                          ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _bodyController,
+                              maxLines: 5,
+                              decoration: const InputDecoration(
+                                labelText: "Body text (optional)",
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
 
-                // Sticky bottom media buttons
-                Padding(
-                  padding: EdgeInsets.only(
-                    left: 16,
-                    right: 16,
-                    top: 8,
-                    bottom: bottomInset > 0 ? bottomInset + 12 : 24,
-                  ),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      _buildMediaButton(Icons.add_link_rounded),
-                      _buildMediaButton(Icons.image),
-                      _buildMediaButton(Icons.play_arrow_rounded),
-                      _buildMediaButton(Icons.poll_outlined),
-                    ],
-                  ),
-                ),
-              ],
-            );
+                    // Sticky bottom media buttons
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 8,
+                        bottom: bottomInset > 0 ? bottomInset + 12 : 24,
+                      ),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _buildMediaButton(Icons.add_link_rounded),
+                          _buildMediaButton(Icons.image),
+                          _buildMediaButton(Icons.play_arrow_rounded),
+                          _buildMediaButton(Icons.poll_outlined),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+                : Center(child: CircularProgressIndicator());
           },
         ),
       ),

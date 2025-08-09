@@ -85,7 +85,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/addEvent',
-        builder: (context, state) => const CreateEventPage(title: 'Upcoming Events'),
+        builder:
+            (context, state) => const CreateEventPage(title: 'Upcoming Events'),
       ),
       GoRoute(
         path: '/eventDetails',

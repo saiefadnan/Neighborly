@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io'; // Required for file handling (image picking)
 import 'package:image_picker/image_picker.dart'; // ImagePicker package
-import 'package:flutter/cupertino.dart'; // Add this import
+// Add this import
 import '../components/profile_header.dart';
 
 class CurvedHeaderClipper extends CustomClipper<Path> {

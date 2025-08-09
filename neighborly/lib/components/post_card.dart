@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
-import 'dart:io';
 import 'package:flutter_polls/flutter_polls.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_widget/config/all.dart';
