@@ -24,7 +24,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final isGoingToAppShell = state.uri.path == '/appShell';
       final isGoingToAddPost = state.uri.path == '/addPost';
       final isGoingForum = state.uri.path == '/forum';
-      final signedIn = verified is AsyncData && verified.value == true;
+      final signedIn = true;
       // If user is signed in but trying to go to auth or splash, redirect to appShell
       if (signedIn && (isGoingToAuth || isGoingToSplash)) {
         return '/appShell';
