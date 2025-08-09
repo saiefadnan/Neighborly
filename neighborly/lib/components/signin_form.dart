@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:neighborly/components/snackbar.dart';
 import 'package:neighborly/functions/valid_email.dart';
 import 'package:neighborly/pages/authPage.dart';
 
@@ -29,14 +30,10 @@ class _SigninFormState extends ConsumerState<SigninForm> {
     email = _emailController.text.trim();
     pswd = _passwordController.text.trim();
     if (email.isEmpty || pswd.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('All fields must be filled!')),
-      );
+      showSnackBarError(context, 'All fields must be filled!');
       return;
     } else if (!isValidEmail(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid email!')),
-      );
+      showSnackBarError(context, 'Please enter a valid email!');
       return;
     }
     final authNotifier = ref.read(authUserProvider.notifier);

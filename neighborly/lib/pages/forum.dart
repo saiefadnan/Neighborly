@@ -93,6 +93,24 @@ class _ForumPageState extends ConsumerState<ForumPage>
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F2E7),
         appBar: AppBar(
+          actions: [
+            Padding(
+              padding: EdgeInsets.only(right: 10),
+              child: ElevatedButton(
+                onPressed: () =>context.push('/eventPlan'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.deepOrange, width: 2),
+                  ),
+                  padding: const EdgeInsets.all(2),
+                ),
+                child: Icon(Icons.event, size: 30, color: Colors.deepOrange),
+              ),
+            ),
+          ],
           bottom: TabBar(
             isScrollable: true,
             // labelPadding: const EdgeInsets.symmetric(horizontal: 12),
