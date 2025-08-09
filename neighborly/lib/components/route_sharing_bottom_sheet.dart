@@ -294,292 +294,322 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
-      child: Column(
-        children: [
-          // Handle bar
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-
-          // Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF71BB7B).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.route,
-                    color: Color(0xFF71BB7B),
-                    size: 20,
+    return WillPopScope(
+      onWillPop: () async => false, // Prevent back button dismissal
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        child: Column(
+          children: [
+            // Handle bar - only this area allows dismissal
+            GestureDetector(
+              onPanUpdate: (details) {
+                // Only allow dismissal if dragging down
+                if (details.delta.dy > 0) {
+                  Navigator.pop(context);
+                }
+              },
+              child: Container(
+                width: double.infinity, // Make the entire top area draggable
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Help with Route',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF71BB7B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.route,
+                      color: Color(0xFF71BB7B),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Help with Route',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Draw the best route for ${widget.helpData['username'] ?? 'this person'}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
+                        Text(
+                          'Draw the best route for ${widget.helpData['username'] ?? 'this person'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // Controls
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _toggleDrawingMode,
-                    icon: Icon(_isDrawingMode ? Icons.stop : Icons.edit_road),
-                    label: Text(_isDrawingMode ? 'Stop Drawing' : 'Draw Route'),
+            // Controls
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _toggleDrawingMode,
+                      icon: Icon(_isDrawingMode ? Icons.stop : Icons.edit_road),
+                      label: Text(
+                        _isDrawingMode ? 'Stop Drawing' : 'Draw Route',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            _isDrawingMode
+                                ? Colors.red
+                                : const Color(0xFF71BB7B),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        isDismissible:
+                            false, // Prevent dismissal by tapping outside
+                        enableDrag: false, // Prevent drag to dismiss
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(20),
+                          ),
+                        ),
+                        builder:
+                            (context) => SharedRoutesBottomSheet(
+                              helpData: widget.helpData,
+                              userLocation: widget.userLocation,
+                            ),
+                      );
+                    },
+                    icon: const Icon(Icons.list),
+                    label: const Text('View Routes'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          _isDrawingMode ? Colors.red : const Color(0xFF71BB7B),
+                      backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                      ),
-                      builder:
-                          (context) => SharedRoutesBottomSheet(
-                            helpData: widget.helpData,
-                            userLocation: widget.userLocation,
-                          ),
-                    );
-                  },
-                  icon: const Icon(Icons.list),
-                  label: const Text('View Routes'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            margin: const EdgeInsets.only(top: 8),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: _clearRoute,
-                  icon: const Icon(Icons.clear),
-                  tooltip: 'Clear Route',
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey[100],
-                  ),
-                ),
-                IconButton(
-                  onPressed: _openInOSM,
-                  icon: const Icon(Icons.map),
-                  tooltip: 'Open in OpenStreetMap',
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.blue[100],
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'Tap map to add waypoints',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
-
-          if (_isDrawingMode)
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
+                ],
               ),
-              child: const Row(
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              margin: const EdgeInsets.only(top: 8),
+              child: Row(
                 children: [
-                  Icon(Icons.touch_app, color: Colors.orange, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Tap on the map to add waypoints along your recommended route',
-                      style: TextStyle(fontSize: 12, color: Colors.orange),
+                  IconButton(
+                    onPressed: _clearRoute,
+                    icon: const Icon(Icons.clear),
+                    tooltip: 'Clear Route',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.grey[100],
                     ),
+                  ),
+                  IconButton(
+                    onPressed: _openInOSM,
+                    icon: const Icon(Icons.map),
+                    tooltip: 'Open in OpenStreetMap',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.blue[100],
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Tap map to add waypoints',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
               ),
             ),
 
-          // Map
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: LatLng(
-                      (widget.userLocation.latitude +
-                              (widget.helpData['location'] as LatLng)
-                                  .latitude) /
-                          2,
-                      (widget.userLocation.longitude +
-                              (widget.helpData['location'] as LatLng)
-                                  .longitude) /
-                          2,
+            if (_isDrawingMode)
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange[200]!),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.touch_app, color: Colors.orange, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Tap on the map to add waypoints along your recommended route',
+                        style: TextStyle(fontSize: 12, color: Colors.orange),
+                      ),
                     ),
-                    zoom: 13,
+                  ],
+                ),
+              ),
+
+            // Map
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: LatLng(
+                        (widget.userLocation.latitude +
+                                (widget.helpData['location'] as LatLng)
+                                    .latitude) /
+                            2,
+                        (widget.userLocation.longitude +
+                                (widget.helpData['location'] as LatLng)
+                                    .longitude) /
+                            2,
+                      ),
+                      zoom: 13,
+                    ),
+                    markers: _markers,
+                    polylines: _polylines,
+                    onMapCreated: (controller) {
+                      // Map controller ready
+                    },
+                    onTap: _onMapTap,
+                    mapType: MapType.normal,
+                    zoomControlsEnabled: false,
+                    myLocationButtonEnabled: false,
+                    compassEnabled: false,
                   ),
-                  markers: _markers,
-                  polylines: _polylines,
-                  onMapCreated: (controller) {
-                    // Map controller ready
-                  },
-                  onTap: _onMapTap,
-                  mapType: MapType.normal,
-                  zoomControlsEnabled: false,
-                  myLocationButtonEnabled: false,
-                  compassEnabled: false,
                 ),
               ),
             ),
-          ),
 
-          // Instructions section
-          if (_waypoints.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.list,
-                        color: Color(0xFF71BB7B),
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Route Instructions',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed:
-                            () => setState(
-                              () => _showInstructions = !_showInstructions,
-                            ),
-                        child: Text(_showInstructions ? 'Hide' : 'Show'),
-                      ),
-                    ],
-                  ),
-                  if (_showInstructions)
-                    Container(
-                      height: 120,
-                      child: ListView.builder(
-                        itemCount: _waypoints.length,
-                        itemBuilder: (context, index) {
-                          final waypoint = _waypoints[index];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${index + 1}. ${waypoint['instruction']}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                if (waypoint['landmark'].isNotEmpty)
+            // Instructions section
+            if (_waypoints.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.list,
+                          color: Color(0xFF71BB7B),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Route Instructions',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed:
+                              () => setState(
+                                () => _showInstructions = !_showInstructions,
+                              ),
+                          child: Text(_showInstructions ? 'Hide' : 'Show'),
+                        ),
+                      ],
+                    ),
+                    if (_showInstructions)
+                      Container(
+                        height: 120,
+                        child: ListView.builder(
+                          itemCount: _waypoints.length,
+                          itemBuilder: (context, index) {
+                            final waypoint = _waypoints[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    'Near: ${waypoint['landmark']}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
+                                    '${index + 1}. ${waypoint['instruction']}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                              ],
-                            ),
-                          );
-                        },
+                                  if (waypoint['landmark'].isNotEmpty)
+                                    Text(
+                                      'Near: ${waypoint['landmark']}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-          // Share button
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _shareRoute,
-                icon: const Icon(Icons.share),
-                label: const Text('Share This Route'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF71BB7B),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            // Share button
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _shareRoute,
+                  icon: const Icon(Icons.share),
+                  label: const Text('Share This Route'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF71BB7B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

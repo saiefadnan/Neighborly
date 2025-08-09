@@ -929,6 +929,8 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
+          isDismissible: false, // Prevent dismissal by tapping outside
+          enableDrag: false, // Prevent drag to dismiss
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),

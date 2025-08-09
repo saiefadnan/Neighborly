@@ -14,7 +14,6 @@ import 'help_history.dart';
 import 'report_feedback.dart';
 import 'blood_donation.dart';
 import 'admin.dart';
-import 'admin_login.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({
@@ -1746,19 +1745,6 @@ class _HomePageState extends ConsumerState<HomePage>
                     ),
                   ),
                 ],
-              ),
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red.shade400,
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => AdminLogin()),
-                  );
-                },
-                icon: const Icon(Icons.admin_panel_settings_rounded, size: 8),//size will be 8 form now
-                label: const Text("Login as Admin"),
               ),
             ],
           ),
