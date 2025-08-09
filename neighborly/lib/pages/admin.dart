@@ -5,7 +5,7 @@ import 'package:neighborly/pages/community_list.dart';
 import 'users.dart';
 import 'announcements.dart';
 import 'team.dart';
-import 'schedule.dart'; // Import the SchedulePage class
+import 'Schedule.dart'; // Import the SchedulePage class
 
 //included backend connection
 class AdminHomePage extends StatefulWidget {
