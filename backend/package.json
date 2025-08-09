@@ -13,8 +13,17 @@
     "cloudinary": "^2.7.0",
     "dotenv": "^17.2.1",
     "firebase-admin": "^13.4.0",
-    "hono": "^4.8.2",
+    "hono": "^4.9.0",
     "path": "^0.12.7",
     "uuid": "^11.1.0"
-  }
+  },
+  "description": "To install dependencies:",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
