@@ -43,7 +43,7 @@ class ProfileHeader extends StatelessWidget {
             // Curved header background
             ClipPath(
               clipper: CurvedHeaderClipper(),
-              child: Container(height: 220, color: const Color(0xFFEFF3F9)),
+              child: Container(height: 220, color: const Color(0xFF71BB7B)),
             ),
             // Profile avatar
             Positioned(

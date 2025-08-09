@@ -77,18 +77,8 @@ class _EditInfosPageState extends State<EditInfosPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7FA),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFEFF3F9), // Same as clipped header
+        backgroundColor: const Color(0xFF71BB7B),
         elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          "Edit Information",
-          style: TextStyle(
-            color: Colors.black, // Or any color you want for the text
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
-        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
@@ -97,14 +87,33 @@ class _EditInfosPageState extends State<EditInfosPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 14),
-
-            // Add a Stack to place the camera button over the ProfileHeader
+            // Stack to overlay avatar and camera button on the curved header
             Stack(
               clipBehavior: Clip.none,
               children: [
-                // Base ProfileHeader from shared component
+                // Base ProfileHeader from shared component (no avatar inside)
                 ProfileHeader(showUserInfo: false),
+
+                // Avatar (show picked image if available, else default)
+                Positioned(
+                  top: 95,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: CircleAvatar(
+                      radius: 64,
+                      backgroundColor: Colors.white,
+                      child: CircleAvatar(
+                        radius: 60,
+                        backgroundImage:
+                            _profileImage != null
+                                ? FileImage(_profileImage!)
+                                : const AssetImage('assets/images/dummy.png')
+                                    as ImageProvider,
+                      ),
+                    ),
+                  ),
+                ),
 
                 // Camera button positioned where the avatar is
                 Positioned(
@@ -131,24 +140,6 @@ class _EditInfosPageState extends State<EditInfosPage> {
                     ),
                   ),
                 ),
-
-                // Show picked image if available
-                if (_profileImage != null)
-                  Positioned(
-                    top: 95,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: CircleAvatar(
-                        radius: 64,
-                        backgroundColor: Colors.white,
-                        child: CircleAvatar(
-                          radius: 60,
-                          backgroundImage: FileImage(_profileImage!),
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
 

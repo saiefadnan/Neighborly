@@ -5,6 +5,7 @@ import 'package:neighborly/pages/community_list.dart';
 import 'users.dart';
 import 'announcements.dart';
 import 'team.dart';
+import 'Schedule.dart'; // Import the SchedulePage class
 
 //included backend connection
 class AdminHomePage extends StatefulWidget {
@@ -140,7 +141,6 @@ class _AdminHomePageState extends State<AdminHomePage>
             onTap();
           },
           child: Container(
-            height: 130,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -161,68 +161,81 @@ class _AdminHomePageState extends State<AdminHomePage>
                 ),
               ],
             ),
-            child: Stack(
-              children: [
-                // Background pattern - darkened slightly in dark mode
-                Positioned(
-                  right: -15,
-                  top: -15,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color:
-                          isDark
-                              ? Colors.black.withOpacity(0.15)
-                              : Colors.white.withOpacity(0.1),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Stack(
+                children: [
+                  // Background pattern - darkened slightly in dark mode
+                  Positioned(
+                    right: -15,
+                    top: -15,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color:
+                            isDark
+                                ? Colors.black.withOpacity(0.15)
+                                : Colors.white.withOpacity(0.1),
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  right: -30,
-                  top: 0,
-                  bottom: 0,
-                  child: Icon(
-                    icon,
-                    size: 70,
-                    color: Colors.white.withOpacity(0.15),
+                  Positioned(
+                    right: -30,
+                    top: 0,
+                    bottom: 0,
+                    child: Icon(
+                      icon,
+                      size: 70,
+                      color: Colors.white.withOpacity(0.15),
+                    ),
                   ),
-                ),
-                // Content
-                Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(icon, color: Colors.white, size: 22),
-                      ),
-                      const SizedBox(height: 12),
-                      Flexible(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            height: 1.2,
+                  // Content with better constraints
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(icon, color: Colors.white, size: 20),
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          Expanded(
+                            child: Container(
+                              alignment: Alignment.bottomLeft,
+                              child: Material(
+                                type: MaterialType.transparency,
+                                child: Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    height: 1.2,
+                                    letterSpacing: 0.3,
+                                    decoration: TextDecoration.none,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.left,
+                                  textDirection: TextDirection.ltr,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -272,68 +285,84 @@ class _AdminHomePageState extends State<AdminHomePage>
         const SizedBox(height: 20),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 1.6,
-            children: [
-              _buildActionCard(
-                'Manage Users',
-                Icons.people_rounded,
-                const Color(0xFF06B6D4),
-                () => Navigator.push(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Adjust grid for different screen sizes
+              final screenWidth = constraints.maxWidth;
+              final crossAxisCount = screenWidth > 600 ? 3 : 2;
+              final aspectRatio = screenWidth > 600 ? 1.4 : 1.5;
+
+              return GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: aspectRatio,
+                children: [
+                  _buildActionCard(
+                    'Manage Users',
+                    Icons.people_rounded,
+                    const Color(0xFF06B6D4),
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const UsersPage()),
+                    ),
+                  ),
+                  _buildActionCard(
+                    'Announcements',
+                    Icons.campaign_rounded,
+                    const Color(0xFF8B5CF6),
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AnnouncementsPage(),
+                      ),
+                    ),
+                  ),
+                  _buildActionCard(
+                    'Community',
+                    Icons.groups_rounded,
+                    const Color(0xFF10B981),
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CommunityListPage(),
+                      ),
+                    ),
+                  ),
+                  _buildActionCard(
+                    'Team',
+                    Icons.group_work_rounded,
+                    const Color(0xFFF59E0B),
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TeamPage()),
+                    ),
+                  ),
+                  _buildActionCard(
+                    'Schedules',
+                    Icons.schedule_rounded,
+                    const Color(0xFF3B82F6),
+                    () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const UsersPage()),
+                  MaterialPageRoute(builder: (_) => const SchedulePage()),
                 ),
-              ),
-              _buildActionCard(
-                'Announcements',
-                Icons.campaign_rounded,
-                const Color(0xFF8B5CF6),
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AnnouncementsPage()),
-                ),
-              ),
-              _buildActionCard(
-                'Community',
-                Icons.groups_rounded,
-                const Color(0xFF10B981),
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CommunityListPage()),
-                ),
-              ),
-              _buildActionCard(
-                'Team',
-                Icons.group_work_rounded,
-                const Color(0xFFF59E0B),
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const TeamPage()),
-                ),
-              ),
-              _buildActionCard(
-                'Schedules',
-                Icons.schedule_rounded,
-                const Color(0xFF3B82F6),
-                () => context.push('/admin/schedule'),
-              ),
-              _buildActionCard(
-                'Settings',
-                Icons.settings_rounded,
-                const Color(0xFF6366F1),
-                () {
-                  // Add settings navigation
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Settings coming soon!')),
-                  );
-                },
-              ),
-            ],
+                  ),
+                  _buildActionCard(
+                    'Settings',
+                    Icons.settings_rounded,
+                    const Color(0xFF6366F1),
+                    () {
+                      // Add settings navigation
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Settings coming soon!')),
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],

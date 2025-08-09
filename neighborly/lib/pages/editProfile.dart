@@ -6,6 +6,7 @@ import 'PrivacyPolicyPage.dart';
 import 'EditInfosPage.dart';
 import 'SecurityPage.dart';
 import '../components/profile_header.dart';
+import 'aboutapp.dart';
 
 //for profile pic changing..........................................................................................
 
@@ -25,7 +26,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7FA),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFEFF3F9), // Same as curved header color
+        backgroundColor: const Color(0xFF71BB7B), // Same as curved header color
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -127,22 +128,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     },
                   ),
                   _profileTile(
-                    isDarkMode
-                        ? CupertinoIcons.moon_stars
-                        : CupertinoIcons.brightness, // Icon changes!
-                    'Theme',
-                    trailing: Transform.scale(
-                      scale: 0.85,
-                      child: CupertinoSwitch(
-                        value: isDarkMode,
-                        onChanged: (bool value) {
-                          setState(() {
-                            isDarkMode = value;
-                            // Here, you can also trigger your theme change logic
-                          });
-                        },
-                      ),
-                    ),
+                    CupertinoIcons.checkmark_shield,
+                    'Privacy policy',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PrivacyPolicyPage(),
+                        ),
+                      );
+                    },
                   ),
                 ]),
                 const SizedBox(height: 16),
@@ -153,13 +148,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                   _profileTile(CupertinoIcons.mail, 'Contact us'),
                   _profileTile(
-                    CupertinoIcons.checkmark_shield,
-                    'Privacy policy',
+                    CupertinoIcons.info,
+                    'About App',
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => PrivacyPolicyPage(),
+                          builder: (context) => AppNavigationPage(),
                         ),
                       );
                     },

@@ -5,6 +5,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
+import 'package:neighborly/components/route_sharing_bottom_sheet.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MapHomePage extends ConsumerStatefulWidget {
@@ -38,6 +40,10 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       "title": "Medical Emergency",
       "time": "5 mins ago",
       "priority": "high",
+      "address": "Dhanmondi 27, Dhaka",
+      "username": "Ahmed Rahman",
+      "phone": "+880 1712-345678",
+      "responders": 3,
     },
     {
       "type": "Urgent",
@@ -46,6 +52,10 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       "title": "Grocery Help Needed",
       "time": "15 mins ago",
       "priority": "medium",
+      "address": "Dhanmondi 15, Dhaka",
+      "username": "Sarah Begum",
+      "phone": "+880 1898-765432",
+      "responders": 2,
     },
     {
       "type": "General",
@@ -54,6 +64,36 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       "title": "Direction Help",
       "time": "1 hour ago",
       "priority": "low",
+      "address": "Green Road, Dhaka",
+      "username": "Karim Hassan",
+      "phone": "+880 1556-123456",
+      "responders": 1,
+    },
+    {
+      "type": "Route",
+      "location": LatLng(23.8190, 90.4203),
+      "description":
+          "Need help finding the best route to Uttara from Dhanmondi during rush hour. Traffic is usually heavy and looking for alternative paths.",
+      "title": "Route",
+      "time": "30 mins ago",
+      "priority": "medium",
+      "address": "Uttara Sector 7, Dhaka",
+      "username": "Rima Ahmed",
+      "phone": "+880 1987-654321",
+      "responders": 2,
+    },
+    {
+      "type": "Route",
+      "location": LatLng(23.7461, 90.3742),
+      "description":
+          "Looking for safest route to Hazrat Shahjalal International Airport early morning. Need to avoid construction areas.",
+      "title": "Route",
+      "time": "2 hours ago",
+      "priority": "medium",
+      "address": "Hazrat Shahjalal International Airport, Dhaka",
+      "username": "Fahim Islam",
+      "phone": "+880 1777-888999",
+      "responders": 1,
     },
   ];
 
@@ -477,22 +517,41 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                 // Action button
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      // Add respond functionality here
-                    },
-                    icon: const Icon(Icons.reply),
-                    label: const Text('Respond to Help Request'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF71BB7B),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
+                  child:
+                      helpData['title'] == 'Route' ||
+                              helpData['type'] == 'Route'
+                          ? ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              _showRouteHelper(helpData);
+                            },
+                            icon: const Icon(Icons.route),
+                            label: const Text('Help with Route'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          )
+                          : ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              // Add respond functionality here
+                            },
+                            icon: const Icon(Icons.reply),
+                            label: const Text('Respond to Help Request'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF71BB7B),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
                 ),
                 const SizedBox(height: 20),
               ],
@@ -819,5 +878,75 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
         foregroundColor: const Color.fromARGB(179, 0, 0, 0),
       ),
     );
+  }
+
+  Future<void> _showRouteHelper(Map<String, dynamic> helpData) async {
+    try {
+      // Get current user location
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Location permission is required to help with routing',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Location permission is permanently denied. Please enable it in settings.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      Position userPosition = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10,
+        ),
+      );
+
+      final userLocation = LatLng(
+        userPosition.latitude,
+        userPosition.longitude,
+      );
+
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          isDismissible: false, // Prevent dismissal by tapping outside
+          enableDrag: false, // Prevent drag to dismiss
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder:
+              (context) => RouteSharingBottomSheet(
+                helpData: helpData,
+                userLocation: userLocation,
+              ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
+      }
+    }
   }
 }
