@@ -5,6 +5,7 @@ import 'package:neighborly/pages/community_list.dart';
 import 'users.dart';
 import 'announcements.dart';
 import 'team.dart';
+import 'Schedule.dart'; // Import the SchedulePage class
 
 //included backend connection
 class AdminHomePage extends StatefulWidget {
@@ -343,7 +344,10 @@ class _AdminHomePageState extends State<AdminHomePage>
                     'Schedules',
                     Icons.schedule_rounded,
                     const Color(0xFF3B82F6),
-                    () => context.push('/admin/schedule'),
+                    () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SchedulePage()),
+                ),
                   ),
                   _buildActionCard(
                     'Settings',
