@@ -67,14 +67,13 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    
     - assets/images/
     - assets/data/
     - assets/images/Polygon.png
-    - assets/images/statss.png
-    - assets/images/contributionss.png
-    - assets/images/achievess.png
-    - assets/images/activityss.png
+    - assets/images/statss.PNG
+    - assets/images/contributionss.PNG
+    - assets/images/achievess.PNG
+    - assets/images/activityss.PNG
 
 # Flutter Launcher Icons Configuration
 flutter_launcher_icons:
