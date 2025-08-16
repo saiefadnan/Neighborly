@@ -4,8 +4,8 @@ import 'package:like_button/like_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 
-final boxHeightProvider = StateProvider<Map<int, double>>((ref) => {});
-final replyTargetProvider = StateProvider<int?>((ref) => null);
+final boxHeightProvider = StateProvider<Map<String, double>>((ref) => {});
+final replyTargetProvider = StateProvider<String?>((ref) => null);
 final kvc = KeyboardVisibilityController();
 
 class CommentCard extends ConsumerStatefulWidget {
@@ -67,7 +67,7 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                 Row(
                   children: [
                     Text(
-                      widget.comment['author'],
+                      widget.comment['author']??'Anonymous',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12.0,

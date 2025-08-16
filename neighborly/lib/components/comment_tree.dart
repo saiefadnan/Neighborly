@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_card.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 
-Widget buildCommentTree(dynamic comments, int parentID, int depth) {
+Widget buildCommentTree(dynamic comments, String parentID, int depth) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
