@@ -63,13 +63,13 @@ class _PostCardState extends ConsumerState<PostCard> {
         return const Icon(
           Icons.schedule_outlined,
           size: 16,
-          color: Colors.white,
+          color: Colors.black,
         );
       case 'emergency':
         return const Icon(
           Icons.warning_amber_outlined,
           size: 16,
-          color: Colors.white,
+          color: Colors.black,
         );
       case 'ask':
         return const Icon(Icons.help_outline, size: 16, color: Colors.white);
@@ -77,14 +77,14 @@ class _PostCardState extends ConsumerState<PostCard> {
         return const Icon(
           Icons.newspaper_outlined,
           size: 16,
-          color: Colors.white,
+          color: Colors.black,
         );
       case 'general':
       default:
         return const Icon(
           Icons.chat_bubble_outline,
           size: 16,
-          color: Colors.white,
+          color: Colors.black,
         );
     }
   }
@@ -101,7 +101,7 @@ class _PostCardState extends ConsumerState<PostCard> {
         return Colors.green;
       case 'general':
       default:
-        return Colors.teal; // <---- switched to teal here
+        return Colors.yellow; // <---- switched to teal here
     }
   }
 

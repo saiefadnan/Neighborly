@@ -26,7 +26,7 @@ class _UsersPageState extends State<UsersPage> {
           await FirebaseFirestore.instance.collection('users').get();
       final users =
           snapshot.docs
-              .map((doc) => doc.data() as Map<String, dynamic>)
+              .map((doc) => doc.data())
               .toList();
       final ids = snapshot.docs.map((doc) => doc.id).toList();
       setState(() {

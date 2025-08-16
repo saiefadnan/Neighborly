@@ -5,6 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:neighborly/components/snackbar.dart';
 import 'package:neighborly/functions/valid_email.dart';
 import 'package:neighborly/pages/authPage.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 bool rememberMe = true;
 
@@ -346,9 +347,12 @@ class _SigninFormState extends ConsumerState<SigninForm> {
       },
       loading: () {
         return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
+          height: MediaQuery.of(context).size.height * 0.6,
           alignment: Alignment.center,
-          child: const CircularProgressIndicator(color: Colors.green),
+          child: LoadingAnimationWidget.staggeredDotsWave(
+            color: Colors.green,
+            size: 50,
+          ),
         );
       },
       error: (error, stackTrace) {

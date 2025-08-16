@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:neighborly/components/snackbar.dart';
 import 'package:neighborly/functions/valid_email.dart';
 import 'package:neighborly/pages/authPage.dart';
@@ -430,7 +431,10 @@ class _SignupFormState extends ConsumerState<SignupForm> {
         return Container(
           height: MediaQuery.of(context).size.height * 0.7,
           alignment: Alignment.center,
-          child: const CircularProgressIndicator(color: Colors.green),
+          child: LoadingAnimationWidget.staggeredDotsWave(
+            color: Colors.green,
+            size: 50,
+          ),
         );
       },
       error: (error, stackTrace) {

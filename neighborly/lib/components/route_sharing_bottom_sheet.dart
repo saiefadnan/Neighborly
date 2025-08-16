@@ -81,7 +81,7 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
       position: position,
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
       infoWindow: InfoWindow(
-        title: 'Waypoint ${index}',
+        title: 'Waypoint $index',
         snippet: 'Tap to add instructions',
         onTap: () => _showWaypointDialog(index, position),
       ),
@@ -296,7 +296,7 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async => false, // Prevent back button dismissal
-      child: Container(
+      child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.9,
         child: Column(
           children: [
@@ -548,7 +548,7 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
                       ],
                     ),
                     if (_showInstructions)
-                      Container(
+                      SizedBox(
                         height: 120,
                         child: ListView.builder(
                           itemCount: _waypoints.length,

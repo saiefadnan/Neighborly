@@ -171,7 +171,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                       ref.read(notificationRangeProvider.notifier).state = val,
             ),
             const SizedBox(height: 12),
-
+            Text(
+              'Templates ',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
             // Event type cards
             ...eventTypes.map(
               (event) => Card(
@@ -181,16 +188,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                           0xFFE8F5E9,
                         ) // Light green for selected cards
                         : null,
-                child: ListTile(
-                  title: Text(event["title"]!),
-                  subtitle: Text(event["desc"]!),
-                  trailing: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(
-                        0xFF71BB7B,
-                      ), // Button color updated
-                    ),
-                    onPressed: () {
+                child: GestureDetector(
+                  child: ListTile(
+                    title: Text(event["title"]!),
+                    subtitle: Text(event["desc"]!),
+                    onTap: () {
                       ref.read(selectedEventTypeProvider.notifier).state =
                           event["title"];
                       setState(() {
@@ -198,7 +200,22 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                         descriptionController.text = event['desc']!;
                       });
                     },
-                    child: const Text("Select"),
+                    // trailing: ElevatedButton(
+                    //   style: ElevatedButton.styleFrom(
+                    //     backgroundColor: const Color(
+                    //       0xFF71BB7B,
+                    //     ), // Button color updated
+                    //   ),
+                    //   onPressed: () {
+                    //     ref.read(selectedEventTypeProvider.notifier).state =
+                    //         event["title"];
+                    //     setState(() {
+                    //       titleController.text = event['title']!;
+                    //       descriptionController.text = event['desc']!;
+                    //     });
+                    //   },
+                    //   child: const Text("Select"),
+                    // ),
                   ),
                 ),
               ),
@@ -295,7 +312,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
             Column(
               children: [
                 // Wrap FlutterMap in a fixed height container if needed:
-                Container(
+                SizedBox(
                   height: 300, // fix height to avoid layout issues
                   child: FlutterMap(
                     options: MapOptions(
