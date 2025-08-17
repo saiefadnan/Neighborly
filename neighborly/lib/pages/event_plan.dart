@@ -188,7 +188,7 @@ class _EventPlanState extends ConsumerState<EventPlan>
                   date: DateTime.now(),
                   joined: event['joined'],
                   location: event['location'],
-                  lat:  (event['lat'] as num).toDouble(),
+                  lat: (event['lat'] as num).toDouble(),
                   lng: (event['lng'] as num).toDouble(),
                   tags: event['tags'],
                 );
@@ -199,10 +199,7 @@ class _EventPlanState extends ConsumerState<EventPlan>
                   borderRadius: BorderRadius.circular(16),
                 ),
                 clipBehavior: Clip.antiAlias,
-                color:
-                    event['joined'] == 'true'
-                        ? Colors.green[200]
-                        : Colors.white,
+                color: Colors.white,
                 elevation: isSelected ? 8 : 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

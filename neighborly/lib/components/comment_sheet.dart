@@ -1,12 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_card.dart';
 import 'package:neighborly/components/comment_tree.dart';
 import 'package:neighborly/functions/comment_notifier.dart';
-import 'package:neighborly/functions/fetchData.dart';
 
-final Map<int, GlobalKey> commentKeys = {};
+final Map<String, GlobalKey> commentKeys = {};
 final DraggableScrollableController _controller =
     DraggableScrollableController();
 final TextEditingController _commentController = TextEditingController();
@@ -34,57 +35,81 @@ class BottomCommentSheet extends ConsumerStatefulWidget {
 class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
   @override
   Widget build(BuildContext context) {
-    //final asyncComments = ref.watch(fetchData('comments'));
-    ref.listen(fetchData('comments'), (previous, next) {
-      next.whenData((fetchedList) {
-        ref.read(commentsProvider.notifier).setComments(fetchedList);
-      });
-    });
+    final asyncComments = ref.watch(commentsProvider(widget.postID));
+    // ref.listen(fetchData('comments'), (previous, next) {
+    //   next.whenData((fetchedList) {
+    //     ref.read(commentsProvider.notifier).setComments(fetchedList);
+    //   });
+    // });
+    return asyncComments.when(
+      data: (comments) {
+        //final comments = ref.watch(commentsProvider);
+        final filteredComments =
+            comments.where((c) => c['postID'] == widget.postID).toList();
+        final topLevelComments =
+            filteredComments.where((c) => c['parentID'] == null).toList();
+        return topLevelComments.isNotEmpty
+            ? ListView.builder(
+              controller: widget.scrollController,
+              itemCount: topLevelComments.length,
+              itemBuilder: (context, index) {
+                final commentId = topLevelComments[index]['commentID'];
+                if (commentId == null) return SizedBox.shrink();
+                commentKeys.putIfAbsent(commentId, () => GlobalKey());
 
-    final comments = ref.watch(commentsProvider);
-    final filteredComments =
-        comments.where((c) => c['postID'] == widget.postID).toList();
-    final topLevelComments =
-        filteredComments.where((c) => c['parentID'] == null).toList();
-
-    return topLevelComments.isEmpty
-        ? ListView(
+                return Column(
+                  children: [
+                    CommentCard(
+                      ckey: commentKeys[commentId]!,
+                      comment: topLevelComments[index],
+                      depth: 0,
+                    ),
+                    buildCommentTree(
+                      comments,
+                      topLevelComments[index]['commentID'],
+                      1,
+                    ),
+                    SizedBox(height: 16.0),
+                  ],
+                );
+              },
+            )
+            : ListView(
+              controller: widget.scrollController,
+              padding: EdgeInsets.all(16.0),
+              shrinkWrap: true,
+              children: [
+                Center(
+                  child: Text(
+                    "No comments yet",
+                    style: TextStyle(
+                      fontSize: 25.0,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Center(child: Text("Start the conversation")),
+              ],
+            );
+        ;
+      },
+      error: (e, _) {
+        return ListView(
           controller: widget.scrollController,
           padding: EdgeInsets.all(16.0),
           shrinkWrap: true,
           children: [
             Center(
               child: Text(
-                "No comments yet",
+                "Network error!",
                 style: TextStyle(fontSize: 25.0, fontWeight: FontWeight.w600),
               ),
             ),
-            Center(child: Text("Start the conversation")),
           ],
-        )
-        : ListView.builder(
-          controller: widget.scrollController,
-          itemCount: topLevelComments.length,
-          itemBuilder: (context, index) {
-            final commentId = topLevelComments[index]['commentID'];
-            commentKeys.putIfAbsent(commentId, () => GlobalKey());
-            return Column(
-              children: [
-                CommentCard(
-                  ckey: commentKeys[commentId]!,
-                  comment: topLevelComments[index],
-                  depth: 0,
-                ),
-                buildCommentTree(
-                  comments,
-                  topLevelComments[index]['commentID'],
-                  1,
-                ),
-                SizedBox(height: 16.0),
-              ],
-            );
-          },
         );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+    );
   }
 }
 
@@ -245,7 +270,7 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                         child: IconButton(
                                           onPressed:
                                               canSend
-                                                  ? () {
+                                                  ? () async {
                                                     final replyTo = ref.read(
                                                       replyTargetProvider,
                                                     );
@@ -253,30 +278,56 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                                         _commentController.text
                                                             .trim();
                                                     if (comment.isNotEmpty) {
+                                                      final commentRef =
+                                                          FirebaseFirestore
+                                                              .instance
+                                                              .collection(
+                                                                'posts',
+                                                              )
+                                                              .doc(postId)
+                                                              .collection(
+                                                                'comments',
+                                                              )
+                                                              .doc();
                                                       final newComment = {
                                                         'commentID':
-                                                            DateTime.now()
-                                                                .millisecondsSinceEpoch,
+                                                            commentRef.id,
                                                         'postID': postId,
+                                                        'authorID':
+                                                            FirebaseAuth
+                                                                .instance
+                                                                .currentUser
+                                                                ?.uid,
                                                         'author':
-                                                            'Ali', // get this from user state
+                                                            FirebaseAuth
+                                                                .instance
+                                                                .currentUser
+                                                                ?.displayName, // get this from user state
                                                         'content': comment,
-                                                        'timestamp':
-                                                            DateTime.now()
-                                                                .toIso8601String(),
                                                         'parentID': replyTo,
                                                       };
                                                       ref
                                                           .read(
-                                                            commentsProvider
-                                                                .notifier,
+                                                            commentsProvider(
+                                                              postId,
+                                                            ).notifier,
                                                           )
                                                           .addComment(
                                                             newComment,
-                                                            replyTo,
+                                                            replyTo: replyTo,
                                                           );
                                                       _commentController
                                                           .clear();
+                                                      ref
+                                                          .read(
+                                                            commentsProvider(
+                                                              postId,
+                                                            ).notifier,
+                                                          )
+                                                          .storeComments(
+                                                            newComment,
+                                                          ); //store in firebase
+
                                                       WidgetsBinding.instance.addPostFrameCallback((
                                                         _,
                                                       ) {

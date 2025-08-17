@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import authRouter from './routes/authRoute';
-import mediaRouter from './routes/storageRoute';
+import forumRouter from './routes/forumRoute';
 import { initializeApp, cert} from 'firebase-admin/app';
 import { readFileSync } from 'fs'
 import { join } from 'path';
@@ -17,7 +17,7 @@ console.log('🔥 Firebase initialized successfully!');
 app.get('/', (c) => c.text('Hello from Bun + Hono on Windows!!'));
 
 app.route('/api/auth', authRouter);
-app.route('/api/storage',mediaRouter);
+app.route('/api/forum',forumRouter);
 
 Bun.serve({
   fetch: app.fetch,

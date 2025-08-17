@@ -71,7 +71,7 @@ class _RouteOptionsBottomSheetState extends State<RouteOptionsBottomSheet> {
   String _formatDuration(double seconds) {
     int minutes = (seconds / 60).round();
     if (minutes < 60) {
-      return '${minutes} min';
+      return '$minutes min';
     } else {
       int hours = (minutes / 60).floor();
       int remainingMinutes = minutes % 60;

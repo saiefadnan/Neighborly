@@ -16,11 +16,14 @@ Future<String> uploadFile(File? file) async {
   );
 
   request.files.add(await http.MultipartFile.fromPath('file', file!.path));
-  request.fields['api_key'] = sigData['apiKey'];
-  request.fields['timestamp'] = sigData['timestamp'].toString();
-  request.fields['signature'] = sigData['signature'];
-  request.fields['public_id'] = sigData['public_id'];
-
+  if (sigData.containsKey('signature')) {
+    request.fields['api_key'] = sigData['apiKey'];
+    request.fields['timestamp'] = sigData['timestamp'].toString();
+    request.fields['signature'] = sigData['signature'];
+    request.fields['public_id'] = sigData['public_id'];
+  } else {
+    request.fields['upload_preset'] = sigData['upload_preset'];
+  }
   final response = await request.send();
   final resBody = await response.stream.bytesToString();
 
@@ -35,7 +38,7 @@ Future<String> uploadFile(File? file) async {
 Future<Map<String, dynamic>> getUploadSignature() async {
   try {
     final url = Uri.parse(
-      '${dotenv.env['BASE_URL']}/api/storage/media/upload/signature',
+      '${dotenv.env['BASE_URL']}/api/forum/upload/signature',
     );
     final res = await http.get(url);
     if (res.statusCode == 200) {
@@ -43,9 +46,22 @@ Future<Map<String, dynamic>> getUploadSignature() async {
       return data;
     } else {
       print('Failed to get signature: ${res.statusCode}');
-      return {};
+      return await backUpSignature();
     }
   } catch (e) {
+    return await backUpSignature();
+  }
+}
+
+Future<Map<String, dynamic>> backUpSignature() async {
+  // fallback: unsigned preset (create in Cloudinary dashboard)
+  final cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'];
+  final uploadPreset = dotenv.env['CLOUDINARY_UNSIGNED_PRESET'];
+
+  if (cloudName == null || uploadPreset == null) {
+    print('Missing Cloudinary backup config.');
     return {};
   }
+
+  return {'cloudName': cloudName, 'upload_preset': uploadPreset};
 }

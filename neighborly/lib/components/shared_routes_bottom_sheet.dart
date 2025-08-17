@@ -67,7 +67,7 @@ class _SharedRoutesBottomSheetState extends State<SharedRoutesBottomSheet> {
   ];
 
   Set<Marker> _markers = {};
-  Set<Polyline> _polylines = {};
+  final Set<Polyline> _polylines = {};
   int _selectedRouteIndex = 0;
 
   @override
@@ -142,7 +142,7 @@ class _SharedRoutesBottomSheetState extends State<SharedRoutesBottomSheet> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async => false, // Prevent back button dismissal
-      child: Container(
+      child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.9,
         child: Column(
           children: [

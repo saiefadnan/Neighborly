@@ -16,7 +16,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
     with SingleTickerProviderStateMixin {
   late AnimationController _headerAnimationController;
   late Animation<double> _headerSlideAnimation;
-
+  String selectedCategory = 'all';
   @override
   void initState() {
     super.initState();
@@ -46,7 +46,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
         return const Icon(
           Icons.chat_bubble_outline,
           size: 25,
-          color: Colors.teal,
+          color: Colors.yellow,
         );
       case 'urgent':
         return const Icon(
@@ -73,7 +73,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
           color: Colors.green,
         );
       default:
-        return const Icon(Icons.public, size: 25, color: Colors.white);
+        return const Icon(Icons.public, size: 25, color: Colors.indigo);
     }
   }
 
@@ -97,7 +97,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
             Padding(
               padding: EdgeInsets.only(right: 10),
               child: ElevatedButton(
-                onPressed: () =>context.push('/eventPlan'),
+                onPressed: () => context.push('/eventPlan'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   elevation: 4,
@@ -111,35 +111,56 @@ class _ForumPageState extends ConsumerState<ForumPage>
               ),
             ),
           ],
-          bottom: TabBar(
-            isScrollable: true,
-            // labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-            // indicator: BoxDecoration(
-            //   borderRadius: BorderRadius.all(Radius.circular(8)),
-            //   color: Colors.white.withOpacity(0.3),
-            // ),
-            labelColor: Colors.white,
-            tabAlignment: TabAlignment.center,
-            unselectedLabelColor: Colors.white70,
-            tabs:
-                categories.map((cat) {
-                  return Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _getCategoryIcon(cat),
-                        const SizedBox(width: 6),
-                        Text(
-                          cat.toUpperCase(),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.none,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48.0),
+            child: Container(
+              color: Colors.white, // background color
+              height: 48,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children:
+                      categories.map((cat) {
+                        bool isSelected = selectedCategory == cat;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedCategory = cat;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color:
+                                  isSelected ? Colors.teal : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                _getCategoryIcon(cat),
+                                const SizedBox(width: 6),
+                                Text(
+                                  cat.toUpperCase(),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        isSelected
+                                            ? Colors.white
+                                            : Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                        );
+                      }).toList(),
+                ),
+              ),
+            ),
           ),
 
           title: AnimatedBuilder(
@@ -178,85 +199,80 @@ class _ForumPageState extends ConsumerState<ForumPage>
           backgroundColor: const Color(0xFF71BB7B),
           foregroundColor: const Color(0xFFFAF4E8),
         ),
-        body: TabBarView(
-          children:
-              categories.map((category) {
-                final asyncPosts = ref.watch(postsProvider);
-                return asyncPosts.when(
-                  data: (posts) {
-                    final filtered =
-                        category == 'all'
-                            ? posts
-                            : posts
-                                .where(
-                                  (post) =>
-                                      post['category']
-                                          .toString()
-                                          .toLowerCase() ==
-                                      category,
-                                )
-                                .toList();
-                    return RefreshIndicator(
-                      onRefresh: () async {
-                        ref.invalidate(postsProvider);
-                      },
-                      child:
-                          filtered.isNotEmpty
-                              ? ListView.builder(
-                                physics: AlwaysScrollableScrollPhysics(),
-                                itemCount: filtered.length,
-                                itemBuilder:
-                                    (_, i) => PostCard(post: filtered[i]),
-                              )
-                              : ListView(
-                                // wrapped in a ListView so RefreshIndicator still works
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                children: const [
-                                  Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.only(top: 300),
-                                      child: Text("No posts found"),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                    );
+        body: Consumer(
+          builder: (context, ref, _) {
+            final asyncPosts = ref.watch(postsProvider);
+            return asyncPosts.when(
+              data: (posts) {
+                final filtered =
+                    selectedCategory == 'all'
+                        ? posts
+                        : posts
+                            .where(
+                              (post) =>
+                                  post['category'].toString().toLowerCase() ==
+                                  selectedCategory,
+                            )
+                            .toList();
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(postsProvider);
                   },
-                  error:
-                      (e, _) => RefreshIndicator(
-                        onRefresh: () async {
-                          ref.invalidate(postsProvider);
-                        },
-                        child: ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          children: [
-                            const SizedBox(height: 100),
-                            const Icon(
-                              Icons.error_outline,
-                              color: Colors.red,
-                              size: 40,
-                            ),
-                            const SizedBox(height: 8),
-                            const Center(
-                              child: Text('Oops! Something went wrong.'),
-                            ),
-                            Center(
-                              child: Text(
-                                '$e',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
+                  child:
+                      filtered.isNotEmpty
+                          ? ListView.builder(
+                            physics: AlwaysScrollableScrollPhysics(),
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) => PostCard(post: filtered[i]),
+                          )
+                          : ListView(
+                            // wrapped in a ListView so RefreshIndicator still works
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: const [
+                              Center(
+                                child: Padding(
+                                  padding: EdgeInsets.only(top: 300),
+                                  child: Text("No posts found"),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                  loading:
-                      () => const Center(child: CircularProgressIndicator()),
+                            ],
+                          ),
                 );
-              }).toList(),
+              },
+              error:
+                  (e, _) => RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(postsProvider);
+                    },
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        const SizedBox(height: 100),
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                        const SizedBox(height: 8),
+                        const Center(
+                          child: Text('Oops! Something went wrong.'),
+                        ),
+                        Center(
+                          child: Text(
+                            '$e',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+              loading: () => const Center(child: CircularProgressIndicator()),
+            );
+          },
         ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: const Color(0xFF71BB7B),
