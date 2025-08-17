@@ -18,7 +18,7 @@ final hasSeenSplashProvider = StateProvider<bool>((ref) => false);
 final goRouterProvider = Provider<GoRouter>((ref) {
   //final authAsync = ref.watch(authStateChanges);
   final hasSeenSplash = ref.watch(hasSeenSplashProvider);
-  final verified = ref.watch(authUserProvider);
+  final verified = ref.watch(authStateChanges);
   return GoRouter(
     initialLocation: '/splash',
     redirect: (context, state) {
@@ -29,7 +29,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final isGoingPlanEvent = state.uri.path == '/eventPlan';
       final isGoingtoAddEvent = state.uri.path == '/addEvent';
       final isGoingtoSeeEventDetails = state.uri.path == '/eventDetails';
-      final signedIn = verified is AsyncData && verified.value == true;
+      final signedIn = verified.asData?.value != null;
       // If user is signed in but trying to go to auth or splash, redirect to appShell
       if (signedIn && (isGoingToAuth || isGoingToSplash)) {
         return '/appShell';
@@ -85,8 +85,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/addEvent',
-        builder:
-            (context, state) => const CreateEventPage(title: 'Upcoming Events'),
+        builder: (context, state) => const CreateEventPage(title: 'Upcoming Events'),
       ),
       GoRoute(
         path: '/eventDetails',

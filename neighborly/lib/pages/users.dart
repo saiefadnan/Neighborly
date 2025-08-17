@@ -26,7 +26,7 @@ class _UsersPageState extends State<UsersPage> {
           await FirebaseFirestore.instance.collection('users').get();
       final users =
           snapshot.docs
-              .map((doc) => doc.data() as Map<String, dynamic>)
+              .map((doc) => doc.data())
               .toList();
       final ids = snapshot.docs.map((doc) => doc.id).toList();
       setState(() {
@@ -53,6 +53,36 @@ class _UsersPageState extends State<UsersPage> {
     }
   } //added delete
 
+  Future<void> blockEmail(int index) async {
+    try {
+      final docId = userDocIds[index];
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(docId)
+          .update({'blocked': true});
+      setState(() {
+        allUsers[index]['blocked'] = true;
+      });
+    } catch (e) {
+      debugPrint('Error blocking user: $e');
+    }
+  }
+
+  Future<void> unblockEmail(int index) async {
+    try {
+      final docId = userDocIds[index];
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(docId)
+          .update({'blocked': false});
+      setState(() {
+        allUsers[index]['blocked'] = false;
+      });
+    } catch (e) {
+      debugPrint('Error unblocking user: $e');
+    }
+  }
+
   Widget _buildUserCard(Map<String, dynamic> user, int index) {
     return Card(
       elevation: 6,
@@ -69,13 +99,35 @@ class _UsersPageState extends State<UsersPage> {
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [Text(user['email'] ?? 'No Email')],
+          children: [
+            Text(user['email'] ?? 'No Email'),
+            if (user['blocked'] == true)
+              Text('Blocked', style: TextStyle(color: Colors.red)),
+          ],
         ),
-        trailing: IconButton(
-          icon: Icon(Icons.delete, color: Colors.red),
-          onPressed: () async {
-            await deleteUser(index);
-          },
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.red),
+              onPressed: () async {
+                await deleteUser(index);
+              },
+            ),
+            user['blocked'] == true
+                ? IconButton(
+                    icon: Icon(Icons.lock_open, color: Colors.green),
+                    onPressed: () async {
+                      await unblockEmail(index);
+                    },
+                  )
+                : IconButton(
+                    icon: Icon(Icons.block, color: Colors.red),
+                    onPressed: () async {
+                      await blockEmail(index);
+                    },
+                  ),
+          ],
         ),
       ),
     );

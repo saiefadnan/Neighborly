@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'announcements.dart';
 
 class CommunityListPage extends StatefulWidget {
   const CommunityListPage({super.key});
@@ -644,6 +645,30 @@ class _CommunityListPageState extends State<CommunityListPage>
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back, color: Colors.white),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.announcement, color: Colors.white),
+            tooltip: 'Announcements',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Announcements'),
+                  content: SizedBox(
+                    width: double.maxFinite,
+                    child: AnnouncementsList(), // Only the list, not the posting UI
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,

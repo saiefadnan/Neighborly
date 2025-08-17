@@ -14,6 +14,7 @@ import 'help_history.dart';
 import 'report_feedback.dart';
 import 'blood_donation.dart';
 import 'admin.dart';
+import 'admin_login.dart'; // Add this import at the top
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({
@@ -1523,6 +1524,7 @@ class _HomePageState extends ConsumerState<HomePage>
           },
         ),
         actions: [
+          // Emergency button
           Container(
             margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
             decoration: BoxDecoration(
@@ -1559,6 +1561,20 @@ class _HomePageState extends ConsumerState<HomePage>
               ),
             ),
           ),
+          // Admin icon button
+          Container(
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 2,
+              ),
+            ),
+            
+          ),
+          // Profile icon button
           Container(
             margin: const EdgeInsets.only(right: 16, top: 6, bottom: 6),
             decoration: BoxDecoration(
@@ -1745,6 +1761,17 @@ class _HomePageState extends ConsumerState<HomePage>
                     ),
                   ),
                 ],
+              ),
+              // Admin login icon button
+              IconButton(
+                icon: const Icon(Icons.admin_panel_settings, color: Color(0xFF71BB7B), size: 22),
+                tooltip: 'Admin Login',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AdminLogin()),
+                  );
+                },
               ),
             ],
           ),
