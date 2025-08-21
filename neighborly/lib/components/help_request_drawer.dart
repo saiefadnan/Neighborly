@@ -562,6 +562,7 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
                         icon: Icons.category_outlined,
                         onChanged: (val) => setState(() => _helpType = val!),
                         getColor: _getHelpTypeColor,
+                        getIcon: _getHelpTypeIcon,
                       ),
                     ],
                   ),
@@ -942,6 +943,7 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
     required IconData icon,
     required Function(String?) onChanged,
     Color Function(String)? getColor,
+    IconData Function(String)? getIcon,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -973,7 +975,27 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
                 value: item,
                 child: Row(
                   children: [
-                    if (getColor != null)
+                    if (getIcon != null)
+                      Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color:
+                              getColor != null
+                                  ? getColor(item).withOpacity(0.1)
+                                  : Color(0xFF71BB7B).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        margin: EdgeInsets.only(right: 12),
+                        child: Icon(
+                          getIcon(item),
+                          size: 16,
+                          color:
+                              getColor != null
+                                  ? getColor(item)
+                                  : Color(0xFF71BB7B),
+                        ),
+                      )
+                    else if (getColor != null)
                       Container(
                         width: 12,
                         height: 12,
@@ -1135,6 +1157,31 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
         return Colors.brown;
       default:
         return Color(0xFF71BB7B);
+    }
+  }
+
+  IconData _getHelpTypeIcon(String helpType) {
+    switch (helpType) {
+      case 'Medical':
+        return Icons.medical_services;
+      case 'Fire':
+        return Icons.local_fire_department;
+      case 'Shifting House':
+        return Icons.house;
+      case 'Grocery':
+        return Icons.shopping_cart;
+      case 'Traffic Update':
+        return Icons.traffic;
+      case 'Route':
+        return Icons.directions;
+      case 'Shifting Furniture':
+        return Icons.chair;
+      case 'Lost Person':
+        return Icons.person_search;
+      case 'Lost Item/Pet':
+        return Icons.pets;
+      default:
+        return Icons.help_outline;
     }
   }
 }

@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import authRouter from './routes/authRoute';
 import forumRouter from './routes/forumRoute';
+import mapRouter from './routes/mapRoute';
 import { initializeApp, cert} from 'firebase-admin/app';
 import { readFileSync } from 'fs'
 import { join } from 'path';
@@ -18,6 +19,7 @@ app.get('/', (c) => c.text('Hello from Bun + Hono on Windows!!'));
 
 app.route('/api/auth', authRouter);
 app.route('/api/forum',forumRouter);
+app.route('/api/map', mapRouter);
 
 Bun.serve({
   fetch: app.fetch,

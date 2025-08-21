@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
 import 'package:neighborly/components/route_sharing_bottom_sheet.dart';
+import 'package:neighborly/services/map_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -32,143 +34,19 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   late AnimationController _headerAnimationController;
   late Animation<double> _headerSlideAnimation;
 
-  // Current user ID - in a real app, this would come from authentication
-  final String currentUserId = "current_user_123";
-
-  final List<Map<String, dynamic>> helpRequests = [
-    {
-      "id": "req_001",
-      "type": "Emergency",
-      "location": LatLng(23.8103, 90.4125),
-      "description": "Medical emergency near Dhanmondi",
-      "title": "Medical Emergency",
-      "time": "5 mins ago",
-      "priority": "high",
-      "address": "Dhanmondi 27, Dhaka",
-      "username": "Ahmed Rahman",
-      "userId": "user_001",
-      "phone": "+880 1712-345678",
-      "responders": [
-        {
-          "userId": "resp_001",
-          "username": "Dr. Sarah Khan",
-          "phone": "+880 1987-654321",
-          "responseTime": "2 mins ago",
-          "status": "pending", // pending, accepted, rejected
-        },
-        {
-          "userId": "resp_002",
-          "username": "Ambulance Service",
-          "phone": "+880 1555-123456",
-          "responseTime": "3 mins ago",
-          "status": "pending",
-        },
-      ],
-      "status": "open", // open, in_progress, completed, cancelled
-      "acceptedResponderId": null,
-    },
-    {
-      "id": "req_002",
-      "type": "Urgent",
-      "location": LatLng(23.8115, 90.4090),
-      "description": "Need groceries for elder person",
-      "title": "Grocery Help Needed",
-      "time": "15 mins ago",
-      "priority": "medium",
-      "address": "Dhanmondi 15, Dhaka",
-      "username": "Sarah Begum",
-      "userId": "user_002",
-      "phone": "+880 1898-765432",
-      "responders": [
-        {
-          "userId": "resp_003",
-          "username": "Local Store Helper",
-          "phone": "+880 1777-888999",
-          "responseTime": "10 mins ago",
-          "status": "pending",
-        },
-      ],
-      "status": "open",
-      "acceptedResponderId": null,
-    },
-    {
-      "id": "req_003",
-      "type": "General",
-      "location": LatLng(23.8127, 90.4150),
-      "description": "Looking for direction to new clinic",
-      "title": "Direction Help",
-      "time": "1 hour ago",
-      "priority": "low",
-      "address": "Green Road, Dhaka",
-      "username": "Karim Hassan",
-      "userId": "user_003",
-      "phone": "+880 1556-123456",
-      "responders": [],
-      "status": "open",
-      "acceptedResponderId": null,
-    },
-    {
-      "id": "req_004",
-      "type": "Route",
-      "location": LatLng(23.8190, 90.4203),
-      "description":
-          "Need help finding the best route to Uttara from Dhanmondi during rush hour. Traffic is usually heavy and looking for alternative paths.",
-      "title": "Route",
-      "time": "30 mins ago",
-      "priority": "medium",
-      "address": "Uttara Sector 7, Dhaka",
-      "username": "Rima Ahmed",
-      "userId": "user_004",
-      "phone": "+880 1987-654321",
-      "responders": [
-        {
-          "userId": "resp_004",
-          "username": "Local Driver",
-          "phone": "+880 1444-555666",
-          "responseTime": "25 mins ago",
-          "status": "pending",
-        },
-      ],
-      "status": "open",
-      "acceptedResponderId": null,
-    },
-    {
-      "id": "req_005",
-      "type": "Route",
-      "location": LatLng(23.7461, 90.3742),
-      "description":
-          "Looking for safest route to Hazrat Shahjalal International Airport early morning. Need to avoid construction areas.",
-      "title": "Route",
-      "time": "2 hours ago",
-      "priority": "medium",
-      "address": "Hazrat Shahjalal International Airport, Dhaka",
-      "username": "Fahim Islam",
-      "userId": "current_user_123", // This is the current user's request
-      "phone": "+880 1777-888999",
-      "responders": [
-        {
-          "userId": "resp_005",
-          "username": "Airport Taxi Driver",
-          "phone": "+880 1333-444555",
-          "responseTime": "1 hour ago",
-          "status": "pending",
-        },
-        {
-          "userId": "resp_006",
-          "username": "Frequent Traveler",
-          "phone": "+880 1666-777888",
-          "responseTime": "90 mins ago",
-          "status": "pending",
-        },
-      ],
-      "status": "in_progress", // This request has an accepted responder
-      "acceptedResponderId": "resp_005",
-    },
-  ];
+  // Current user from Firebase Auth
+  String? currentUserId;
+  List<Map<String, dynamic>> helpRequests = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+
+    // Get current user from Firebase Auth
+    final user = FirebaseAuth.instance.currentUser;
+    currentUserId = user?.uid;
+
     _headerAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -181,7 +59,9 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     );
 
     _headerAnimationController.forward();
-    _createMarkers();
+
+    // Load help requests from API
+    _loadHelpRequests();
 
     // Auto-open help drawer if requested
     if (widget.autoOpenHelpDrawer) {
@@ -195,12 +75,21 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       });
     }
 
-    // Handle target location navigation
+    // Handle target location navigation or auto-navigate to current location
     if (widget.targetLocation != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Future.delayed(const Duration(milliseconds: 800), () {
           if (mounted && _mapController != null) {
             _navigateToTargetLocation();
+          }
+        });
+      });
+    } else {
+      // Auto-navigate to current location when map loads
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          if (mounted && _mapController != null) {
+            _navigateToCurrentLocation();
           }
         });
       });
@@ -213,12 +102,135 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     super.dispose();
   }
 
+  // Load help requests from API
+  Future<void> _loadHelpRequests() async {
+    if (currentUserId == null) {
+      print('User not authenticated');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Get user's current location for nearby requests
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        // If location permission denied, get all requests
+        final result = await MapService.getHelpRequests(limit: 100);
+        print('API Result: ${result.toString()}');
+        if (result['success']) {
+          print('Raw data from API: ${result['data']}');
+          setState(() {
+            helpRequests =
+                (result['data'] as List).map((item) {
+                  print('Converting item: $item');
+                  return MapService.convertApiResponseToUIFormat(item);
+                }).toList();
+            _isLoading = false;
+          });
+          print('Converted help requests: ${helpRequests.length} items');
+          _createMarkers();
+        } else {
+          throw Exception(result['message']);
+        }
+      } else {
+        // Get nearby requests based on location
+        Position position = await Geolocator.getCurrentPosition();
+
+        // Check if we're getting emulator coordinates (California)
+        bool isEmulatorLocation =
+            (position.latitude >= 37.0 &&
+                position.latitude <= 38.0 &&
+                position.longitude >= -123.0 &&
+                position.longitude <= -121.0);
+
+        double searchLat, searchLng;
+        if (isEmulatorLocation) {
+          // Use MIST, Mirpur Cantonment coordinates for development
+          searchLat = 23.8223;
+          searchLng = 90.3654;
+          print('Using MIST coordinates for emulator: $searchLat, $searchLng');
+        } else {
+          searchLat = position.latitude;
+          searchLng = position.longitude;
+          print('Using real GPS coordinates: $searchLat, $searchLng');
+        }
+
+        final result = await MapService.getNearbyHelpRequests(
+          latitude: searchLat,
+          longitude: searchLng,
+          radiusKm: 20.0, // 20km radius
+        );
+
+        if (result['success'] && (result['data'] as List).isNotEmpty) {
+          print('Raw nearby data from API: ${result['data']}');
+          setState(() {
+            helpRequests =
+                (result['data'] as List).map((item) {
+                  print('Converting nearby item: $item');
+                  return MapService.convertApiResponseToUIFormat(item);
+                }).toList();
+            _isLoading = false;
+          });
+          print('Converted nearby help requests: ${helpRequests.length} items');
+          _createMarkers();
+        } else {
+          // If no nearby requests found, get all requests as fallback
+          print('No nearby requests found, getting all requests...');
+          final fallbackResult = await MapService.getHelpRequests(limit: 100);
+          if (fallbackResult['success']) {
+            print('Fallback data from API: ${fallbackResult['data']}');
+            setState(() {
+              helpRequests =
+                  (fallbackResult['data'] as List).map((item) {
+                    print('Converting fallback item: $item');
+                    return MapService.convertApiResponseToUIFormat(item);
+                  }).toList();
+              _isLoading = false;
+            });
+            print(
+              'Converted fallback help requests: ${helpRequests.length} items',
+            );
+            _createMarkers();
+          } else {
+            throw Exception(fallbackResult['message']);
+          }
+        }
+      }
+    } catch (e) {
+      print('Error loading help requests: $e');
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load help requests: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _createMarkers() async {
+    print('Creating markers for ${helpRequests.length} help requests');
     Set<Marker> markers = {};
 
     // Add regular help request markers
     for (int idx = 0; idx < helpRequests.length; idx++) {
       Map<String, dynamic> req = helpRequests[idx];
+      print(
+        'Creating marker for request ${idx}: ${req['id']} at ${req['location']}',
+      );
 
       BitmapDescriptor customIcon = await _createCustomMarker(req);
 
@@ -271,6 +283,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       );
     }
 
+    print('Created ${markers.length} markers total');
     setState(() {
       _markers = markers;
     });
@@ -313,6 +326,275 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           ),
         );
       }
+    }
+  }
+
+  // Navigate to current location (or MIST for emulator)
+  Future<void> _navigateToCurrentLocation() async {
+    if (_mapController == null) return;
+
+    try {
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      LatLng targetLocation;
+      String locationName;
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        // Use MIST coordinates as default
+        targetLocation = const LatLng(23.8223, 90.3654);
+        locationName = 'MIST, Mirpur Cantonment';
+        print('Location permission denied, using MIST coordinates');
+      } else {
+        // Get current position
+        Position position = await Geolocator.getCurrentPosition();
+
+        // Check if we're getting emulator coordinates (California)
+        bool isEmulatorLocation =
+            (position.latitude >= 37.0 &&
+                position.latitude <= 38.0 &&
+                position.longitude >= -123.0 &&
+                position.longitude <= -121.0);
+
+        if (isEmulatorLocation) {
+          // Use MIST coordinates for emulator
+          targetLocation = const LatLng(23.8223, 90.3654);
+          locationName = 'MIST, Mirpur Cantonment (Emulator)';
+          print('Emulator detected, using MIST coordinates');
+        } else {
+          // Use real GPS coordinates
+          targetLocation = LatLng(position.latitude, position.longitude);
+          locationName = 'Your Current Location';
+          print(
+            'Using real GPS coordinates: ${position.latitude}, ${position.longitude}',
+          );
+        }
+      }
+
+      // Animate to the target location
+      await _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: targetLocation,
+            zoom: 17.0, // Good zoom level for neighborhood view
+          ),
+        ),
+      );
+
+      // Show location indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.my_location, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Navigated to: $locationName',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF71BB7B),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error navigating to current location: $e');
+      // Fallback to MIST coordinates
+      await _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: const LatLng(23.8223, 90.3654), zoom: 17.0),
+        ),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.location_on, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Navigated to: MIST, Mirpur Cantonment',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF71BB7B),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // Create dummy help requests for testing
+  Future<void> _createDummyData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final result = await MapService.createDummyHelpRequests();
+
+      if (result['success']) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.add_circle, color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Created ${result['count']} dummy help requests',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+
+        // Reload help requests to show the new dummy data
+        await _loadHelpRequests();
+      } else {
+        throw Exception(result['message']);
+      }
+    } catch (e) {
+      print('Error creating dummy data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Failed to create dummy data',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Remove all dummy help requests
+  Future<void> _removeDummyData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final result = await MapService.removeDummyHelpRequests();
+
+      if (result['success']) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.delete_sweep, color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Removed ${result['removedCount']} dummy help requests',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+
+        // Reload help requests to reflect the removal
+        await _loadHelpRequests();
+      } else {
+        throw Exception(result['message']);
+      }
+    } catch (e) {
+      print('Error removing dummy data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Failed to remove dummy data',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -947,69 +1229,59 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           ),
         ),
         const SizedBox(height: 12),
-        ...responders
-            .map(
-              (responder) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
+        ...responders.map(
+          (responder) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundImage: const AssetImage('assets/images/dummy.png'),
+                  radius: 25,
                 ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundImage: const AssetImage(
-                        'assets/images/dummy.png',
-                      ),
-                      radius: 25,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            responder['username'] ?? 'Anonymous',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'Responded ${responder['responseTime'] ?? 'recently'}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          Text(
-                            responder['phone'] ?? 'No phone provided',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _acceptResponder(helpData, responder),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF71BB7B),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        responder['username'] ?? 'Anonymous',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: const Text('Accept'),
-                    ),
-                  ],
+                      Text(
+                        'Responded ${responder['responseTime'] ?? 'recently'}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      Text(
+                        responder['phone'] ?? 'No phone provided',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            )
-            ,
+                ElevatedButton(
+                  onPressed: () => _acceptResponder(helpData, responder),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF71BB7B),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Accept'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1115,36 +1387,114 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       isScrollControlled: true,
       builder:
           (_) => HelpRequestDrawer(
-            onSubmit: (helpData) {
-              setState(() {
-                // Add required fields for the new request management system
-                final newRequest = {
-                  ...helpData,
-                  'id':
-                      'req_${DateTime.now().millisecondsSinceEpoch}', // Generate unique ID
-                  'userId': currentUserId, // Set current user as owner
-                  'responders': [], // Initialize empty responders list
-                  'status': 'open', // Start as open request
-                  'acceptedResponderId': null, // No accepted responder yet
-                  'time': 'Just now', // Set current time
-                };
-                helpRequests.add(newRequest);
-                _createMarkers();
-              });
+            onSubmit: (helpData) async {
+              if (currentUserId == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please sign in to create help requests'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
 
-              // Show confirmation
+              // Show loading indicator
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text(
-                    'Your help request has been posted! Nearby helpers will be notified.',
+                const SnackBar(
+                  content: Row(
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Text('Creating help request...'),
+                    ],
                   ),
-                  backgroundColor: const Color(0xFF71BB7B),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  backgroundColor: Color(0xFF71BB7B),
+                  duration: Duration(seconds: 30),
                 ),
               );
+
+              try {
+                final result = await MapService.createHelpRequest(
+                  type: helpData['type'] ?? 'General',
+                  title:
+                      helpData['title'] ?? helpData['type'] ?? 'Help Request',
+                  description: helpData['description'] ?? '',
+                  location:
+                      helpData['location'] ??
+                      const LatLng(23.8223, 90.3654), // MIST coordinates
+                  address: helpData['address'] ?? '',
+                  priority: helpData['priority'] ?? 'medium',
+                  phone: helpData['phone'],
+                );
+
+                // Hide loading indicator
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                if (result['success']) {
+                  // Add the new request to local state
+                  final newRequest = MapService.convertApiResponseToUIFormat(
+                    result['data'],
+                  );
+                  setState(() {
+                    helpRequests.add(newRequest);
+                    _createMarkers();
+                  });
+
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        'Your help request has been posted! Nearby helpers will be notified.',
+                      ),
+                      backgroundColor: const Color(0xFF71BB7B),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                } else {
+                  // Show error message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        result['message'] ?? 'Failed to create help request',
+                      ),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                }
+              } catch (e) {
+                // Hide loading indicator
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                // Show error message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Error creating help request: ${e.toString()}',
+                    ),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                );
+              }
             },
           ),
     );
@@ -1274,35 +1624,99 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop(); // Close the bottom sheet too
 
-                setState(() {
-                  // Update the request to mark it as in progress
-                  final requestIndex = helpRequests.indexWhere(
-                    (r) => r['id'] == helpData['id'],
+                if (currentUserId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please sign in to accept helpers'),
+                      backgroundColor: Colors.red,
+                    ),
                   );
-                  if (requestIndex != -1) {
-                    helpRequests[requestIndex]['status'] = 'in_progress';
-                    helpRequests[requestIndex]['acceptedResponderId'] =
-                        responder['userId'];
-                  }
-                  _createMarkers(); // Refresh markers to show new status
-                });
+                  return;
+                }
 
+                // Show loading
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '${responder['username']} has been accepted as your helper!',
+                  const SnackBar(
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Text('Accepting helper...'),
+                      ],
                     ),
                     backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    duration: Duration(seconds: 30),
                   ),
                 );
+
+                try {
+                  final result = await MapService.acceptResponder(
+                    requestId: helpData['id'],
+                    responseId:
+                        responder['userId'], // Using userId as responseId for compatibility
+                  );
+
+                  // Hide loading
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                  if (result['success']) {
+                    // Refresh the help requests to get updated data
+                    await _loadHelpRequests();
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '${responder['username']} has been accepted as your helper!',
+                        ),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          result['message'] ?? 'Failed to accept helper',
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Hide loading
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error accepting helper: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF71BB7B),
@@ -1335,40 +1749,101 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop(); // Close the bottom sheet too
 
-                setState(() {
-                  // Add current user as a responder
-                  final requestIndex = helpRequests.indexWhere(
-                    (r) => r['id'] == helpData['id'],
+                if (currentUserId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please sign in to respond to requests'),
+                      backgroundColor: Colors.red,
+                    ),
                   );
-                  if (requestIndex != -1) {
-                    helpRequests[requestIndex]['responders'].add({
-                      'userId': currentUserId,
-                      'username':
-                          'You', // In a real app, this would be the user's name
-                      'phone':
-                          '+880 1XXX-XXXXXX', // In a real app, this would be the user's phone
-                      'responseTime': 'Just now',
-                      'status': 'pending',
-                    });
-                  }
-                });
+                  return;
+                }
 
+                // Show loading
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text(
-                      'Your response has been sent! The requester will be notified.',
+                  const SnackBar(
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Text('Sending response...'),
+                      ],
                     ),
-                    backgroundColor: const Color(0xFF71BB7B),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    backgroundColor: Color(0xFF71BB7B),
+                    duration: Duration(seconds: 30),
                   ),
                 );
+
+                try {
+                  final user = FirebaseAuth.instance.currentUser;
+                  final result = await MapService.respondToHelpRequest(
+                    requestId: helpData['id'],
+                    message: 'I can help with this request',
+                    phone: user?.phoneNumber ?? '',
+                    username: user?.displayName ?? 'Anonymous Helper',
+                  );
+
+                  // Hide loading
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                  if (result['success']) {
+                    // Refresh the help requests to get updated data
+                    await _loadHelpRequests();
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          'Your response has been sent! The requester will be notified.',
+                        ),
+                        backgroundColor: const Color(0xFF71BB7B),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          result['message'] ?? 'Failed to send response',
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Hide loading
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error sending response: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF71BB7B),
@@ -1401,28 +1876,105 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop(); // Close the bottom sheet too
 
-                setState(() {
-                  // Remove the request from the list
-                  helpRequests.removeWhere((r) => r['id'] == helpData['id']);
-                  _createMarkers(); // Refresh markers
-                });
+                if (currentUserId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please sign in to complete requests'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
 
+                // Show loading
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text(
-                      'Request marked as completed! Thank you for using Neighborly.',
+                  const SnackBar(
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Text('Completing request...'),
+                      ],
                     ),
                     backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    duration: Duration(seconds: 30),
                   ),
                 );
+
+                try {
+                  final result = await MapService.updateHelpRequestStatus(
+                    requestId: helpData['id'],
+                    status: 'completed',
+                  );
+
+                  // Hide loading
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                  if (result['success']) {
+                    // Remove the request from local state
+                    setState(() {
+                      helpRequests.removeWhere(
+                        (r) => r['id'] == helpData['id'],
+                      );
+                      _createMarkers(); // Refresh markers
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          'Request marked as completed! Thank you for using Neighborly.',
+                        ),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          result['message'] ?? 'Failed to complete request',
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Hide loading
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Error completing request: ${e.toString()}',
+                      ),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
@@ -1515,26 +2067,100 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop(); // Close the bottom sheet too
 
-                setState(() {
-                  // Remove the request from the list
-                  helpRequests.removeWhere((r) => r['id'] == helpData['id']);
-                  _createMarkers(); // Refresh markers
-                });
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Request deleted successfully.'),
-                    backgroundColor: Colors.red,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                if (currentUserId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please sign in to delete requests'),
+                      backgroundColor: Colors.red,
                     ),
+                  );
+                  return;
+                }
+
+                // Show loading
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Text('Deleting request...'),
+                      ],
+                    ),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 30),
                   ),
                 );
+
+                try {
+                  final result = await MapService.deleteHelpRequest(
+                    requestId: helpData['id'],
+                  );
+
+                  // Hide loading
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                  if (result['success']) {
+                    // Remove the request from local state
+                    setState(() {
+                      helpRequests.removeWhere(
+                        (r) => r['id'] == helpData['id'],
+                      );
+                      _createMarkers(); // Refresh markers
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Request deleted successfully.'),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          result['message'] ?? 'Failed to delete request',
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Hide loading
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error deleting request: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -1551,7 +2177,9 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body:
+      body: Stack(
+        children: [
+          // Main content
           kIsWeb
               ? Container(
                 width: double.infinity,
@@ -1634,8 +2262,13 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
               )
               : GoogleMap(
                 initialCameraPosition: CameraPosition(
-                  target: widget.targetLocation ?? LatLng(23.8103, 90.4125),
-                  zoom: widget.targetLocation != null ? 16.0 : 14.0,
+                  target:
+                      widget.targetLocation ??
+                      const LatLng(
+                        23.8223,
+                        90.3654,
+                      ), // MIST coordinates as default
+                  zoom: widget.targetLocation != null ? 16.0 : 15.0,
                 ),
                 markers: _markers,
                 onMapCreated: (GoogleMapController controller) {
@@ -1662,13 +2295,57 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                 indoorViewEnabled: true,
                 trafficEnabled: false,
               ),
+
+          // Loading overlay
+          if (_isLoading && !kIsWeb)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF71BB7B),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Loading help requests...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 🔮 Chatbot Icon (NEW)
-          SizedBox(height: 10),
+          // � My Location Button (NEW)
+          FloatingActionButton(
+            heroTag: "myLocation",
+            onPressed: _navigateToCurrentLocation,
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            tooltip: "Go to My Location",
+            mini: true,
+            child: const Icon(Icons.my_location),
+          ),
+          const SizedBox(height: 10),
 
-          // 🗣 Community Forum (Unchanged)
+          // 🗣 Community Forum
           FloatingActionButton(
             heroTag: "chat",
             onPressed: () {
@@ -1682,18 +2359,18 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
             backgroundColor: const Color(0xFF71BB7B),
             foregroundColor: const Color(0xFFFAF4E8),
             tooltip: "Community Forum",
-            child: Icon(Icons.forum),
+            child: const Icon(Icons.forum),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
 
-          // ➕ Add Help Request (Updated to use new method)
+          // ➕ Add Help Request
           FloatingActionButton(
             heroTag: "addHelp",
             onPressed: _openHelpRequestDrawer,
             backgroundColor: const Color(0xFF71BB7B),
             foregroundColor: const Color(0xFFFAF4E8),
             tooltip: "Add Help Request",
-            child: Icon(Icons.add),
+            child: const Icon(Icons.add),
           ),
         ],
       ),
