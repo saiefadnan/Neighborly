@@ -4,6 +4,7 @@ import type { Context } from 'hono';
 
 // Get user info (view current values)
 export const getUserInfo = async (c: Context) => {
+  console.log('getUserInfo called');
   try {
     const authHeader = c.req.header('Authorization');
     const idToken = authHeader?.replace('Bearer ', '');
@@ -16,10 +17,12 @@ export const getUserInfo = async (c: Context) => {
     const decodedToken = await getAuth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
-    // Fetch user document from Firestore
-    const userDoc = await getFirestore().collection('users').doc(userId).get();
+  // Debug: print the decoded UID
+  console.log('Decoded UID:', userId);
+  // Fetch user document from Firestore
+  const userDoc = await getFirestore().collection('users').doc(userId).get();
     if (!userDoc.exists) {
-      return c.json({ success: false, message: 'User not found' }, 404);
+      return c.json({ success: false, message: 'Userss not found' }, 404);
     }
     // Only return allowed fields
     const allowedFields = [
