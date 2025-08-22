@@ -105,7 +105,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   // Load help requests from API
   Future<void> _loadHelpRequests() async {
     if (currentUserId == null) {
-      print('User not authenticated');
+      //print('User not authenticated');
       return;
     }
 
@@ -124,18 +124,18 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           permission == LocationPermission.deniedForever) {
         // If location permission denied, get all requests
         final result = await MapService.getHelpRequests(limit: 100);
-        print('API Result: ${result.toString()}');
+        //print('API Result: ${result.toString()}');
         if (result['success']) {
-          print('Raw data from API: ${result['data']}');
+          //print('Raw data from API: ${result['data']}');
           setState(() {
             helpRequests =
                 (result['data'] as List).map((item) {
-                  print('Converting item: $item');
+                  //print('Converting item: $item');
                   return MapService.convertApiResponseToUIFormat(item);
                 }).toList();
             _isLoading = false;
           });
-          print('Converted help requests: ${helpRequests.length} items');
+          //print('Converted help requests: ${helpRequests.length} items');
           _createMarkers();
         } else {
           throw Exception(result['message']);
@@ -156,11 +156,11 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           // Use MIST, Mirpur Cantonment coordinates for development
           searchLat = 23.8223;
           searchLng = 90.3654;
-          print('Using MIST coordinates for emulator: $searchLat, $searchLng');
+          //print('Using MIST coordinates for emulator: $searchLat, $searchLng');
         } else {
           searchLat = position.latitude;
           searchLng = position.longitude;
-          print('Using real GPS coordinates: $searchLat, $searchLng');
+          //print('Using real GPS coordinates: $searchLat, $searchLng');
         }
 
         final result = await MapService.getNearbyHelpRequests(
