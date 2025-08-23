@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
+import '../functions/pfp_uploader.dart';
 
 class CurvedHeaderClipper extends CustomClipper<Path> {
   @override
@@ -54,6 +55,7 @@ class EditInfosPage extends StatefulWidget {
 }
 
 class _EditInfosPageState extends State<EditInfosPage> {
+  String? _profileImageUrl;
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _usernameController = TextEditingController();
@@ -67,6 +69,17 @@ class _EditInfosPageState extends State<EditInfosPage> {
   File? _profileImage;
   bool _isLoading = false;
   // ...existing code...
+  Future<String?> _uploadProfileImage(File file) async {
+    print('[ProfileImage] Starting upload for file: \\${file.path}');
+    try {
+      final url = await uploadProfilePicture(file);
+      print('[ProfileImage] Upload successful! URL: \\${url}');
+      return url;
+    } catch (e) {
+      print('[ProfileImage] Image upload failed: $e');
+      return null;
+    }
+  }
 
   Future<String?> _getAuthToken() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -113,6 +126,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
           _cityController.text = data['city'] ?? '';
           _divisionController.text = data['division'] ?? '';
           _postalcodeController.text = data['postalcode'] ?? '';
+          _profileImageUrl = data['profilepicurl'] ?? null;
           _isLoading = false;
         });
       } else {
@@ -193,6 +207,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
                         ProfileHeader(),
 
                         // Avatar (show picked image if available, else default)
+                        // Avatar (show picked image if available, else from backend, else default)
                         Positioned(
                           top: 95,
                           left: 0,
@@ -206,6 +221,9 @@ class _EditInfosPageState extends State<EditInfosPage> {
                                 backgroundImage:
                                     _profileImage != null
                                         ? FileImage(_profileImage!)
+                                        : (_profileImageUrl != null &&
+                                            _profileImageUrl!.isNotEmpty)
+                                        ? NetworkImage(_profileImageUrl!)
                                         : const AssetImage(
                                               'assets/images/dummy.png',
                                             )
@@ -535,8 +553,31 @@ class _EditInfosPageState extends State<EditInfosPage> {
                                 elevation: 0,
                               ),
                               onPressed: () async {
+                                print('[ProfileImage] Update button pressed.');
                                 final token = await _getAuthToken();
-                                if (token == null) return;
+                                if (token == null) {
+                                  print(
+                                    '[ProfileImage] No auth token, aborting update.',
+                                  );
+                                  return;
+                                }
+                                String? uploadedUrl;
+                                if (_profileImage != null) {
+                                  print(
+                                    '[ProfileImage] New image selected, uploading...',
+                                  );
+                                  uploadedUrl = await _uploadProfileImage(
+                                    _profileImage!,
+                                  );
+                                } else {
+                                  print(
+                                    '[ProfileImage] No new image selected, using existing URL.',
+                                  );
+                                  uploadedUrl = _profileImageUrl;
+                                }
+                                print(
+                                  '[ProfileImage] Using profilePicUrl: \\${uploadedUrl ?? "(null)"}',
+                                );
                                 final uri = Uri.parse(
                                   '${ApiConfig.baseUrl}${ApiConfig.infosApiPath}',
                                 );
@@ -558,9 +599,17 @@ class _EditInfosPageState extends State<EditInfosPage> {
                                     'contactNumber': _phoneController.text,
                                     'division': _divisionController.text,
                                     'postalcode': _postalcodeController.text,
+                                    if (uploadedUrl != null)
+                                      'profilepicurl': uploadedUrl,
                                   }),
                                 );
+                                print(
+                                  '[ProfileImage] Backend response: status=\${response.statusCode}, body=\${response.body}',
+                                );
                                 if (response.statusCode == 200) {
+                                  print(
+                                    '[ProfileImage] User info updated successfully.',
+                                  );
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text('User info updated!'),
@@ -576,6 +625,9 @@ class _EditInfosPageState extends State<EditInfosPage> {
                                       errorMsg = resp['message'];
                                     }
                                   } catch (_) {}
+                                  print(
+                                    '[ProfileImage] Error updating user info: $errorMsg',
+                                  );
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text(errorMsg)),
                                   );
