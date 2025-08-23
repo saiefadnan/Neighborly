@@ -78,7 +78,6 @@ class _EditInfosPageState extends State<EditInfosPage> {
       // show new avatar immediately
       setState(() {
         _profileImageUrl = url;
-        _profileImage = null;
       });
 
       return url;
@@ -133,7 +132,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
           _cityController.text = data['city'] ?? '';
           _divisionController.text = data['division'] ?? '';
           _postalcodeController.text = data['postalcode'] ?? '';
-          //_profileImageUrl = data['profilepicurl'] ?? null;
+          _profileImageUrl = data['profilepicurl'] ?? null;
           _isLoading = false;
         });
       } else {
@@ -211,7 +210,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
                       clipBehavior: Clip.none,
                       children: [
                         // Base ProfileHeader from shared component (no avatar inside)
-                        ProfileHeader(profileImageUrl: _profileImageUrl),
+                        ProfileHeader(),
 
                         // Avatar (show picked image if available, else default)
                         // Avatar (show picked image if available, else from backend, else default)
@@ -561,21 +560,84 @@ class _EditInfosPageState extends State<EditInfosPage> {
                               ),
                               onPressed: () async {
                                 print('[ProfileImage] Update button pressed.');
+                                final token = await _getAuthToken();
+                                if (token == null) {
+                                  print(
+                                    '[ProfileImage] No auth token, aborting update.',
+                                  );
+                                  return;
+                                }
+                                String? uploadedUrl;
                                 if (_profileImage != null) {
                                   print(
                                     '[ProfileImage] New image selected, uploading...',
                                   );
-                                  await _uploadProfileImage(_profileImage!);
+                                  uploadedUrl = await _uploadProfileImage(
+                                    _profileImage!,
+                                  );
                                 } else {
                                   print(
-                                    '[ProfileImage] No new image selected, nothing to upload.',
+                                    '[ProfileImage] No new image selected, using existing URL.',
+                                  );
+                                  uploadedUrl = _profileImageUrl;
+                                }
+                                print(
+                                  '[ProfileImage] Using profilePicUrl: \\${uploadedUrl ?? "(null)"}',
+                                );
+                                final uri = Uri.parse(
+                                  '${ApiConfig.baseUrl}${ApiConfig.infosApiPath}',
+                                );
+                                final response = await http.post(
+                                  uri,
+                                  headers: {
+                                    'Authorization': 'Bearer $token',
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: jsonEncode({
+                                    'firstName': _firstNameController.text,
+                                    'lastName': _lastNameController.text,
+                                    'username': _usernameController.text,
+                                    'addressLine1':
+                                        _addressLine1Controller.text,
+                                    'addressLine2':
+                                        _addressLine2Controller.text,
+                                    'city': _cityController.text,
+                                    'contactNumber': _phoneController.text,
+                                    'division': _divisionController.text,
+                                    'postalcode': _postalcodeController.text,
+                                    if (uploadedUrl != null)
+                                      'profilepicurl': uploadedUrl,
+                                  }),
+                                );
+                                print(
+                                  '[ProfileImage] Backend response: status=\${response.statusCode}, body=\${response.body}',
+                                );
+                                if (response.statusCode == 200) {
+                                  print(
+                                    '[ProfileImage] User info updated successfully.',
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('User info updated!'),
+                                    ),
+                                  );
+                                  fetchAndSetUserInfo(); // Refresh fields
+                                } else {
+                                  String errorMsg =
+                                      'Failed to update user info';
+                                  try {
+                                    final resp = jsonDecode(response.body);
+                                    if (resp['message'] != null) {
+                                      errorMsg = resp['message'];
+                                    }
+                                  } catch (_) {}
+                                  print(
+                                    '[ProfileImage] Error updating user info: $errorMsg',
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(errorMsg)),
                                   );
                                 }
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Profile updated locally!'),
-                                  ),
-                                );
                               },
                               child: const Text(
                                 "Update",
