@@ -33,6 +33,40 @@ class PostNotifier
     );
   }
 
+  void updateCommentCount(String id) {
+    state = state.when(
+      data: (posts) {
+        final updated =
+            posts.map((post) {
+              if (post['postID'] == id) {
+                return {...post, 'totalComments': post['totalComments'] + 1};
+              }
+              return post;
+            }).toList();
+        return AsyncData(updated);
+      },
+      error: (e, st) => state,
+      loading: () => state,
+    );
+  }
+
+  void updateReactCount(String id) {
+    state = state.when(
+      data: (posts) {
+        final updated =
+            posts.map((post) {
+              if (post['postID'] == id) {
+                return {...post, 'totalComments': post['reacts'] + 1};
+              }
+              return post;
+            }).toList();
+        return AsyncData(updated);
+      },
+      error: (e, st) => state,
+      loading: () => state,
+    );
+  }
+
   List<Map<String, dynamic>> getPosts() {
     return state.maybeWhen(data: (posts) => posts, orElse: () => []);
   }

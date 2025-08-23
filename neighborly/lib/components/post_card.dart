@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'package:flutter_polls/flutter_polls.dart';
@@ -6,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_widget/config/all.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 import 'package:like_button/like_button.dart';
+import 'package:neighborly/functions/post_notifier.dart';
 import 'package:readmore/readmore.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -22,8 +25,21 @@ class PostCard extends ConsumerStatefulWidget {
 class _PostCardState extends ConsumerState<PostCard> {
   VideoPlayerController? _videoController;
   Future<void>? _initializeVideoPlayerFuture;
-  Future<bool> OnTap(bool isLiked) async {
-    return !isLiked;
+  bool liked = false;
+  Future<void> likedByme() async {
+    try {
+      final likeDoc =
+          await FirebaseFirestore.instance
+              .collection('posts')
+              .doc(widget.post['postID'])
+              .collection('likes')
+              .doc(FirebaseAuth.instance.currentUser!.uid)
+              .get();
+      if (!mounted) return;
+      setState(() {
+        liked = likeDoc.exists;
+      });
+    } catch (e) {}
   }
 
   String _getFormattedTime(String timestamp) {
@@ -63,28 +79,28 @@ class _PostCardState extends ConsumerState<PostCard> {
         return const Icon(
           Icons.schedule_outlined,
           size: 16,
-          color: Colors.black,
+          color: Colors.redAccent,
         );
       case 'emergency':
         return const Icon(
           Icons.warning_amber_outlined,
           size: 16,
-          color: Colors.black,
+          color: Colors.deepOrange,
         );
       case 'ask':
-        return const Icon(Icons.help_outline, size: 16, color: Colors.white);
+        return const Icon(Icons.help_outline, size: 16, color: Colors.blue);
       case 'news':
         return const Icon(
           Icons.newspaper_outlined,
           size: 16,
-          color: Colors.black,
+          color: Colors.green,
         );
       case 'general':
       default:
         return const Icon(
           Icons.chat_bubble_outline,
           size: 16,
-          color: Colors.black,
+          color: Colors.indigo,
         );
     }
   }
@@ -92,22 +108,26 @@ class _PostCardState extends ConsumerState<PostCard> {
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
       case 'urgent':
-        return Colors.redAccent;
+        return Color(0xFFF5F1E8);
       case 'emergency':
-        return Colors.deepOrange;
+        return Color(0xFFF5F1E8);
       case 'ask':
-        return Colors.blueAccent;
+        return Color(0xFFF5F1E8);
       case 'news':
-        return Colors.green;
+        return Color(0xFFF5F1E8);
       case 'general':
       default:
-        return Colors.yellow; // <---- switched to teal here
+        return Color(0xFFF5F1E8);
     }
   }
 
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await likedByme();
+    });
     if (widget.post['type'] == 'video' && widget.post['mediaUrl'] != null) {
       _videoController = VideoPlayerController.networkUrl(
         Uri.parse(widget.post['mediaUrl']),
@@ -125,6 +145,18 @@ class _PostCardState extends ConsumerState<PostCard> {
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    Map<String, dynamic> votedByMap = {};
+    bool hasVoted = false;
+    String? userVotedOptionId;
+    if (widget.post['type'] == 'poll') {
+      votedByMap = Map<String, dynamic>.from(
+        widget.post['poll']['votedBy'] ?? {},
+      );
+      hasVoted = votedByMap.containsKey(uid);
+      userVotedOptionId = hasVoted ? votedByMap[uid].toString() : null;
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       elevation: 6,
@@ -193,12 +225,10 @@ class _PostCardState extends ConsumerState<PostCard> {
                       // ),
                     ],
                   ),
-                  backgroundColor: _getCategoryColor(
-                    widget.post['category'],
-                  ).toOpacity(0.75),
+                  backgroundColor: _getCategoryColor(widget.post['category']),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 12,
+                    horizontal: 4,
+                    vertical: 6,
                   ),
                 ),
               ],
@@ -276,23 +306,59 @@ class _PostCardState extends ConsumerState<PostCard> {
                 ),
               ),
             ],
-            if (widget.post['type'] == 'poll') ...[
+            if (widget.post['type'] == 'poll' &&
+                (widget.post['poll']['options'] as List).isNotEmpty) ...[
               const SizedBox(height: 20),
               FlutterPolls(
                 pollId: widget.post['postID'].toString(),
                 onVoted: (PollOption option, int selectedIndex) async {
-                  return true;
+                  if (!hasVoted) {
+                    try {
+                      final uid = FirebaseAuth.instance.currentUser!.uid;
+                      final postRef = FirebaseFirestore.instance
+                          .collection('posts')
+                          .doc(widget.post['postID']);
+                      votedByMap[uid] = option.id; // track who voted what
+
+                      final options = List<Map<String, dynamic>>.from(
+                        widget.post['poll']['options'],
+                      );
+                      options[selectedIndex]['votes'] =
+                          ((options[selectedIndex]['votes'] as int?) ?? 0) + 1;
+
+                      await postRef.update({
+                        'poll.options': options,
+                        'poll.votedBy': votedByMap,
+                      });
+                      setState(() {
+                        hasVoted = true;
+                        userVotedOptionId = option.id;
+                        widget.post['poll']['options'][selectedIndex]['votes'] =
+                            options[selectedIndex]['votes'];
+                      });
+
+                      return true;
+                    } catch (e) {
+                      print("Vote error: $e");
+                      return false;
+                    }
+                  } else
+                    return false;
                 },
                 pollTitle: Text(widget.post['poll']['question']),
                 pollOptions:
-                    widget.post['poll']['options']
+                    (widget.post['poll']['options'] as List)
+                        .map((e) => Map<String, dynamic>.from(e))
                         .map<PollOption>(
                           (option) => PollOption(
-                            title: Text(option['title']),
-                            votes: option['votes'],
+                            id: option['id'].toString().trim(),
+                            title: Text(option['title'] ?? 'No title'),
+                            votes: option['votes'] as int? ?? 0,
                           ),
                         )
                         .toList(),
+                hasVoted: hasVoted,
+                userVotedOptionId: userVotedOptionId,
               ),
             ],
             if (widget.post['type'] == 'link') ...[
@@ -395,7 +461,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                 Row(
                   children: [
                     LikeButton(
-                      isLiked: false,
+                      isLiked: liked,
                       likeCount: widget.post['reacts'],
                       countPostion: CountPostion.right,
                       size: 26,
@@ -405,7 +471,31 @@ class _PostCardState extends ConsumerState<PostCard> {
                           color: isLiked ? Colors.redAccent : Colors.grey,
                         );
                       },
-                      onTap: OnTap,
+                      onTap: (isLiked) async {
+                        try {
+                          final postRef = FirebaseFirestore.instance
+                              .collection('posts')
+                              .doc(widget.post['postID']);
+                          final likesRef = postRef.collection('likes');
+                          final uid = FirebaseAuth.instance.currentUser!.uid;
+                          if (isLiked) {
+                            likesRef.doc(uid).delete();
+
+                            postRef.update({
+                              'reacts': FieldValue.increment(-1),
+                            });
+                          } else {
+                            likesRef.doc(uid).set({
+                              'likedAt': FieldValue.serverTimestamp(),
+                            });
+                            postRef.update({'reacts': FieldValue.increment(1)});
+                          }
+
+                          return !isLiked;
+                        } catch (e) {
+                          return isLiked;
+                        }
+                      },
                     ),
                     const SizedBox(width: 14),
                     IconButton(

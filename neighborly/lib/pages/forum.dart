@@ -46,7 +46,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
         return const Icon(
           Icons.chat_bubble_outline,
           size: 25,
-          color: Colors.yellow,
+          color: Colors.indigo,
         );
       case 'urgent':
         return const Icon(
@@ -73,7 +73,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
           color: Colors.green,
         );
       default:
-        return const Icon(Icons.public, size: 25, color: Colors.indigo);
+        return const Icon(Icons.public, size: 25, color: Colors.grey);
     }
   }
 

@@ -4,7 +4,8 @@ import 'package:neighborly/pages/community_list.dart';
 import 'users.dart';
 import 'announcements.dart';
 import 'team.dart';
-import 'Schedule.dart'; // Import the SchedulePage class
+import 'Schedule.dart';
+import 'user_login.dart'; // Import the UserLoginPage class
 
 //included backend connection
 class AdminHomePage extends StatefulWidget {
@@ -349,13 +350,18 @@ class _AdminHomePageState extends State<AdminHomePage>
                 ),
                   ),
                   _buildActionCard(
-                    'Settings',
-                    Icons.settings_rounded,
+                    'User Login',
+                    Icons.login_rounded,
                     const Color(0xFF6366F1),
                     () {
-                      // Add settings navigation
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Settings coming soon!')),
+                      // Add user login navigation
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => Scaffold(
+                            body: SigninForm(title: 'User Login'),
+                          ),
+                        ),
                       );
                     },
                   ),

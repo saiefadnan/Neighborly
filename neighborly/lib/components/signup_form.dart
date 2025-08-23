@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,6 +36,19 @@ class _SignupFormState extends ConsumerState<SignupForm> {
 
   String name = '', email = '', pswd = '', cnfrmPswd = '';
 
+  // Add this method to save user info to Firestore
+  Future<void> _postUserToFirestore({
+    required String username,
+    required String email,
+  }) async {
+    await FirebaseFirestore.instance.collection('users').add({
+      'username': username,
+      'email': email,
+      'createdAt': Timestamp.now(),
+      'blocked': false,
+    });
+  }
+
   void onTapSignup(BuildContext context) async {
     name = _usernameController.text.trim();
     email = _emailController.text.trim();
@@ -65,6 +79,8 @@ class _SignupFormState extends ConsumerState<SignupForm> {
       email: email,
       password: pswd,
     );
+    // After successful authentication, add user to Firestore
+    await _postUserToFirestore(username: name, email: email);
   }
 
   @override
@@ -415,7 +431,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
       ],
     );
   }
-
+ 
   @override
   Widget build(BuildContext context) {
     final asyncAuthUser = ref.watch(authUserProvider);
