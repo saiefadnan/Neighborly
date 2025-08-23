@@ -5,7 +5,7 @@ import '../services/help_list_service.dart';
 
 class HelpRequestData {
   final String id;
-  final String userId; // Owner user id
+  final String userId;
   final String title;
   final String description;
   final String helpType;
