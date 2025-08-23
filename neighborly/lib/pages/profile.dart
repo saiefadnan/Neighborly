@@ -4,6 +4,81 @@ import 'editProfile.dart';
 import 'statistics.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:math' as math;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import '../config/api_config.dart';
+
+class _ProfileNameHeader extends StatefulWidget {
+  const _ProfileNameHeader({Key? key}) : super(key: key);
+
+  @override
+  State<_ProfileNameHeader> createState() => _ProfileNameHeaderState();
+}
+
+class _ProfileNameHeaderState extends State<_ProfileNameHeader> {
+  String? _name;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserInfo();
+  }
+
+  Future<void> _fetchUserInfo() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        setState(() {
+          _loading = false;
+        });
+        return;
+      }
+      final token = await user.getIdToken();
+      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.infosApiPath}');
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['data'];
+        setState(() {
+          _name =
+              ((data['firstName'] ?? '') + ' ' + (data['lastName'] ?? ''))
+                  .trim();
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const SizedBox(
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    return Text(
+      _name ?? '',
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 18,
+        color: Color(0xFF222222),
+      ),
+    );
+  }
+}
 
 class MilestoneData {
   final String label;
@@ -175,14 +250,7 @@ class ProfilePage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    "Mir Sayef",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: Color(0xFF222222),
-                    ),
-                  ),
+                  const _ProfileNameHeader(),
                 ],
               ),
             ),
