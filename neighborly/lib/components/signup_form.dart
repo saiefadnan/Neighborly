@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:neighborly/components/snackbar.dart';
+import 'package:neighborly/functions/alt_auth.dart';
 import 'package:neighborly/functions/valid_email.dart';
 import 'package:neighborly/pages/authPage.dart';
 
@@ -23,7 +24,6 @@ class _SignupFormState extends ConsumerState<SignupForm> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-
   final FocusNode _usernameFocusNode = FocusNode();
   final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
@@ -385,18 +385,31 @@ class _SignupFormState extends ConsumerState<SignupForm> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FaIcon(FontAwesomeIcons.google, color: Color(0xFF71BB7B), size: 30),
-            SizedBox(width: 30.0),
-            FaIcon(
-              FontAwesomeIcons.facebook,
-              color: Color(0xFF71BB7B),
-              size: 30,
+            GestureDetector(
+              onTap: () async => await thirdPartyAuth('google'),
+              child: FaIcon(
+                FontAwesomeIcons.google,
+                color: Color(0xFF71BB7B),
+                size: 30,
+              ),
             ),
             SizedBox(width: 30.0),
-            FaIcon(
-              FontAwesomeIcons.xTwitter,
-              color: Color(0xFF71BB7B),
-              size: 30,
+            GestureDetector(
+              onTap: () async => await thirdPartyAuth('facebook'),
+              child: FaIcon(
+                FontAwesomeIcons.facebook,
+                color: Color(0xFF71BB7B),
+                size: 30,
+              ),
+            ),
+            SizedBox(width: 30.0),
+            GestureDetector(
+              onTap: () async => await thirdPartyAuth('xtwitter'),
+              child: FaIcon(
+                FontAwesomeIcons.xTwitter,
+                color: Color(0xFF71BB7B),
+                size: 30,
+              ),
             ),
           ],
         ),
@@ -431,7 +444,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
       ],
     );
   }
- 
+
   @override
   Widget build(BuildContext context) {
     final asyncAuthUser = ref.watch(authUserProvider);

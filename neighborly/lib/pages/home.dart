@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:neighborly/functions/init_pageval.dart';
 import 'package:neighborly/pages/authPage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1015,13 +1016,18 @@ class _HomePageState extends ConsumerState<HomePage>
     String username = "Ali";
 
     void signOut() async {
-      ref.read(hasSeenSplashProvider.notifier).state =
-          true; // Ensure direct auth access
-      initPageVal(ref);
-      final prefs = await SharedPreferences.getInstance();
-      prefs.setBool('rememberMe', false);
-      ref.read(authUserProvider.notifier).initState();
-      await FirebaseAuth.instance.signOut();
+      try {
+        ref.read(hasSeenSplashProvider.notifier).state =
+            true; // Ensure direct auth access
+        initPageVal(ref);
+        final prefs = await SharedPreferences.getInstance();
+        prefs.setBool('rememberMe', false);
+        ref.read(authUserProvider.notifier).initState();
+        await FirebaseAuth.instance.signOut();
+        await GoogleSignIn().signOut();
+      } catch (e) {
+        print("❌ Error signing out: $e");
+      }
     }
 
     return Container(
@@ -1572,7 +1578,6 @@ class _HomePageState extends ConsumerState<HomePage>
                 width: 2,
               ),
             ),
-            
           ),
           // Profile icon button
           Container(
@@ -1764,7 +1769,11 @@ class _HomePageState extends ConsumerState<HomePage>
               ),
               // Admin login icon button
               IconButton(
-                icon: const Icon(Icons.admin_panel_settings, color: Color(0xFF71BB7B), size: 22),
+                icon: const Icon(
+                  Icons.admin_panel_settings,
+                  color: Color(0xFF71BB7B),
+                  size: 22,
+                ),
                 tooltip: 'Admin Login',
                 onPressed: () {
                   Navigator.push(
