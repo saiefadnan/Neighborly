@@ -105,77 +105,120 @@ class StatisticsPage extends StatelessWidget {
     required String label,
     required String subLabel,
     required IconData iconData,
-    required Gradient gradient, // <-- keep for compatibility, but ignore
+    required Gradient gradient, // kept for signature
     Color iconColor = Colors.white,
   }) {
-    // Map each stat card to its solid color
-    Color cardColor = Colors.white;
+    // same color mapping as before
+    Color baseColor = Colors.white;
     if (label == '55') {
-      cardColor = const Color(0xFFFF9C64); // Helped Requests
+      baseColor = const Color.fromARGB(255, 255, 146, 82);
     } else if (label == '#2') {
-      cardColor = const Color(0xFFB084F4); // Leaderboard
+      baseColor = const Color.fromARGB(255, 155, 110, 224);
     } else if (label == '83%') {
-      cardColor = const Color(0xFFB8F46C); // Help Response Success
+      baseColor = const Color.fromARGB(255, 142, 218, 43);
     } else if (label == '2 km') {
-      cardColor = const Color(0xFF94D4FA); // Help Range Radius
+      baseColor = const Color.fromARGB(255, 83, 171, 221);
     }
 
     return Expanded(
       child: Container(
-        height: 135,
+        height: 155, // ↑ from 135 to give content room
         margin: const EdgeInsets.only(bottom: 4),
         decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(15),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              baseColor,
+              baseColor.withOpacity(0.85),
+              baseColor.withOpacity(0.7),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12.withOpacity(0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: baseColor.withOpacity(0.25),
+              offset: const Offset(0, 8),
+              blurRadius: 20,
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title
-              Text(
-                subLabel,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: Colors.black,
+        child: Stack(
+          children: [
+            Positioned(
+              right: -15,
+              top: -15,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.10),
                 ),
               ),
-              const SizedBox(height: 10),
-              // Icon and value row
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+            ),
+            Positioned(
+              right: -30,
+              top: 0,
+              bottom: 0,
+              child: Icon(
+                iconData,
+                size: 70,
+                color: Colors.white.withOpacity(0.15),
+              ),
+            ),
+
+            // content
+            Padding(
+              padding: const EdgeInsets.all(16), // was 18
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 32,
-                    height: 32,
+                    padding: const EdgeInsets.all(8), // was 10
                     decoration: BoxDecoration(
-                      color: cardColor,
-                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.20),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Icon(iconData, size: 28, color: Colors.black),
+                    child: Icon(
+                      iconData,
+                      color: Colors.white,
+                      size: 20,
+                    ), // was 22
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(height: 10), // was 12
                   Text(
-                    label,
+                    subLabel,
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 28,
-                      color: Colors.black,
+                      fontSize: 14, // was 15
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4), // was 6
+                  // label scaled down to avoid overflow on small screens / big text scale
+                  FittedBox(
+                    alignment: Alignment.centerLeft,
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 26, // was 28
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        height: 1.1,
+                      ),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

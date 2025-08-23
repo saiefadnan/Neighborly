@@ -207,7 +207,7 @@ class ProfilePage extends StatelessWidget {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7F7FA),
+        backgroundColor: const Color(0xFFFAFAFA),
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
