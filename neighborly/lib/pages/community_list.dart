@@ -640,7 +640,7 @@ class _CommunityListPageState extends State<CommunityListPage>
               ),
             );
           },
-        ),
+        ),//announcements icon connected to announcement page
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back, color: Colors.white),
