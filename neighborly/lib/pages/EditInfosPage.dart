@@ -92,8 +92,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
         print('No auth token found.');
         return;
       }
-      final baseUrl = ApiConfig.baseUrl; // e.g. http://localhost:4000/api/infos
-      final uri = Uri.parse('$baseUrl/info');
+      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.infosApiPath}');
       print('Fetching user info from: $uri');
       final response = await http.get(
         uri,
@@ -537,8 +536,9 @@ class _EditInfosPageState extends State<EditInfosPage> {
                               onPressed: () async {
                                 final token = await _getAuthToken();
                                 if (token == null) return;
-                                final baseUrl = ApiConfig.baseUrl;
-                                final uri = Uri.parse('$baseUrl/info');
+                                final uri = Uri.parse(
+                                  '${ApiConfig.baseUrl}${ApiConfig.infosApiPath}',
+                                );
                                 final response = await http.post(
                                   uri,
                                   headers: {
