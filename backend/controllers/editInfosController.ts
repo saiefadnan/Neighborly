@@ -33,6 +33,8 @@ export const getUserInfo = async (c: Context) => {
       'addressLine2',
       'city',
       'contactNumber',
+      'division',
+      'postalcode',
       'email' // for display only, not updatable
     ];
     const userData = userDoc.data() || {};
@@ -76,7 +78,9 @@ export const updateUserInfo = async (c: Context) => {
       'addressLine1',
       'addressLine2',
       'city',
-      'contactNumber'
+      'contactNumber',
+      'division',
+      'postalcode'
     ];
 
     // Filter updateData to only allowed fields
