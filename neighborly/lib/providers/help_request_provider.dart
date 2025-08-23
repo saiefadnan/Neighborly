@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/help_list_service.dart';
 
 class HelpRequestData {
   final String id;
+  final String userId; // Owner user id
   final String title;
   final String description;
   final String helpType;
@@ -19,6 +22,7 @@ class HelpRequestData {
 
   HelpRequestData({
     required this.id,
+    required this.userId,
     required this.title,
     required this.description,
     required this.helpType,
@@ -52,6 +56,7 @@ class HelpRequestData {
 
     return HelpRequestData(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: helpData['userId'] ?? '',
       title: helpData['title'] ?? 'Help Request',
       description: helpData['description'] ?? '',
       helpType: helpData['title'] ?? 'General',
@@ -72,6 +77,7 @@ class HelpRequestData {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'userId': userId,
       'title': title,
       'description': description,
       'helpType': helpType,
@@ -88,26 +94,34 @@ class HelpRequestData {
 class HelpRequestProvider with ChangeNotifier {
   final List<HelpRequestData> _helpRequests = [];
   bool _isInitialized = false;
+  bool _loadedFromBackend = false;
+  String? _currentUserId;
 
   List<HelpRequestData> get helpRequests => List.unmodifiable(_helpRequests);
 
-  List<HelpRequestData> get communityHelps =>
-      _helpRequests
-          .where(
-            (help) =>
-                help.requesterName != 'Ali Rahman' &&
-                help.requesterName != 'Ali',
-          )
-          .toList();
+  // Computed lists using userId when available, fallback to legacy name logic
+  List<HelpRequestData> get communityHelps {
+    if (_currentUserId != null) {
+      return _helpRequests.where((h) => h.userId != _currentUserId).toList();
+    }
+    // Fallback legacy (name based)
+    return _helpRequests
+        .where(
+          (h) => h.requesterName != 'Ali Rahman' && h.requesterName != 'Ali',
+        )
+        .toList();
+  }
 
-  List<HelpRequestData> get myHelps =>
-      _helpRequests
-          .where(
-            (help) =>
-                help.requesterName == 'Ali Rahman' ||
-                help.requesterName == 'Ali',
-          )
-          .toList();
+  List<HelpRequestData> get myHelps {
+    if (_currentUserId != null) {
+      return _helpRequests.where((h) => h.userId == _currentUserId).toList();
+    }
+    return _helpRequests
+        .where(
+          (h) => h.requesterName == 'Ali Rahman' || h.requesterName == 'Ali',
+        )
+        .toList();
+  }
 
   void addHelpRequest(HelpRequestData helpRequest) {
     _helpRequests.insert(0, helpRequest); // Add to beginning for newest first
@@ -129,6 +143,23 @@ class HelpRequestProvider with ChangeNotifier {
         _helpRequests[index].responderCount = responderCount;
       }
       notifyListeners();
+    }
+  }
+
+  Future<void> fetchHelpRequestsFromBackend({bool force = false}) async {
+    if (_loadedFromBackend && !force) return;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      _currentUserId = user?.uid;
+      final fetched = await HelpListService.fetchAllHelpRequests();
+      _helpRequests
+        ..clear()
+        ..addAll(fetched);
+      _loadedFromBackend = true;
+      notifyListeners();
+    } catch (e) {
+      // Keep sample data if already there
+      debugPrint('Failed to fetch help requests: $e');
     }
   }
 
@@ -197,6 +228,7 @@ class HelpRequestProvider with ChangeNotifier {
     final sampleHelps = [
       HelpRequestData(
         id: 'sample_1',
+        userId: 'user_sarah',
         title: 'Need help with groceries',
         description:
             'I\'m recovering from surgery and need someone to help me with grocery shopping. Can pay for gas and groceries.',
@@ -213,6 +245,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'sample_2',
+        userId: 'user_mike',
         title: 'Emergency pet transport',
         description:
             'My cat is injured and I don\'t have a car to get to the emergency vet clinic. Please help!',
@@ -229,6 +262,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'sample_3',
+        userId: 'user_jessica',
         title: 'Babysitting for job interview',
         description:
             'I have an important job interview tomorrow and need someone to watch my 5-year-old for 2 hours.',
@@ -245,6 +279,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'sample_4',
+        userId: 'user_david',
         title: 'Moving boxes to apartment',
         description:
             'Need 2-3 people to help move some boxes and furniture to my new apartment on the 3rd floor.',
@@ -261,6 +296,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'sample_5',
+        userId: 'user_emily',
         title: 'Senior assistance with technology',
         description:
             'My elderly neighbor needs help setting up her new smartphone and learning basic functions.',
@@ -277,6 +313,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'sample_6',
+        userId: 'user_robert',
         title: 'Need ride to hospital',
         description:
             'I have a medical appointment and my car broke down. Need transportation to City Hospital.',
@@ -293,6 +330,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'sample_7',
+        userId: 'user_lisa',
         title: 'Dog walking while away',
         description:
             'Going out of town for the weekend and need someone to walk my dog twice a day.',
@@ -309,6 +347,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'sample_8',
+        userId: 'user_amanda',
         title: 'Furniture arrangement help',
         description:
             'Recently moved and need help arranging heavy furniture in my new living room.',
@@ -325,6 +364,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'sample_9',
+        userId: 'user_michael',
         title: 'House fire emergency!',
         description:
             'Small kitchen fire contained but need help with smoke damage cleanup. Fire department already called.',
@@ -341,6 +381,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'sample_10',
+        userId: 'user_reporter',
         title: 'Traffic update - road blocked',
         description:
             'Major accident on Highway 15. Traffic backed up for miles. Find alternate routes.',
@@ -357,6 +398,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'my_sample_1',
+        userId: 'current_user',
         title: 'Emergency - Need immediate help!',
         description:
             'Urgent situation requiring immediate assistance. Please respond quickly.',
@@ -373,6 +415,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'my_sample_2',
+        userId: 'current_user',
         title: 'Urgent help needed with moving',
         description:
             'Need help moving furniture today. Time sensitive request.',
@@ -389,6 +432,7 @@ class HelpRequestProvider with ChangeNotifier {
       ),
       HelpRequestData(
         id: 'my_sample_3',
+        userId: 'current_user',
         title: 'General help with groceries',
         description:
             'Looking for someone to help with weekly grocery shopping. Not urgent.',

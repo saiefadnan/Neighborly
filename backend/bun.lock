@@ -7,7 +7,7 @@
         "cloudinary": "^2.7.0",
         "dotenv": "^17.2.1",
         "firebase-admin": "^13.4.0",
-        "hono": "^4.8.2",
+        "hono": "^4.9.4",
         "path": "^0.12.7",
         "uuid": "^11.1.0",
       },
@@ -222,7 +222,7 @@
 
     "hasown": ["hasown@2.0.2", "", { "dependencies": { "function-bind": "^1.1.2" } }, "sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ=="],
 
-    "hono": ["hono@4.8.2", "", {}, "sha512-hM+1RIn9PK1I6SiTNS6/y7O1mvg88awYLFEuEtoiMtRyT3SD2iu9pSFgbBXT3b1Ua4IwzvSTLvwO0SEhDxCi4w=="],
+    "hono": ["hono@4.9.4", "", {}, "sha512-61hl6MF6ojTl/8QSRu5ran6GXt+6zsngIUN95KzF5v5UjiX/xnrLR358BNRawwIRO49JwUqJqQe3Rb2v559R8Q=="],
 
     "html-entities": ["html-entities@2.6.0", "", {}, "sha512-kig+rMn/QOVRvr7c86gQ8lWXq+Hkv6CbAH1hLu+RG338StTpE8Z0b44SDVaqVu7HGKf27frdmUYEs9hTUX/cLQ=="],
 
