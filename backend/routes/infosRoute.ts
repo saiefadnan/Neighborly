@@ -7,7 +7,7 @@ const infosRouter = new Hono();
 infosRouter.get('/info', getUserInfo);
 
 // Update user info (insert/update allowed fields)
-//infosRouter.post('/info', updateUserInfo);
+infosRouter.post('/info', updateUserInfo);
 infosRouter.get('/test', (c) => c.text('Test route works!'));
 
 export default infosRouter;
