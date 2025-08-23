@@ -8,7 +8,7 @@ class AnnouncementsPage extends StatefulWidget {
   @override
   State<AnnouncementsPage> createState() => _AnnouncementsPageState();
 }
-
+//it will also be displayed in users page
 class _AnnouncementsPageState extends State<AnnouncementsPage> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
