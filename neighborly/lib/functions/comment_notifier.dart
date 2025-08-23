@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:neighborly/functions/post_notifier.dart';
 
 final commentsProvider = StateNotifierProvider.family<
   CommentsNotifier,
@@ -61,10 +62,15 @@ class CommentsNotifier
           .collection('posts')
           .doc(postID)
           .collection('comments')
-          .doc(commentID) // custom commentID like your backend
+          .doc(commentID)
           .set(data);
 
-      print('Comment stored successfully: $data');
+      await FirebaseFirestore.instance.collection('posts').doc(postID).update({
+        'totalComments': FieldValue.increment(1),
+      });
+
+      ref.read(postsProvider.notifier).updateCommentCount(postID);
+      print('Comment stored and incremented on post successfully: $data');
       return true;
     } catch (e) {
       print('Error storing comment: $e');
