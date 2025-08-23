@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="app_name">neighborly</string>
+<string name="facebook_app_id">1417815939334184</string>
+<string name="fb_login_protocol_scheme">fb1417815939334184</string>
+<string name="facebook_client_token">4d61ce655412ba233c52ada09d11da5a</string>
+
+
+</resources>

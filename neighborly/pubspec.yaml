@@ -42,6 +42,8 @@ dependencies:
   custom_check_box: ^0.0.4
   pin_code_fields: ^8.0.1
   google_sign_in: ^6.3.0
+  flutter_facebook_auth: ^7.1.2
+  twitter_login: ^4.4.2
   firebase_core: ^4.0.0
   firebase_auth: ^6.0.0
   cloud_firestore: ^6.0.0
@@ -71,12 +73,6 @@ flutter:
     - .env #!!!!don't remove this ever again!!!
     - assets/images/
     - assets/data/
-    - assets/images/Polygon.png
-    - assets/images/statss.png
-    - assets/images/contributionss.png
-    - assets/images/achievess.png
-    - assets/images/activityss.png
-    - assets/images/homepagess.png
 
 # Flutter Launcher Icons Configuration
 flutter_launcher_icons:
