@@ -26,7 +26,8 @@ class CurvedHeaderClipper extends CustomClipper<Path> {
 }
 
 class ProfileHeader extends StatefulWidget {
-  const ProfileHeader({super.key});
+  final String? profileImageUrl;
+  const ProfileHeader({super.key, this.profileImageUrl});
 
   @override
   State<ProfileHeader> createState() => _ProfileHeaderState();
@@ -101,7 +102,12 @@ class _ProfileHeaderState extends State<ProfileHeader> {
                 backgroundColor: Colors.white,
                 child: CircleAvatar(
                   radius: 60,
-                  backgroundImage: const AssetImage('assets/images/dummy.png'),
+                  backgroundImage:
+                      (widget.profileImageUrl != null &&
+                              widget.profileImageUrl!.isNotEmpty)
+                          ? NetworkImage(widget.profileImageUrl!)
+                          : const AssetImage('assets/images/dummy.png')
+                              as ImageProvider,
                 ),
               ),
             ),

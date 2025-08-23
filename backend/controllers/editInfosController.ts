@@ -1,3 +1,5 @@
+// Insert or update only the profile picture URL for the user
+
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { Context } from 'hono';
@@ -35,7 +37,8 @@ export const getUserInfo = async (c: Context) => {
       'contactNumber',
       'division',
       'postalcode',
-      'email' // for display only, not updatable
+      'email'
+       // for display only, not updatable
     ];
     const userData = userDoc.data() || {};
     const filteredData: Record<string, any> = {};
