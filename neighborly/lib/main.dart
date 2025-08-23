@@ -13,6 +13,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  //dont remove this ever again!!!
+  //dont remove this ever again!!!
+  //dont remove this ever again!!!
+  await dotenv.load(fileName: ".env");
+  //dont remove this ever again!!!
+  //dont remove this ever again!!!
+  //dont remove this ever again!!!
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   print("✅ Firebase initialized!");
