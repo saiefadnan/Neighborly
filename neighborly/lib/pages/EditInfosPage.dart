@@ -66,6 +66,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
   final _postalcodeController = TextEditingController();
   File? _profileImage;
   bool _isLoading = false;
+  // ...existing code...
 
   Future<String?> _getAuthToken() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -189,7 +190,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
                       clipBehavior: Clip.none,
                       children: [
                         // Base ProfileHeader from shared component (no avatar inside)
-                        ProfileHeader(showUserInfo: false),
+                        ProfileHeader(),
 
                         // Avatar (show picked image if available, else default)
                         Positioned(

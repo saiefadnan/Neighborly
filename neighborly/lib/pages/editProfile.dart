@@ -40,7 +40,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           // Curved header and avatar overlap using Stack and ClipPath
           // Curved header background
           // Using the shared header component
-          ProfileHeader(showUserInfo: true),
+          ProfileHeader(),
           // Main card sections
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
