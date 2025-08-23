@@ -1,10 +1,8 @@
 import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 Future<bool> verifyToken(String? idToken) async {
-  final baseUrl = dotenv.env['BASE_URL'];
-  final url = Uri.parse('${baseUrl}/api/auth/signin/idtoken');
+  final url = Uri.parse('http://192.168.1.183/api/auth/signin/idtoken');
 
   try {
     final response = await http.post(
