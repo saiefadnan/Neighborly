@@ -135,22 +135,102 @@ class AppNavigationPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  '• Forum: Access and participate in community discussions.',
+                  '• Forum:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(left: 16.0),
+                  child: Text(
+                    'Access and participate in community discussions.',
+                  ),
                 ),
                 SizedBox(height: 4),
-                Text('• Help List: View and respond to help requests.'),
+                Text(
+                  '• Help List:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(left: 16.0),
+                  child: Text('View and respond to help requests.'),
+                ),
                 SizedBox(height: 4),
-                Text('• Community: Connect with your local community.'),
+                Text(
+                  '• Community:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(left: 16.0),
+                  child: Text('Join and connect with your local community.'),
+                ),
                 SizedBox(height: 4),
-                Text('• Notifications: Stay updated with important alerts.'),
+                Text(
+                  '• Notifications:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(left: 16.0),
+                  child: Text('Stay updated with important alerts.'),
+                ),
                 SizedBox(height: 4),
-                Text('• Map: Find locations and resources nearby.'),
+                Text(
+                  '• Map:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(left: 16.0),
+                  child: Text('Find locations and resources nearby.'),
+                ),
                 SizedBox(height: 4),
-                Text('• Profile: Manage your personal information.'),
+                Text(
+                  '• Profile:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(left: 16.0),
+                  child: Text('Manage your personal information.'),
+                ),
                 SizedBox(height: 4),
-                Text('• Emergency Number: Quickly call 999 for emergencies.'),
+                Text(
+                  '• Emergency Number:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(left: 16.0),
+                  child: Text('Quickly call 999 for emergencies.'),
+                ),
                 SizedBox(height: 4),
-                Text('• AI Chatbot: Get instant help and answers.'),
+                Text(
+                  '• AI Chatbot:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(left: 16.0),
+                  child: Text('Get instant help and answers.'),
+                ),
               ],
             ),
           ),

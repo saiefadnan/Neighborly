@@ -76,6 +76,7 @@ flutter:
     - assets/images/contributionss.png
     - assets/images/achievess.png
     - assets/images/activityss.png
+    - assets/images/homepagess.png
 
 # Flutter Launcher Icons Configuration
 flutter_launcher_icons:
