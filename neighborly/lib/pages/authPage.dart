@@ -6,6 +6,7 @@ import 'package:neighborly/components/signin_form.dart';
 import 'package:neighborly/components/signup_form.dart';
 import 'package:neighborly/components/success.dart';
 import 'package:neighborly/components/verify_email.dart';
+import 'package:neighborly/components/verify_email_alt.dart';
 import 'package:neighborly/functions/auth_user.dart';
 
 final pageNumberProvider = StateProvider<int>((ref) => 0);
@@ -48,7 +49,11 @@ class _SigninPageState extends ConsumerState<AuthPage> {
           key: ValueKey('forgetPass'),
         );
       case 3:
-        return VerifyEmail(title: 'Verify Email', key: ValueKey("verifyEmail"));
+        // return VerifyEmail(title: 'Verify Email', key: ValueKey("verifyEmail"));
+        return VerifyEmailAlt(
+          title: 'Verify Email',
+          key: ValueKey("verifyEmail"),
+        );
       case 4:
         return NewPass(title: "Update password", key: ValueKey('updatePass'));
       default:

@@ -1,6 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/pages/authPage.dart';
+
+final emailProvider = StateProvider<String>((ref) => '');
 
 class ForgetPass extends ConsumerStatefulWidget {
   final String title;
@@ -14,8 +17,23 @@ class _ForgetPassState extends ConsumerState<ForgetPass> {
   final FocusNode _emailFocusNode = FocusNode();
   bool _isEmailFocused = false;
 
-  void onTapReset() {
-    ref.read(pageNumberProvider.notifier).state = 3;
+  Future<void> onTapReset() async {
+    try {
+      final email = _emailController.text.trim();
+      if (email.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Please enter your email")));
+        return;
+      }
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      ref.read(emailProvider.notifier).state = email;
+      ref.read(pageNumberProvider.notifier).state = 3;
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Unexpected error occured!")));
+    }
   }
 
   @override
@@ -129,7 +147,7 @@ class _ForgetPassState extends ConsumerState<ForgetPass> {
               padding: EdgeInsets.symmetric(vertical: 16.0),
               elevation: 0,
             ),
-            onPressed: () => onTapReset(),
+            onPressed: () async => await onTapReset(),
             child: Text(
               "Reset Password",
               style: TextStyle(
