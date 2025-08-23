@@ -77,6 +77,84 @@ class AppNavigationPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
+          // Home Page Navigation Section
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0, bottom: 2),
+            child: Text(
+              "Home Page Navigation",
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "The Home page provides quick access to all major features of Neighborly. Use it to navigate to Forum, Help List, Community, Notifications, Map, Profile, Emergency Number (call 999), and the AI Chatbot.",
+            style: TextStyle(
+              fontSize: 15.5,
+              height: 1.7,
+              color: Colors.black87,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.05,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: GestureDetector(
+              onTap:
+                  () => _showImageDialog(
+                    context,
+                    'assets/images/homepagess.png',
+                    'Home Page',
+                  ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: const Image(
+                  image: AssetImage('assets/images/homepagess.png'),
+                  fit: BoxFit.contain,
+                  height: 220,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Key Features:',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  '• Forum: Access and participate in community discussions.',
+                ),
+                SizedBox(height: 4),
+                Text('• Help List: View and respond to help requests.'),
+                SizedBox(height: 4),
+                Text('• Community: Connect with your local community.'),
+                SizedBox(height: 4),
+                Text('• Notifications: Stay updated with important alerts.'),
+                SizedBox(height: 4),
+                Text('• Map: Find locations and resources nearby.'),
+                SizedBox(height: 4),
+                Text('• Profile: Manage your personal information.'),
+                SizedBox(height: 4),
+                Text('• Emergency Number: Quickly call 999 for emergencies.'),
+                SizedBox(height: 4),
+                Text('• AI Chatbot: Get instant help and answers.'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           // Statistics Section
           Padding(
             padding: const EdgeInsets.only(top: 16.0, bottom: 2),
