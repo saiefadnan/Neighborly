@@ -10,7 +10,7 @@ class ApiConfig {
   // API endpoints
   static const String mapApiPath = '/api/map';
   static const String authApiPath = '/api/auth';
-
+  static const String infosApiPath = '/api/infos';
   // Environment
   static const bool isDevelopment = true; // Set to false for production
 
