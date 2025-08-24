@@ -91,7 +91,6 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
                 Center(child: Text("Start the conversation")),
               ],
             );
-        ;
       },
       error: (e, _) {
         return ListView(

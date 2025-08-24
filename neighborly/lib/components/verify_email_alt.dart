@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
 import 'package:neighborly/components/forget_pass.dart';
 import 'package:neighborly/pages/authPage.dart';
-import 'package:pin_code_fields/pin_code_fields.dart';
 
 class VerifyEmailAlt extends ConsumerStatefulWidget {
   final String title;

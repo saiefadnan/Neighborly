@@ -1,14 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'package:flutter_polls/flutter_polls.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:markdown_widget/config/all.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 import 'package:like_button/like_button.dart';
-import 'package:neighborly/functions/post_notifier.dart';
 import 'package:readmore/readmore.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -342,8 +339,9 @@ class _PostCardState extends ConsumerState<PostCard> {
                       print("Vote error: $e");
                       return false;
                     }
-                  } else
+                  } else {
                     return false;
+                  }
                 },
                 pollTitle: Text(widget.post['poll']['question']),
                 pollOptions:

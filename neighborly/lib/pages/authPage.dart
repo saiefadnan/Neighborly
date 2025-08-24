@@ -5,7 +5,6 @@ import 'package:neighborly/components/new_pass.dart';
 import 'package:neighborly/components/signin_form.dart';
 import 'package:neighborly/components/signup_form.dart';
 import 'package:neighborly/components/success.dart';
-import 'package:neighborly/components/verify_email.dart';
 import 'package:neighborly/components/verify_email_alt.dart';
 import 'package:neighborly/functions/auth_user.dart';
 

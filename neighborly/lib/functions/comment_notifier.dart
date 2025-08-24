@@ -80,7 +80,7 @@ class CommentsNotifier
 
   Future<bool> storeComments(Map<String, dynamic> commentData) async {
     final baseUrl = dotenv.env['BASE_URL'];
-    final url = Uri.parse('${baseUrl}/api/forum/store/comments');
+    final url = Uri.parse('$baseUrl/api/forum/store/comments');
     print(commentData);
     try {
       final response = await http.post(

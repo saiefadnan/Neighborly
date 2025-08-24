@@ -132,7 +132,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
           _cityController.text = data['city'] ?? '';
           _divisionController.text = data['division'] ?? '';
           _postalcodeController.text = data['postalcode'] ?? '';
-          _profileImageUrl = data['profilepicurl'] ?? null;
+          _profileImageUrl = data['profilepicurl'];
           _isLoading = false;
         });
       } else {

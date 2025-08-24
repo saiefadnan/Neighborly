@@ -289,7 +289,7 @@ class _SigninFormState extends ConsumerState<SigninForm> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             GestureDetector(
-              onTap: () async => await thirdPartyAuth('google'),
+              onTap: () async => await signInWithGoogle(context),
               child: FaIcon(
                 FontAwesomeIcons.google,
                 color: Color(0xFF71BB7B),
@@ -298,22 +298,22 @@ class _SigninFormState extends ConsumerState<SigninForm> {
             ),
             SizedBox(width: 30.0),
             GestureDetector(
-              onTap: () async => await thirdPartyAuth('facebook'),
+              onTap: () async => await signInWithFacebook(context),
               child: FaIcon(
                 FontAwesomeIcons.facebook,
                 color: Color(0xFF71BB7B),
                 size: 30,
               ),
             ),
-            SizedBox(width: 30.0),
-            GestureDetector(
-              onTap: () async => await thirdPartyAuth('xtwitter'),
-              child: FaIcon(
-                FontAwesomeIcons.xTwitter,
-                color: Color(0xFF71BB7B),
-                size: 30,
-              ),
-            ),
+            // SizedBox(width: 30.0),
+            // GestureDetector(
+            //   onTap: () async => await thirdPartyAuth(context, 'xtwitter'),
+            //   child: FaIcon(
+            //     FontAwesomeIcons.xTwitter,
+            //     color: Color(0xFF71BB7B),
+            //     size: 30,
+            //   ),6
+            // ),
           ],
         ),
         SizedBox(height: 20.0),
