@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:twitter_login/twitter_login.dart';
+// import 'package:twitter_login/twitter_login.dart'; // Temporarily commented out due to namespace issue
 
 Future<UserCredential?> thirdPartyAuth(String logo) async {
   if (logo == 'google') {
@@ -45,6 +45,12 @@ Future<UserCredential?> thirdPartyAuth(String logo) async {
       return null;
     }
   } else {
+    // Twitter login temporarily disabled due to package namespace issue
+    // TODO: Re-enable once twitter_login package is updated or replaced
+    print('Twitter login currently disabled');
+    return null;
+
+    /*
     final twitterLogin = TwitterLogin(
       apiKey: dotenv.env['TWITTER_API_KEY'] ?? '',
       apiSecretKey: dotenv.env['TWITTER_API_SECRET'] ?? '',
@@ -64,5 +70,6 @@ Future<UserCredential?> thirdPartyAuth(String logo) async {
     } else {
       return null; // failed / cancelled
     }
+    */
   }
 }
