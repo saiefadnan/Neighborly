@@ -1,3 +1,7 @@
+import 'dart:math';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:like_button/like_button.dart';
@@ -23,14 +27,30 @@ class CommentCard extends ConsumerStatefulWidget {
 }
 
 class _CommentCardState extends ConsumerState<CommentCard> {
-  Future<bool> OnTap(bool isLiked) async {
-    return !isLiked;
+  bool liked = false;
+  Future<void> likedByme() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser!.uid;
+      final likeDoc =
+          await FirebaseFirestore.instance
+              .collection('posts')
+              .doc(widget.comment['postID'])
+              .collection('comments')
+              .doc(widget.comment['commentID'])
+              .collection('likes')
+              .doc(uid)
+              .get();
+      if (!mounted) return;
+      setState(() {
+        liked = likeDoc.exists;
+      });
+    } catch (e) {}
   }
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final context = widget.ckey.currentContext;
       if (context != null) {
         final box = context.findRenderObject() as RenderBox?;
@@ -40,6 +60,7 @@ class _CommentCardState extends ConsumerState<CommentCard> {
         });
         //print('Height for comment ${widget.comment['commentID']}: $height');
       }
+      await likedByme();
     });
   }
 
@@ -67,7 +88,7 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                 Row(
                   children: [
                     Text(
-                      widget.comment['author']??'Anonymous',
+                      widget.comment['author'] ?? 'Anonymous',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12.0,
@@ -98,6 +119,7 @@ class _CommentCardState extends ConsumerState<CommentCard> {
               children: [
                 SizedBox(width: 35),
                 LikeButton(
+                  isLiked: liked,
                   likeCount: widget.comment['reacts'] ?? 0,
                   countPostion: CountPostion.right,
                   likeBuilder: (isLiked) {
@@ -107,10 +129,37 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                       color: isLiked ? Colors.red : Colors.grey,
                     );
                   },
-                  onTap: OnTap,
+                  onTap: (isLiked) async {
+                    try {
+                      final commentRef = FirebaseFirestore.instance
+                          .collection('posts')
+                          .doc(widget.comment['postID'])
+                          .collection('comments')
+                          .doc(widget.comment['commentID']);
+                      final likesRef = commentRef.collection('likes');
+                      final uid = FirebaseAuth.instance.currentUser!.uid;
+                      if (isLiked) {
+                        widget.comment['reacts'] = max(
+                          widget.comment['reacts'] - 1,
+                          0,
+                        );
+                        likesRef.doc(uid).delete();
+                        commentRef.update({'reacts': FieldValue.increment(-1)});
+                      } else {
+                        widget.comment['reacts'] = widget.comment['reacts'] + 1;
+                        likesRef.doc(uid).set({
+                          'likedAt': FieldValue.serverTimestamp(),
+                        });
+                        commentRef.update({'reacts': FieldValue.increment(1)});
+                      }
+                      return !isLiked;
+                    } catch (e) {
+                      return isLiked;
+                    }
+                  },
                 ),
                 SizedBox(width: 40),
-                IconButton(
+                TextButton.icon(
                   onPressed: () {
                     ref.read(replyTargetProvider.notifier).state =
                         widget.comment['commentID'];
@@ -125,12 +174,12 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                     });
                   },
                   icon: Icon(Icons.reply, color: Colors.blue, size: 15),
-                ),
-                Text(
-                  'reply',
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontWeight: FontWeight.bold,
+                  label: Text(
+                    'reply',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],

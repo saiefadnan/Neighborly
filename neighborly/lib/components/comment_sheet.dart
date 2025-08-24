@@ -304,6 +304,7 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                                                 ?.displayName, // get this from user state
                                                         'content': comment,
                                                         'parentID': replyTo,
+                                                        'reacts': 0,
                                                       };
                                                       ref
                                                           .read(

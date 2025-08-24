@@ -28,6 +28,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   final TextEditingController descriptionController = TextEditingController();
 
   final ImagePicker picker = ImagePicker();
+  DateTime selectedDate = DateTime.now();
 
   List<Map<String, String>> eventTypes = [
     {"title": "Tree Plantation", "desc": "Join a green cause."},
@@ -44,32 +45,63 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     }
   }
 
-  Future<void> _pickDate(BuildContext context) async {
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController controller,
+  ) async {
+    final DateTime now = DateTime.now();
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      initialDate: now,
+      firstDate: now, // Restrict to current date or later
+      lastDate: DateTime(2100), // Set an upper limit for the date picker
     );
 
     if (pickedDate != null) {
-      setState(() {
-        dateController.text =
-            "${pickedDate.year}-${pickedDate.month}-${pickedDate.day}";
-      });
+      selectedDate = pickedDate;
+      controller.text =
+          "${pickedDate.toLocal()}".split(' ')[0]; // Format the date as needed
     }
   }
 
-  Future<void> _pickTime(BuildContext context) async {
+  Future<void> _pickTime(
+    BuildContext context,
+    TextEditingController controller,
+    DateTime selectedDate,
+  ) async {
+    final DateTime now = DateTime.now();
+    final TimeOfDay currentTime = TimeOfDay.now();
+
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: currentTime,
     );
 
     if (pickedTime != null) {
-      setState(() {
-        timeController.text = pickedTime.format(context);
-      });
+      // Check if the selected date is today
+      if (selectedDate.year == now.year &&
+          selectedDate.month == now.month &&
+          selectedDate.day == now.day) {
+        // If the selected date is today, ensure the time is not in the past
+        if (pickedTime.hour < currentTime.hour ||
+            (pickedTime.hour == currentTime.hour &&
+                pickedTime.minute < currentTime.minute)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Please select a time later than the current time.',
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
+      // Update the controller with the selected time
+      final formattedTime = pickedTime.format(
+        context,
+      ); // Format the time as needed
+      controller.text = formattedTime;
     }
   }
 
@@ -233,6 +265,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
               "Time",
               timeController,
               context,
+              selectedDate,
               icon: Icons.access_time,
             ),
             _buildTextField(
@@ -517,7 +550,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        onTap: () => _pickDate(context),
+        onTap: () => _pickDate(context, controller),
       ),
     );
   }
@@ -525,7 +558,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   Widget _buildTimePickerField(
     String label,
     TextEditingController controller,
-    BuildContext context, {
+    BuildContext context,
+    DateTime selectedDate, { // Added selectedDate as a parameter
     IconData? icon,
   }) {
     return Padding(
@@ -554,7 +588,12 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        onTap: () => _pickTime(context),
+        onTap:
+            () => _pickTime(
+              context,
+              controller,
+              selectedDate,
+            ), // Pass selectedDate here
       ),
     );
   }

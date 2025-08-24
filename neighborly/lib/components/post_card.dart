@@ -1,11 +1,16 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'package:flutter_polls/flutter_polls.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown_widget/config/all.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 import 'package:like_button/like_button.dart';
+import 'package:neighborly/functions/post_notifier.dart';
 import 'package:readmore/readmore.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -25,12 +30,13 @@ class _PostCardState extends ConsumerState<PostCard> {
   bool liked = false;
   Future<void> likedByme() async {
     try {
+      final uid = FirebaseAuth.instance.currentUser!.uid;
       final likeDoc =
           await FirebaseFirestore.instance
               .collection('posts')
               .doc(widget.post['postID'])
               .collection('likes')
-              .doc(FirebaseAuth.instance.currentUser!.uid)
+              .doc(uid)
               .get();
       if (!mounted) return;
       setState(() {
@@ -477,18 +483,21 @@ class _PostCardState extends ConsumerState<PostCard> {
                           final likesRef = postRef.collection('likes');
                           final uid = FirebaseAuth.instance.currentUser!.uid;
                           if (isLiked) {
+                            widget.post['reacts'] = max(
+                              widget.post['reacts'] - 1,
+                              0,
+                            );
                             likesRef.doc(uid).delete();
-
                             postRef.update({
                               'reacts': FieldValue.increment(-1),
                             });
                           } else {
+                            widget.post['reacts'] = widget.post['reacts'] + 1;
                             likesRef.doc(uid).set({
                               'likedAt': FieldValue.serverTimestamp(),
                             });
                             postRef.update({'reacts': FieldValue.increment(1)});
                           }
-
                           return !isLiked;
                         } catch (e) {
                           return isLiked;
