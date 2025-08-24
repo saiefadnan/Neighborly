@@ -2,8 +2,72 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-class StatisticsPage extends StatelessWidget {
+class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
+
+  @override
+  _StatisticsPageState createState() => _StatisticsPageState();
+}
+
+class _StatisticsPageState extends State<StatisticsPage>
+    with TickerProviderStateMixin {
+  // Declare AnimationControllers for each card
+  late AnimationController _breathingController1;
+  late AnimationController _breathingController2;
+  late AnimationController _breathingController3;
+  late AnimationController _breathingController4;
+
+  late Animation<double> _breathingAnimation1;
+  late Animation<double> _breathingAnimation2;
+  late Animation<double> _breathingAnimation3;
+  late Animation<double> _breathingAnimation4;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize AnimationControllers
+    _breathingController1 = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+    _breathingController2 = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+    _breathingController3 = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+    _breathingController4 = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+
+    // Define breathing animations
+    _breathingAnimation1 = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _breathingController1, curve: Curves.easeInOut),
+    );
+    _breathingAnimation2 = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _breathingController2, curve: Curves.easeInOut),
+    );
+    _breathingAnimation3 = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _breathingController3, curve: Curves.easeInOut),
+    );
+    _breathingAnimation4 = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _breathingController4, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    // Dispose the controllers
+    _breathingController1.dispose();
+    _breathingController2.dispose();
+    _breathingController3.dispose();
+    _breathingController4.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +87,7 @@ class StatisticsPage extends StatelessWidget {
                   colors: [Color(0xFFFF9C64), Color(0xFFFF9C64)],
                 ),
                 iconColor: Colors.white,
+                breathingAnimation: _breathingAnimation1,
               ),
               const SizedBox(width: 16),
               _statCard(
@@ -33,6 +98,7 @@ class StatisticsPage extends StatelessWidget {
                   colors: [Color(0xFFB084F4), Color(0xFFB084F4)],
                 ),
                 iconColor: Colors.white,
+                breathingAnimation: _breathingAnimation2,
               ),
             ],
           ),
@@ -47,6 +113,7 @@ class StatisticsPage extends StatelessWidget {
                   colors: [Color(0xFFB8F46C), Color(0xFFB8F46C)],
                 ),
                 iconColor: Colors.white,
+                breathingAnimation: _breathingAnimation3,
               ),
               const SizedBox(width: 16),
               _statCard(
@@ -57,6 +124,7 @@ class StatisticsPage extends StatelessWidget {
                   colors: [Color(0xFF94D4FA), Color(0xFF94D4FA)],
                 ),
                 iconColor: Colors.white,
+                breathingAnimation: _breathingAnimation4,
               ),
             ],
           ),
@@ -105,8 +173,9 @@ class StatisticsPage extends StatelessWidget {
     required String label,
     required String subLabel,
     required IconData iconData,
-    required Gradient gradient, // kept for signature
+    required Gradient gradient,
     Color iconColor = Colors.white,
+    required Animation<double> breathingAnimation, // Add breathing animation
   }) {
     // same color mapping as before
     Color baseColor = Colors.white;
@@ -121,105 +190,107 @@ class StatisticsPage extends StatelessWidget {
     }
 
     return Expanded(
-      child: Container(
-        height: 155, // ↑ from 135 to give content room
-        margin: const EdgeInsets.only(bottom: 4),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              baseColor,
-              baseColor.withOpacity(0.85),
-              baseColor.withOpacity(0.7),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: baseColor.withOpacity(0.25),
-              offset: const Offset(0, 8),
-              blurRadius: 20,
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -15,
-              top: -15,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.10),
+      child: AnimatedBuilder(
+        animation: breathingAnimation,
+        builder: (context, child) {
+          // Breathing effect by scaling the card
+          return Transform.scale(
+            scale: breathingAnimation.value, // Apply breathing effect
+            child: Container(
+              height: 155,
+              margin: const EdgeInsets.only(bottom: 4),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    baseColor,
+                    baseColor.withOpacity(0.85),
+                    baseColor.withOpacity(0.7),
+                  ],
                 ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: baseColor.withOpacity(0.25),
+                    offset: const Offset(0, 8),
+                    blurRadius: 20,
+                  ),
+                ],
               ),
-            ),
-            Positioned(
-              right: -30,
-              top: 0,
-              bottom: 0,
-              child: Icon(
-                iconData,
-                size: 70,
-                color: Colors.white.withOpacity(0.15),
-              ),
-            ),
-
-            // content
-            Padding(
-              padding: const EdgeInsets.all(16), // was 18
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
+              child: Stack(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8), // was 10
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.20),
-                      borderRadius: BorderRadius.circular(14),
+                  Positioned(
+                    right: -15,
+                    top: -15,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.10),
+                      ),
                     ),
+                  ),
+                  Positioned(
+                    right: -30,
+                    top: 0,
+                    bottom: 0,
                     child: Icon(
                       iconData,
-                      color: Colors.white,
-                      size: 20,
-                    ), // was 22
-                  ),
-                  const SizedBox(height: 10), // was 12
-                  Text(
-                    subLabel,
-                    style: const TextStyle(
-                      fontSize: 14, // was 15
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      height: 1.2,
+                      size: 70,
+                      color: Colors.white.withOpacity(0.15),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4), // was 6
-                  // label scaled down to avoid overflow on small screens / big text scale
-                  FittedBox(
-                    alignment: Alignment.centerLeft,
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 26, // was 28
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        height: 1.1,
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.20),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(iconData, color: Colors.white, size: 20),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          subLabel,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1.2,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        FittedBox(
+                          alignment: Alignment.centerLeft,
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            label,
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1.1,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
