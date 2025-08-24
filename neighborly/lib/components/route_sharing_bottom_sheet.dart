@@ -34,6 +34,25 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
     _initializeMap();
   }
 
+  // Create numbered marker using hue variations and info window
+  BitmapDescriptor _createNumberedMarker(int number) {
+    // Use different hues for different numbers, cycling through colors
+    final hues = [
+      BitmapDescriptor.hueViolet,
+      BitmapDescriptor.hueBlue,
+      BitmapDescriptor.hueCyan,
+      BitmapDescriptor.hueGreen,
+      BitmapDescriptor.hueYellow,
+      BitmapDescriptor.hueOrange,
+      BitmapDescriptor.hueRed,
+      BitmapDescriptor.hueRose,
+      BitmapDescriptor.hueMagenta,
+    ];
+
+    final hue = hues[number % hues.length];
+    return BitmapDescriptor.defaultMarkerWithHue(hue);
+  }
+
   void _initializeMap() {
     // Add start and destination markers
     final destination = widget.helpData['location'] as LatLng;
@@ -65,38 +84,125 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
 
   void _onMapTap(LatLng position) {
     if (_isDrawingMode) {
-      setState(() {
-        // Insert new point before destination
-        _routePoints.insert(_routePoints.length - 1, position);
-        _updateRoutePolyline();
-        _addWaypointMarker(position, _routePoints.length - 2);
-      });
+      // First show dialog to get instruction before adding waypoint
+      _showInstructionDialog(position);
     }
   }
 
-  void _addWaypointMarker(LatLng position, int index) {
+  void _showInstructionDialog(LatLng position) {
+    final instructionController = TextEditingController();
+    final landmarkController = TextEditingController();
+    final waypointNumber = _waypoints.length + 1;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Require user to enter instruction
+      builder:
+          (context) => AlertDialog(
+            title: Text('Waypoint $waypointNumber Instructions'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Enter instructions for waypoint $waypointNumber:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: instructionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Route Instructions *',
+                    hintText: 'e.g., Turn right after the mosque',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                  autofocus: true,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: landmarkController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nearby Landmark (Optional)',
+                    hintText: 'e.g., City Bank, Dhaka College',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (instructionController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter route instructions'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  setState(() {
+                    // Insert new point before destination
+                    _routePoints.insert(_routePoints.length - 1, position);
+                    _updateRoutePolyline();
+                    _addWaypointMarker(
+                      position,
+                      _waypoints.length,
+                      instructionController.text.trim(),
+                      landmarkController.text.trim(),
+                    );
+                  });
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF71BB7B),
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Add Waypoint'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _addWaypointMarker(
+    LatLng position,
+    int index,
+    String instruction,
+    String landmark,
+  ) {
     final markerId = MarkerId('waypoint_$index');
+    final waypointNumber = index + 1;
+
     final marker = Marker(
       markerId: markerId,
       position: position,
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+      icon: _createNumberedMarker(waypointNumber),
       infoWindow: InfoWindow(
-        title: 'Waypoint $index',
-        snippet: 'Tap to add instructions',
-        onTap: () => _showWaypointDialog(index, position),
+        title: 'Waypoint $waypointNumber',
+        snippet:
+            instruction.isNotEmpty ? instruction : 'Tap to edit instructions',
+        onTap: () => _showEditWaypointDialog(index, position),
       ),
     );
 
     _markers.add(marker);
 
-    // Add to waypoints list if not already exists
-    if (_waypoints.length <= index) {
-      _waypoints.add({
-        'position': position,
-        'instruction': 'Continue straight',
-        'landmark': '',
-      });
-    }
+    // Add to waypoints list with custom instruction
+    _waypoints.add({
+      'position': position,
+      'instruction': instruction,
+      'landmark': landmark,
+    });
   }
 
   void _updateRoutePolyline() {
@@ -115,7 +221,7 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
     }
   }
 
-  void _showWaypointDialog(int index, LatLng position) {
+  void _showEditWaypointDialog(int index, LatLng position) {
     final instructionController = TextEditingController();
     final landmarkController = TextEditingController();
 
@@ -128,14 +234,14 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text('Waypoint ${index + 1} Instructions'),
+            title: Text('Edit Waypoint ${index + 1} Instructions'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: instructionController,
                   decoration: const InputDecoration(
-                    labelText: 'Direction Instructions',
+                    labelText: 'Direction Instructions *',
                     hintText: 'e.g., Turn right after the mosque',
                     border: OutlineInputBorder(),
                   ),
@@ -145,7 +251,7 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
                 TextField(
                   controller: landmarkController,
                   decoration: const InputDecoration(
-                    labelText: 'Nearby Landmark',
+                    labelText: 'Nearby Landmark (Optional)',
                     hintText: 'e.g., City Bank, Dhaka College',
                     border: OutlineInputBorder(),
                   ),
@@ -157,28 +263,66 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel'),
               ),
-              TextButton(
+              ElevatedButton(
                 onPressed: () {
+                  if (instructionController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter route instructions'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
                   setState(() {
                     if (index < _waypoints.length) {
                       _waypoints[index]['instruction'] =
-                          instructionController.text;
-                      _waypoints[index]['landmark'] = landmarkController.text;
-                    } else {
-                      _waypoints.add({
-                        'position': position,
-                        'instruction': instructionController.text,
-                        'landmark': landmarkController.text,
-                      });
+                          instructionController.text.trim();
+                      _waypoints[index]['landmark'] =
+                          landmarkController.text.trim();
+
+                      // Update marker info window
+                      _updateWaypointMarker(index);
                     }
                   });
                   Navigator.pop(context);
                 },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF71BB7B),
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Save'),
               ),
             ],
           ),
     );
+  }
+
+  void _updateWaypointMarker(int index) {
+    final waypoint = _waypoints[index];
+    final position = waypoint['position'] as LatLng;
+    final instruction = waypoint['instruction'] as String;
+    final markerId = MarkerId('waypoint_$index');
+    final waypointNumber = index + 1;
+
+    // Remove old marker
+    _markers.removeWhere((marker) => marker.markerId == markerId);
+
+    // Add updated marker
+    final marker = Marker(
+      markerId: markerId,
+      position: position,
+      icon: _createNumberedMarker(waypointNumber),
+      infoWindow: InfoWindow(
+        title: 'Waypoint $waypointNumber',
+        snippet:
+            instruction.isNotEmpty ? instruction : 'Tap to edit instructions',
+        onTap: () => _showEditWaypointDialog(index, position),
+      ),
+    );
+
+    _markers.add(marker);
   }
 
   void _toggleDrawingMode() {
@@ -212,6 +356,25 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
       return;
     }
 
+    // Check if all waypoints have instructions
+    bool hasEmptyInstructions = _waypoints.any(
+      (waypoint) =>
+          waypoint['instruction'] == null ||
+          waypoint['instruction'].toString().trim().isEmpty,
+    );
+
+    if (hasEmptyInstructions) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please add instructions for all waypoints before sharing',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     // Show route sharing confirmation
     showDialog(
       context: context,
@@ -231,8 +394,17 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'This route has ${_routePoints.length} points and ${_waypoints.length} waypoints with instructions.',
+                  'This route has ${_routePoints.length} points and ${_waypoints.length} waypoints with detailed instructions.',
                   style: TextStyle(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'All waypoints have custom instructions that will help others navigate.',
+                  style: TextStyle(
+                    color: const Color(0xFF71BB7B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -449,7 +621,7 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
                   ),
                   const Spacer(),
                   Text(
-                    'Tap map to add waypoints',
+                    'Tap map to add numbered waypoints',
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
@@ -471,7 +643,7 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Tap on the map to add waypoints along your recommended route',
+                        'Tap on the map to add numbered waypoints. You\'ll be asked to provide route instructions for each waypoint.',
                         style: TextStyle(fontSize: 12, color: Colors.orange),
                       ),
                     ),
@@ -560,24 +732,83 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
                               decoration: BoxDecoration(
                                 color: Colors.grey[50],
                                 borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFF71BB7B,
+                                  ).withOpacity(0.3),
+                                  width: 1,
+                                ),
                               ),
-                              child: Column(
+                              child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    '${index + 1}. ${waypoint['instruction']}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w500,
+                                  // Numbered circle to match marker
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF71BB7B),
+                                      shape: BoxShape.circle,
                                     ),
-                                  ),
-                                  if (waypoint['landmark'].isNotEmpty)
-                                    Text(
-                                      'Near: ${waypoint['landmark']}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
+                                    child: Center(
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          waypoint['instruction'].isNotEmpty
+                                              ? waypoint['instruction']
+                                              : 'No instructions provided',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            color:
+                                                waypoint['instruction']
+                                                        .isNotEmpty
+                                                    ? Colors.black87
+                                                    : Colors.grey[500],
+                                          ),
+                                        ),
+                                        if (waypoint['landmark'].isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 4,
+                                            ),
+                                            child: Text(
+                                              'Near: ${waypoint['landmark']}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Edit button
+                                  IconButton(
+                                    onPressed:
+                                        () => _showEditWaypointDialog(
+                                          index,
+                                          waypoint['position'] as LatLng,
+                                        ),
+                                    icon: const Icon(Icons.edit, size: 16),
+                                    iconSize: 16,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    color: const Color(0xFF71BB7B),
+                                  ),
                                 ],
                               ),
                             );
