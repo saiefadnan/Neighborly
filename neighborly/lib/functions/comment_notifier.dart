@@ -31,6 +31,7 @@ class CommentsNotifier
               .collection('posts')
               .doc(postID)
               .collection('comments')
+              .orderBy('createdAt', descending: true)
               .get();
       final comments =
           querySnapshot.docs.map((doc) => {...doc.data()}).toList();
@@ -106,8 +107,9 @@ class CommentsNotifier
     state = state.when(
       data: (comments) {
         // Prepend top-level comments, append replies
-        final updatedComments =
-            replyTo == null ? [comment, ...comments] : [...comments, comment];
+        // final updatedComments =
+        //     replyTo == null ? [comment, ...comments] : [...comments, comment];
+        final updatedComments = [comment, ...comments];
         return AsyncData(updatedComments);
       },
       loading: () => state,

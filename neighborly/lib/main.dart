@@ -57,8 +57,9 @@ class _MyAppState extends ConsumerState<MyApp> {
     final rememberMe = prefs.getBool('rememberMe') ?? false;
     if (!rememberMe) {
       await FirebaseAuth.instance.signOut();
+      print('signing out...');
     } else {
-      ref.read(authUserProvider.notifier).stateOnRemember();
+      //ref.read(authUserProvider.notifier).stateOnRemember();
     }
   }
 

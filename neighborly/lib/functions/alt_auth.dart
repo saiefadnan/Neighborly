@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:neighborly/components/snackbar.dart';
-// import 'package:twitter_login/twitter_login.dart'; // Temporarily commented out due to namespace issue
 
 Future<UserCredential?> signInWithCredential(
   OAuthCredential credential,
