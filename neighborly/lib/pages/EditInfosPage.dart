@@ -78,6 +78,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
       // show new avatar immediately
       setState(() {
         _profileImageUrl = url;
+        _profileImage = null;
       });
 
       return url;
@@ -210,8 +211,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
                       clipBehavior: Clip.none,
                       children: [
                         // Base ProfileHeader from shared component (no avatar inside)
-                        ProfileHeader(),
-
+                        ProfileHeader(profileImageUrl: _profileImageUrl),
                         // Avatar (show picked image if available, else default)
                         // Avatar (show picked image if available, else from backend, else default)
                         Positioned(
@@ -621,7 +621,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
                                       content: Text('User info updated!'),
                                     ),
                                   );
-                                  fetchAndSetUserInfo(); // Refresh fields
+                                  await fetchAndSetUserInfo(); // Refresh fields
                                 } else {
                                   String errorMsg =
                                       'Failed to update user info';
