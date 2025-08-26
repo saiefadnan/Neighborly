@@ -118,7 +118,7 @@ final List<MilestoneData> milestones = [
     total: 5,
   ),
   MilestoneData(
-    label: 'Guardian',
+    label: 'Gold Guardian',
     cert: 'Gold Certified',
     color: Colors.amber[400]!,
     icon: Icons.verified, // Gold tick
@@ -549,68 +549,36 @@ class ProfilePage extends StatelessWidget {
 
                           // Certifications Section
                           // Certifications Section
+                          // Certifications Section
                           _sectionTitle('MILESTONES', 8),
                           const SizedBox(height: 8),
                           Container(
-                            width:
-                                double
-                                    .infinity, // Ensure container spans full width
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(
-                                    0xFFA6ABBD,
-                                  ).withOpacity(0.5),
-                                  blurRadius: 18.58,
-                                  offset: const Offset(2.48, 2.48),
-                                ),
-                                BoxShadow(
-                                  color: const Color(0xFFFAFBFF),
-                                  blurRadius: 16.1,
-                                  offset: const Offset(-1.24, -1.24),
+                                  color: Colors.black12.withOpacity(0.1),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 16,
-                                horizontal: 8,
-                              ),
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  return SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.start,
-                                      children:
-                                          milestones.map((milestone) {
-                                            return Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                  ),
-                                              child: SizedBox(
-                                                width:
-                                                    constraints.maxWidth * 0.28,
-                                                child: _certCard(
-                                                  context,
-                                                  milestone.label,
-                                                  milestone.cert,
-                                                  milestone.color,
-                                                  milestone.current,
-                                                  milestone.total,
-                                                  milestone.icon,
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
-                                    ),
-                                  );
-                                },
-                              ),
+                            child: Column(
+                              children:
+                                  milestones.map((milestone) {
+                                    return _certCard(
+                                      context,
+                                      milestone.label,
+                                      milestone.cert,
+                                      milestone.color,
+                                      milestone.current,
+                                      milestone.total,
+                                      milestone.icon,
+                                    );
+                                  }).toList(),
                             ),
                           ),
 
@@ -773,84 +741,78 @@ class ProfilePage extends StatelessWidget {
     double progress = current / total;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
         children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 80,
-                height: 80,
-                child: CustomPaint(
-                  painter: _CircleProgressPainter(
-                    progress: progress,
-                    color: color,
+          // Icon container
+          // Icon or image container
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child:
+                title == 'Gold Guardian'
+                    ? Image.asset(
+                      'assets/images/Medallions.png',
+                      width: 36,
+                      height: 36,
+                      fit: BoxFit.contain,
+                    )
+                    : Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(width: 16),
+
+          // Content column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF222222),
                   ),
                 ),
-              ),
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: color.withOpacity(0.18), width: 2),
-                ),
-                child: Icon(icon, color: color, size: 54),
-              ),
-              // Progress text at the bottom inside the circle
-              Positioned(
-                bottom: -4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
+                const SizedBox(height: 8),
+
+                // Progress bar (THICKER)
+                // Progress bar (THICKER)
+                Container(
+                  width: double.infinity, // <-- FIXED WIDTH FOR ALL
+                  height: 10,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 2,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(5),
                   ),
-                  child: Text(
-                    '$current/$total',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: color,
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor:
+                        progress, // <-- MATHEMATICAL PROGRESS (0.0 to 1.0)
+                    child: Container(
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Title text
-          SizedBox(
-            width: 90,
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Color(0xFF222222),
-              ),
+              ],
             ),
           ),
-          // Certification text
-          SizedBox(
-            width: 90,
-            child: Text(
-              cert,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+
+          // Progress fraction (CHANGED FROM PERCENTAGE)
+          Text(
+            '$current/$total ${cert.split(' ')[0]}',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
             ),
           ),
         ],
@@ -978,3 +940,6 @@ class ProfilePage extends StatelessWidget {
     );
   }
 }
+
+
+//certcard, medalCard, badgeCard
