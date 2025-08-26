@@ -1,16 +1,13 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:neighborly/components/snackbar.dart';
 import 'package:neighborly/models/event.dart';
-
-final notificationRangeProvider = StateProvider<double>((ref) => 5.0);
-final selectedEventTypeProvider = StateProvider<String?>((ref) => null);
-final pickedImageProvider = StateProvider<String?>((ref) => null);
 
 class CreateEventPage extends ConsumerStatefulWidget {
   final String title;
@@ -21,14 +18,17 @@ class CreateEventPage extends ConsumerStatefulWidget {
 }
 
 class _CreateEventPageState extends ConsumerState<CreateEventPage> {
+  DateTime selectedDate = DateTime.now();
   final TextEditingController titleController = TextEditingController();
   final TextEditingController dateController = TextEditingController();
   final TextEditingController timeController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
-
-  final ImagePicker picker = ImagePicker();
-  DateTime selectedDate = DateTime.now();
+  GoogleMapController? mapController;
+  final ImagePicker imagePicker = ImagePicker();
+  File? imagepath;
+  String eventType = '';
+  double notifRange = 5;
 
   List<Map<String, String>> eventTypes = [
     {"title": "Tree Plantation", "desc": "Join a green cause."},
@@ -39,9 +39,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   ]; // Default to San Francisco
 
   Future<void> pickImage() async {
-    final image = await picker.pickImage(source: ImageSource.gallery);
+    final image = await imagePicker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      ref.read(pickedImageProvider.notifier).state = image.path;
+      setState(() {
+        imagepath = File(image.path);
+      });
     }
   }
 
@@ -59,8 +61,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
     if (pickedDate != null) {
       selectedDate = pickedDate;
-      controller.text =
-          "${pickedDate.toLocal()}".split(' ')[0]; // Format the date as needed
+      controller.text = "${pickedDate.toLocal()}".split(' ')[0];
+      print("--- pickedDate: $selectedDate ---");
     }
   }
 
@@ -72,6 +74,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     final DateTime now = DateTime.now();
     final TimeOfDay currentTime = TimeOfDay.now();
 
+    print("--- _pickTime selectedDate: $selectedDate ---");
+
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
       initialTime: currentTime,
@@ -82,16 +86,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       if (selectedDate.year == now.year &&
           selectedDate.month == now.month &&
           selectedDate.day == now.day) {
+        print(selectedDate);
         // If the selected date is today, ensure the time is not in the past
         if (pickedTime.hour < currentTime.hour ||
             (pickedTime.hour == currentTime.hour &&
                 pickedTime.minute < currentTime.minute)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Please select a time later than the current time.',
-              ),
-            ),
+          showSnackBarError(
+            context,
+            'Please select a time later than the current time.',
           );
           return;
         }
@@ -107,31 +109,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
-  LatLng selectedLocation = LatLng(
-    37.7749,
-    -122.4194,
-  ); // Default to San Francisco
-
-  // void _updateLocation() {
-  //   final double? latitude = double.tryParse(latitudeController.text);
-  //   final double? longitude = double.tryParse(longitudeController.text);
-
-  //   if (latitude != null && longitude != null) {
-  //     setState(() {
-  //       selectedLocation = LatLng(latitude, longitude);
-  //     });
-  //   } else {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text('Invalid latitude or longitude')),
-  //     );
-  //   }
-  // }
-  void _onMapTap(TapPosition tapPosition, LatLng latlng) {
-    setState(() {
-      selectedLocation = latlng;
-    });
-    getPlaceName(selectedLocation);
-  }
+  LatLng selectedLocation = LatLng(23.8103, 90.4125);
 
   Future<void> getPlaceName(LatLng location) async {
     try {
@@ -170,15 +148,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     descriptionController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
+    mapController?.dispose();
+    imagepath = null;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedType = ref.watch(selectedEventTypeProvider);
-    final range = ref.watch(notificationRangeProvider);
-    final imagePath = ref.watch(pickedImageProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Event'),
@@ -193,14 +169,15 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           children: [
             const Text("Notification Range"),
             Slider(
-              value: range,
+              value: notifRange,
               min: 1,
               max: 50,
               divisions: 49,
-              label: "${range.toInt()} km",
+              label: "${notifRange.toInt()} km",
               onChanged:
-                  (val) =>
-                      ref.read(notificationRangeProvider.notifier).state = val,
+                  (val) => setState(() {
+                    notifRange = val;
+                  }),
             ),
             const SizedBox(height: 12),
             Text(
@@ -215,7 +192,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
             ...eventTypes.map(
               (event) => Card(
                 color:
-                    selectedType == event["title"]
+                    eventType == event["title"]
                         ? const Color(
                           0xFFE8F5E9,
                         ) // Light green for selected cards
@@ -225,29 +202,12 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                     title: Text(event["title"]!),
                     subtitle: Text(event["desc"]!),
                     onTap: () {
-                      ref.read(selectedEventTypeProvider.notifier).state =
-                          event["title"];
+                      eventType = event["title"] ?? "";
                       setState(() {
                         titleController.text = event['title']!;
                         descriptionController.text = event['desc']!;
                       });
                     },
-                    // trailing: ElevatedButton(
-                    //   style: ElevatedButton.styleFrom(
-                    //     backgroundColor: const Color(
-                    //       0xFF71BB7B,
-                    //     ), // Button color updated
-                    //   ),
-                    //   onPressed: () {
-                    //     ref.read(selectedEventTypeProvider.notifier).state =
-                    //         event["title"];
-                    //     setState(() {
-                    //       titleController.text = event['title']!;
-                    //       descriptionController.text = event['desc']!;
-                    //     });
-                    //   },
-                    //   child: const Text("Select"),
-                    // ),
                   ),
                 ),
               ),
@@ -273,116 +233,47 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
               locationController,
               icon: Icons.location_on,
             ),
-
             const SizedBox(height: 12),
-            // Padding(
-            //   padding: const EdgeInsets.all(8.0),
-            //   child: Row(
-            //     children: [
-            //       Expanded(
-            //         child: TextField(
-            //           controller: latitudeController,
-            //           decoration: const InputDecoration(
-            //             labelText: 'Latitude',
-            //             border: OutlineInputBorder(),
-            //           ),
-            //           keyboardType: TextInputType.number,
-            //         ),
-            //       ),
-            //       const SizedBox(width: 8),
-            //       Expanded(
-            //         child: TextField(
-            //           controller: longitudeController,
-            //           decoration: const InputDecoration(
-            //             labelText: 'Longitude',
-            //             border: OutlineInputBorder(),
-            //           ),
-            //           keyboardType: TextInputType.number,
-            //         ),
-            //       ),
-            //       const SizedBox(width: 8),
-            //       ElevatedButton(
-            //         onPressed: _updateLocation,
-            //         child: const Text('Set Location'),
-            //       ),
-            //     ],
-            //   ),
-            // ),
-
-            // Leaflet Map Widget
-            // Replace this:
-
-            // Expanded(
-            //   child: FlutterMap(
-            //     options: MapOptions(
-            //       initialCenter: selectedLocation,
-            //       initialZoom: 10,
-            //     ),
-            //     layers: [
-            //       TileLayerOptions(
-            //         urlTemplate:
-            //             'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            //         subdomains: ['a', 'b', 'c'],
-            //       ),
-            //       MarkerLayerOptions(
-            //         markers: [
-            //           Marker(
-            //             point: selectedLocation,
-            //             builder:
-            //                 (ctx) => const Icon(
-            //                   Icons.location_on,
-            //                   color: Colors.red,
-            //                   size: 40,
-            //                 ),
-            //           ),
-            //         ],
-            //       ),
-            //     ],
-            //   ),
-            // ),
-
-            // With this:
             Column(
               children: [
                 // Wrap FlutterMap in a fixed height container if needed:
                 SizedBox(
-                  height: 300, // fix height to avoid layout issues
-                  child: FlutterMap(
-                    options: MapOptions(
-                      center: selectedLocation,
-                      zoom: 10,
-                      onTap: _onMapTap, // your tap handler
+                  height: 400, // fix height to avoid layout issues
+                  child: GoogleMap(
+                    gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                      Factory<OneSequenceGestureRecognizer>(
+                        () => EagerGestureRecognizer(),
+                      ),
+                    },
+                    initialCameraPosition: CameraPosition(
+                      target: selectedLocation,
+                      zoom: 12,
                     ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        subdomains: const ['a', 'b', 'c'],
+                    onMapCreated: (controller) => mapController = controller,
+                    markers: {
+                      Marker(
+                        markerId: MarkerId('selected-location'),
+                        position: selectedLocation,
                       ),
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            width: 80,
-                            height: 80,
-                            point: selectedLocation,
-                            child: const Icon(
-                              Icons.location_pin,
-                              color: Colors.red,
-                              size: 40,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    },
+                    onTap: (newPosition) {
+                      setState(() {
+                        selectedLocation = newPosition;
+                      });
+                      getPlaceName(selectedLocation);
+                    },
+                    mapType: MapType.normal,
+                    myLocationEnabled: true, // Disable if you don't need it
+                    myLocationButtonEnabled: true,
+                    zoomControlsEnabled: false, // You already have this
+                    mapToolbarEnabled: false,
+                    compassEnabled: false,
+                    rotateGesturesEnabled: true,
+                    scrollGesturesEnabled: true,
+                    zoomGesturesEnabled: true,
+                    tiltGesturesEnabled: false, // Disable
                   ),
                 ),
-                // Padding(
-                //   padding: const EdgeInsets.all(8.0),
-                //   child: Text(
-                //     'Selected Location: ${selectedLocation.latitude}, ${selectedLocation.longitude}',
-                //     style: const TextStyle(fontSize: 16),
-                //   ),
-                // ),
               ],
             ),
             const SizedBox(height: 12),
@@ -403,24 +294,22 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                 width: double.infinity,
                 color: Colors.grey[200],
                 child:
-                    imagePath != null
+                    imagepath != null
                         ? Stack(
                           children: [
                             SizedBox(
                               height: 300,
                               width: double.infinity,
-                              child: Image.file(
-                                File(imagePath),
-                                fit: BoxFit.cover,
-                              ),
+                              child: Image.file(imagepath!, fit: BoxFit.cover),
                             ),
                             Positioned(
                               top: 10,
                               right: 10,
                               child: GestureDetector(
                                 onTap: () {
-                                  ref.read(pickedImageProvider.notifier).state =
-                                      null; // Clear the image.
+                                  setState(() {
+                                    imagepath = null;
+                                  });
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
@@ -588,12 +477,17 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        onTap:
-            () => _pickTime(
-              context,
-              controller,
-              selectedDate,
-            ), // Pass selectedDate here
+        onTap: () {
+          if (dateController.text.trim().isEmpty) {
+            showSnackBarError(context, "Please select a date");
+            return;
+          }
+          _pickTime(
+            context,
+            controller,
+            DateTime.parse(dateController.text),
+          ); //
+        },
       ),
     );
   }
