@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
+import 'package:neighborly/functions/event_notifier.dart';
 import 'package:neighborly/models/event.dart';
 import 'package:neighborly/pages/addEvent.dart';
 
@@ -24,22 +25,22 @@ class _EventPlanState extends ConsumerState<EventPlan>
     await Future.delayed(Duration(seconds: 2));
   }
 
-  Future<void> fetchEvents() async {
-    try {
-      await FirebaseFirestore.instance.collection('events').get().then((
-        QuerySnapshot querySnapshot,
-      ) {
-        setState(() {
-          events =
-              querySnapshot.docs
-                  .map((doc) => doc.data() as Map<String, dynamic>)
-                  .toList();
-        });
-      });
-    } catch (e) {
-      print('Error fetching events: $e');
-    }
-  }
+  // Future<void> fetchEvents() async {
+  //   try {
+  //     await FirebaseFirestore.instance.collection('events').get().then((
+  //       QuerySnapshot querySnapshot,
+  //     ) {
+  //       setState(() {
+  //         events =
+  //             querySnapshot.docs
+  //                 .map((doc) => doc.data() as Map<String, dynamic>)
+  //                 .toList();
+  //       });
+  //     });
+  //   } catch (e) {
+  //     print('Error fetching events: $e');
+  //   }
+  // }
 
   @override
   void initState() {
@@ -58,7 +59,7 @@ class _EventPlanState extends ConsumerState<EventPlan>
     _headerAnimationController.forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await fetchEvents();
+      //await fetchEvents();
     });
   }
 
@@ -70,6 +71,7 @@ class _EventPlanState extends ConsumerState<EventPlan>
 
   @override
   Widget build(BuildContext context) {
+    final asyncEvent = ref.watch(eventProvider);
     return Scaffold(
       backgroundColor: const Color(0xFFF7F2E7),
       appBar: AppBar(
@@ -109,186 +111,116 @@ class _EventPlanState extends ConsumerState<EventPlan>
         backgroundColor: const Color(0xFF71BB7B),
         foregroundColor: const Color(0xFFFAF4E8),
       ),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        child: MasonryGridView.count(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          padding: const EdgeInsets.all(12),
-          itemCount: events.length,
-          itemBuilder: (context, index) {
-            final event = events[index];
-            final isSelected = _selectedIndexes.contains(index);
-            // final joined = _joinedIndexes.contains(index);
-            return GestureDetector(
-              onTap: () {
-                // setState(() {
-                //   isSelected
-                //       ? _selectedIndexes.remove(index)
-                //       : _selectedIndexes.add(index);
-                // });
-                EventModel newEvent = EventModel(
-                  title: event['title'],
-                  imageUrl: event['img'],
-                  description: event['desc'],
-                  date: DateTime.now(),
-                  joined: event['joined'],
-                  location: event['location'],
-                  lat: (event['lat'] as num).toDouble(),
-                  lng: (event['lng'] as num).toDouble(),
-                  tags: List<String>.from(event['tags'] ?? []),
-                );
-                context.push('/eventDetails', extra: newEvent);
-              },
-              child: Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                clipBehavior: Clip.antiAlias,
-                color: Colors.white,
-                elevation: isSelected ? 8 : 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Event Image
-                    Image.network(
-                      event['img']!,
-                      height: 150,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 150,
-                          color: Colors.grey[300],
-                          child: const Center(
-                            child: Icon(
-                              Icons.broken_image,
-                              size: 40,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    // Event Text
-                    Padding(
-                      padding: const EdgeInsets.all(12),
+      body: asyncEvent.when(
+        data:
+            (events) => RefreshIndicator(
+              onRefresh: _handleRefresh,
+              child: MasonryGridView.count(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                padding: const EdgeInsets.all(12),
+                itemCount: events.length,
+                itemBuilder: (context, index) {
+                  final event = events[index];
+                  final isSelected = _selectedIndexes.contains(index);
+                  // final joined = _joinedIndexes.contains(index);
+                  return GestureDetector(
+                    onTap: () {
+                      EventModel newEvent = EventModel(
+                        title: event.title,
+                        imageUrl: event.imageUrl,
+                        description: event.description,
+                        date: event.date,
+                        joined: event.joined,
+                        location: event.location,
+                        lat: (event.lat as num).toDouble(),
+                        lng: (event.lng as num).toDouble(),
+                        tags: event.tags,
+                      );
+                      context.push('/eventDetails', extra: newEvent);
+                    },
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      color: Colors.white,
+                      elevation: isSelected ? 8 : 3,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            event['title']!,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          // Event Image
+                          Image.network(
+                            event.imageUrl!,
+                            height: 150,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: 150,
+                                color: Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.broken_image,
+                                    size: 40,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                          SizedBox(height: 6),
-                          Text(
-                            event['desc']!,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[700],
+                          // Event Text
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  event.title!,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 6),
+                                Text(
+                                  event.description!,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-
-                    // Container(
-                    //   padding: EdgeInsets.symmetric(
-                    //     horizontal: 12,
-                    //     vertical: 6,
-                    //   ),
-                    //   decoration: BoxDecoration(
-                    //     color: Colors.black.withOpacity(0.7),
-                    //     borderRadius: BorderRadius.vertical(
-                    //       bottom: Radius.circular(12),
-                    //     ),
-                    //   ),
-                    //   child: Row(
-                    //     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    //     children: [
-                    //       TextButton(
-                    //         onPressed: () {
-                    //           setState(() {
-                    //             if (joined) {
-                    //               _joinedIndexes.remove(index);
-                    //               showSnackBarError(
-                    //                 context,
-                    //                 'You canceled the event!',
-                    //               );
-                    //             } else {
-                    //               _joinedIndexes.add(index);
-                    //               showSnackBarSuccess(
-                    //                 context,
-                    //                 'You joined the event!',
-                    //               );
-                    //             }
-                    //           });
-                    //         },
-                    //         // style: ElevatedButton.styleFrom(
-                    //         //   backgroundColor:
-                    //         //       !joined
-                    //         //           ? Colors.green
-                    //         //           : Colors.red, // button color
-                    //         //   foregroundColor: Colors.white, // text color
-                    //         //   padding: const EdgeInsets.symmetric(
-                    //         //     horizontal: 6,
-                    //         //     vertical: 6,
-                    //         //   ),
-                    //         //   shape: RoundedRectangleBorder(
-                    //         //     borderRadius: BorderRadius.circular(10),
-                    //         //   ),
-                    //         // ),
-                    //         child:
-                    //             !joined
-                    //                 ? Icon(
-                    //                   Icons.check_circle,
-                    //                   color: Colors.green,
-                    //                   size: 25,
-                    //                 )
-                    //                 : Icon(
-                    //                   Icons.cancel_rounded,
-                    //                   color: Colors.redAccent,
-                    //                   size: 25,
-                    //                 ),
-                    //       ),
-                    //       TextButton(
-                    //         onPressed: () {
-                    //           // showSnackBarError(
-                    //           //   context,
-                    //           //   'You joined the event!',
-                    //           // );
-                    //         },
-                    //         // style: ElevatedButton.styleFrom(
-                    //         //   backgroundColor:
-                    //         //       Colors.deepOrange, // button color
-                    //         //   foregroundColor: Colors.white, // text color
-                    //         //   padding: const EdgeInsets.symmetric(
-                    //         //     horizontal: 6,
-                    //         //     vertical: 6,
-                    //         //   ),
-                    //         //   shape: RoundedRectangleBorder(
-                    //         //     borderRadius: BorderRadius.circular(10),
-                    //         //   ),
-                    //         // ),
-                    //         child: Icon(
-                    //           Icons.remove_red_eye,
-                    //           color: Colors.white,
-                    //           size: 25,
-                    //         ),
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
-                  ],
-                ),
+                  );
+                },
               ),
-            );
-          },
-        ),
+            ),
+        loading: () => Center(child: CircularProgressIndicator()),
+        error:
+            (e, st) => RefreshIndicator(
+              onRefresh: () async => ref.invalidate(eventProvider),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 100),
+                  const Icon(Icons.error_outline, color: Colors.red, size: 40),
+                  const SizedBox(height: 8),
+                  const Center(child: Text('Oops! Something went wrong.')),
+                  Center(
+                    child: Text(
+                      '$e',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
+                ],
+              ),
+            ),
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF71BB7B),

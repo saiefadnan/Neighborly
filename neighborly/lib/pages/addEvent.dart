@@ -10,9 +10,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:neighborly/components/snackbar.dart';
 import 'package:neighborly/functions/media_upload.dart';
-import 'package:neighborly/models/event.dart';
-import 'package:neighborly/models/event.dart';
-import 'package:neighborly/models/event.dart';
 
 class CreateEventPage extends ConsumerStatefulWidget {
   final String title;
