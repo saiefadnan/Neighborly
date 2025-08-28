@@ -3,11 +3,48 @@ import 'package:neighborly/components/signin_form.dart';
 import 'package:neighborly/functions/signin_token.dart';
 import 'package:neighborly/functions/signup_token.dart';
 import 'package:neighborly/functions/token_verify.dart';
+import 'package:neighborly/models/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthUser extends AsyncNotifier<bool> {
+  // Simple user object that's available everywhere
+  User? currentUser;
+
   @override
-  bool build() => false;
+  bool build() {
+    // Check if user is already logged in when the provider initializes
+    _checkExistingUser();
+    return false;
+  }
+
+  // Get current user (simple access from anywhere)
+  User? get user => currentUser;
+
+  // Notify listeners when user data changes
+  void _notifyUserDataChanged() {
+    // Force a rebuild by updating the state
+    state = AsyncData(state.value ?? false);
+  }
+
+  // Method to ensure user data is loaded
+  Future<void> ensureUserDataLoaded() async {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user != null && currentUser == null) {
+      await _fetchUserData();
+    }
+  }
+
+  // Check if there's an existing logged-in user and fetch their data
+  Future<void> _checkExistingUser() async {
+    final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (firebaseUser != null && currentUser == null) {
+      print('🔄 Found existing logged-in user, fetching data...');
+      await _fetchUserData();
+    }
+  }
+
   Future<void> userAuthentication({
     String? name,
     required String email,
@@ -40,6 +77,10 @@ class AuthUser extends AsyncNotifier<bool> {
       if (verified) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('rememberMe', rememberMe);
+
+        // Fetch user data from Firestore after successful login
+        await _fetchUserData();
+
         state = AsyncData(true);
       } else {
         throw Exception('Invalid user credentials!');
@@ -55,5 +96,70 @@ class AuthUser extends AsyncNotifier<bool> {
 
   void stateOnRemember() {
     state = const AsyncData(true);
+    // Also fetch user data when remembering state
+    _checkExistingUser();
+  }
+
+  // Simple method to fetch user data from Firestore
+  Future<void> _fetchUserData() async {
+    try {
+      print('🔍 Starting user data fetch...');
+      final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+      print('🔍 Firebase user: ${firebaseUser?.email}');
+
+      if (firebaseUser != null) {
+        print('🔍 Fetching from Firestore with email: ${firebaseUser.email}');
+        final doc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(firebaseUser.email)
+                .get();
+
+        print('🔍 Document exists: ${doc.exists}');
+        if (doc.exists) {
+          print('🔍 Document data: ${doc.data()}');
+          currentUser = User.fromFirestore(doc.data()!, firebaseUser.uid);
+          print('✅ User data loaded: ${currentUser?.username}');
+          _notifyUserDataChanged(); // Notify UI to update
+        } else {
+          print(
+            '⚠️ No user document found in Firestore for email: ${firebaseUser.email}',
+          );
+          // Let's also try to check if document exists with a different ID
+          final querySnapshot =
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .where('email', isEqualTo: firebaseUser.email)
+                  .get();
+          print(
+            '🔍 Query results: ${querySnapshot.docs.length} documents found',
+          );
+          if (querySnapshot.docs.isNotEmpty) {
+            print('🔍 Found user document with different ID');
+            currentUser = User.fromFirestore(
+              querySnapshot.docs.first.data(),
+              firebaseUser.uid,
+            );
+            print('✅ User data loaded from query: ${currentUser?.username}');
+            _notifyUserDataChanged(); // Notify UI to update
+          }
+        }
+      } else {
+        print('❌ No Firebase user found');
+      }
+    } catch (e) {
+      print('❌ Error fetching user data: $e');
+    }
+  }
+
+  // Clear user data on logout
+  void logout() {
+    currentUser = null;
+    state = const AsyncData(false);
+  }
+
+  // Public method to manually fetch user data (for testing)
+  Future<void> fetchUserData() async {
+    await _fetchUserData();
   }
 }

@@ -1,16 +1,15 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:neighborly/components/snackbar.dart';
-import 'package:neighborly/models/event.dart';
-
-final notificationRangeProvider = StateProvider<double>((ref) => 5.0);
-final selectedEventTypeProvider = StateProvider<String?>((ref) => null);
-final pickedImageProvider = StateProvider<String?>((ref) => null);
+import 'package:neighborly/functions/media_upload.dart';
 
 class CreateEventPage extends ConsumerStatefulWidget {
   final String title;
@@ -21,14 +20,18 @@ class CreateEventPage extends ConsumerStatefulWidget {
 }
 
 class _CreateEventPageState extends ConsumerState<CreateEventPage> {
+  DateTime selectedDate = DateTime.now();
   final TextEditingController titleController = TextEditingController();
   final TextEditingController dateController = TextEditingController();
   final TextEditingController timeController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
-
-  final ImagePicker picker = ImagePicker();
-
+  GoogleMapController? mapController;
+  final ImagePicker imagePicker = ImagePicker();
+  File? imagepath;
+  String eventType = '';
+  double notifRange = 5;
+  bool isLoading = false;
   List<Map<String, String>> eventTypes = [
     {"title": "Tree Plantation", "desc": "Join a green cause."},
     {"title": "Invitation Party", "desc": "Celebrate and invite friends."},
@@ -37,69 +40,114 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     {"title": "Block Party", "desc": "Fun gathering with the block."},
   ]; // Default to San Francisco
 
-  Future<void> pickImage() async {
-    final image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      ref.read(pickedImageProvider.notifier).state = image.path;
+  Future<void> storeEvents() async {
+    setState(() {
+      isLoading = true;
+    });
+    try {
+      String lngStr = selectedLocation.longitude.toStringAsFixed(6);
+      String latStr = selectedLocation.latitude.toStringAsFixed(6);
+      String uid = FirebaseAuth.instance.currentUser!.uid;
+      String? imageUrl = await uploadFile(imagepath);
+      final event = {
+        'title': titleController.text.trim(),
+        'desc': descriptionController.text.trim(),
+        'img':
+            imageUrl ??
+            'https://res.cloudinary.com/dpmgqsubd/image/upload/v1754651567/tegan-mierle-fDostElVhN8-unsplash_kackpp.jpg',
+        'joined': 'true',
+        'createdBy': uid,
+        'date': dateController.text.trim(),
+        'location': locationController.text.trim(),
+        'lng': double.tryParse(lngStr) ?? 0.0,
+        'lat': double.tryParse(latStr) ?? 0.0,
+        'tags': ['#community', '#event'],
+      };
+      events.add(event);
+      await FirebaseFirestore.instance.collection('events').add(event);
+
+      // After adding event
+      Navigator.pop(context, events);
+      showSnackBarSuccess(context, 'Event creation succeed');
+    } catch (e) {
+      showSnackBarError(context, 'Event creation failed');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
-  Future<void> _pickDate(BuildContext context) async {
+  Future<void> pickImage() async {
+    final image = await imagePicker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        imagepath = File(image.path);
+      });
+    }
+  }
+
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController controller,
+  ) async {
+    final DateTime now = DateTime.now();
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      initialDate: now,
+      firstDate: now, // Restrict to current date or later
+      lastDate: DateTime(2100), // Set an upper limit for the date picker
     );
 
     if (pickedDate != null) {
-      setState(() {
-        dateController.text =
-            "${pickedDate.year}-${pickedDate.month}-${pickedDate.day}";
-      });
+      selectedDate = pickedDate;
+      controller.text = "${pickedDate.toLocal()}".split(' ')[0];
     }
   }
 
-  Future<void> _pickTime(BuildContext context) async {
+  Future<void> _pickTime(
+    BuildContext context,
+    TextEditingController controller,
+    DateTime selectedDate,
+  ) async {
+    final DateTime now = DateTime.now();
+    final TimeOfDay currentTime = TimeOfDay.now();
+
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: currentTime,
     );
 
     if (pickedTime != null) {
-      setState(() {
-        timeController.text = pickedTime.format(context);
-      });
+      // Check if the selected date is today
+      if (selectedDate.year == now.year &&
+          selectedDate.month == now.month &&
+          selectedDate.day == now.day) {
+        print(selectedDate);
+        // If the selected date is today, ensure the time is not in the past
+        if (pickedTime.hour < currentTime.hour ||
+            (pickedTime.hour == currentTime.hour &&
+                pickedTime.minute < currentTime.minute)) {
+          showSnackBarError(
+            context,
+            'Please select a time later than the current time.',
+          );
+          return;
+        }
+      }
+
+      // Update the controller with the selected time
+      final formattedTime = pickedTime.format(
+        context,
+      ); // Format the time as needed
+      controller.text = formattedTime;
     }
   }
 
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
-  LatLng selectedLocation = LatLng(
-    37.7749,
-    -122.4194,
-  ); // Default to San Francisco
-
-  // void _updateLocation() {
-  //   final double? latitude = double.tryParse(latitudeController.text);
-  //   final double? longitude = double.tryParse(longitudeController.text);
-
-  //   if (latitude != null && longitude != null) {
-  //     setState(() {
-  //       selectedLocation = LatLng(latitude, longitude);
-  //     });
-  //   } else {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text('Invalid latitude or longitude')),
-  //     );
-  //   }
-  // }
-  void _onMapTap(TapPosition tapPosition, LatLng latlng) {
-    setState(() {
-      selectedLocation = latlng;
-    });
-    getPlaceName(selectedLocation);
-  }
+  LatLng selectedLocation = LatLng(23.8103, 90.4125);
+  List<Map<String, dynamic>> events = [];
 
   Future<void> getPlaceName(LatLng location) async {
     try {
@@ -138,15 +186,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     descriptionController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
+    mapController?.dispose();
+    imagepath = null;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedType = ref.watch(selectedEventTypeProvider);
-    final range = ref.watch(notificationRangeProvider);
-    final imagePath = ref.watch(pickedImageProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Event'),
@@ -154,297 +200,206 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           0xFF71BB7B,
         ), // Updated to match the green shade
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Notification Range"),
-            Slider(
-              value: range,
-              min: 1,
-              max: 50,
-              divisions: 49,
-              label: "${range.toInt()} km",
-              onChanged:
-                  (val) =>
-                      ref.read(notificationRangeProvider.notifier).state = val,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Templates ',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-            // Event type cards
-            ...eventTypes.map(
-              (event) => Card(
-                color:
-                    selectedType == event["title"]
-                        ? const Color(
-                          0xFFE8F5E9,
-                        ) // Light green for selected cards
-                        : null,
-                child: GestureDetector(
-                  child: ListTile(
-                    title: Text(event["title"]!),
-                    subtitle: Text(event["desc"]!),
-                    onTap: () {
-                      ref.read(selectedEventTypeProvider.notifier).state =
-                          event["title"];
-                      setState(() {
-                        titleController.text = event['title']!;
-                        descriptionController.text = event['desc']!;
-                      });
-                    },
-                    // trailing: ElevatedButton(
-                    //   style: ElevatedButton.styleFrom(
-                    //     backgroundColor: const Color(
-                    //       0xFF71BB7B,
-                    //     ), // Button color updated
-                    //   ),
-                    //   onPressed: () {
-                    //     ref.read(selectedEventTypeProvider.notifier).state =
-                    //         event["title"];
-                    //     setState(() {
-                    //       titleController.text = event['title']!;
-                    //       descriptionController.text = event['desc']!;
-                    //     });
-                    //   },
-                    //   child: const Text("Select"),
-                    // ),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-            _buildTextField("Event Title", titleController, icon: Icons.event),
-            _buildDatePickerField(
-              "Date",
-              dateController,
-              context,
-              icon: Icons.calendar_today,
-            ),
-            _buildTimePickerField(
-              "Time",
-              timeController,
-              context,
-              icon: Icons.access_time,
-            ),
-            _buildTextField(
-              "Location",
-              locationController,
-              icon: Icons.location_on,
-            ),
-
-            const SizedBox(height: 12),
-            // Padding(
-            //   padding: const EdgeInsets.all(8.0),
-            //   child: Row(
-            //     children: [
-            //       Expanded(
-            //         child: TextField(
-            //           controller: latitudeController,
-            //           decoration: const InputDecoration(
-            //             labelText: 'Latitude',
-            //             border: OutlineInputBorder(),
-            //           ),
-            //           keyboardType: TextInputType.number,
-            //         ),
-            //       ),
-            //       const SizedBox(width: 8),
-            //       Expanded(
-            //         child: TextField(
-            //           controller: longitudeController,
-            //           decoration: const InputDecoration(
-            //             labelText: 'Longitude',
-            //             border: OutlineInputBorder(),
-            //           ),
-            //           keyboardType: TextInputType.number,
-            //         ),
-            //       ),
-            //       const SizedBox(width: 8),
-            //       ElevatedButton(
-            //         onPressed: _updateLocation,
-            //         child: const Text('Set Location'),
-            //       ),
-            //     ],
-            //   ),
-            // ),
-
-            // Leaflet Map Widget
-            // Replace this:
-
-            // Expanded(
-            //   child: FlutterMap(
-            //     options: MapOptions(
-            //       initialCenter: selectedLocation,
-            //       initialZoom: 10,
-            //     ),
-            //     layers: [
-            //       TileLayerOptions(
-            //         urlTemplate:
-            //             'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            //         subdomains: ['a', 'b', 'c'],
-            //       ),
-            //       MarkerLayerOptions(
-            //         markers: [
-            //           Marker(
-            //             point: selectedLocation,
-            //             builder:
-            //                 (ctx) => const Icon(
-            //                   Icons.location_on,
-            //                   color: Colors.red,
-            //                   size: 40,
-            //                 ),
-            //           ),
-            //         ],
-            //       ),
-            //     ],
-            //   ),
-            // ),
-
-            // With this:
-            Column(
-              children: [
-                // Wrap FlutterMap in a fixed height container if needed:
-                SizedBox(
-                  height: 300, // fix height to avoid layout issues
-                  child: FlutterMap(
-                    options: MapOptions(
-                      center: selectedLocation,
-                      zoom: 10,
-                      onTap: _onMapTap, // your tap handler
+      body:
+          isLoading
+              ? Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Notification Range"),
+                    Slider(
+                      value: notifRange,
+                      min: 1,
+                      max: 50,
+                      divisions: 49,
+                      label: "${notifRange.toInt()} km",
+                      onChanged:
+                          (val) => setState(() {
+                            notifRange = val;
+                          }),
                     ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        subdomains: const ['a', 'b', 'c'],
+                    const SizedBox(height: 12),
+                    Text(
+                      'Templates ',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
                       ),
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            width: 80,
-                            height: 80,
-                            point: selectedLocation,
-                            child: const Icon(
-                              Icons.location_pin,
-                              color: Colors.red,
-                              size: 40,
-                            ),
+                    ),
+                    // Event type cards
+                    ...eventTypes.map(
+                      (event) => Card(
+                        color:
+                            eventType == event["title"]
+                                ? const Color(
+                                  0xFFE8F5E9,
+                                ) // Light green for selected cards
+                                : null,
+                        child: GestureDetector(
+                          child: ListTile(
+                            title: Text(event["title"]!),
+                            subtitle: Text(event["desc"]!),
+                            onTap: () {
+                              eventType = event["title"] ?? "";
+                              setState(() {
+                                titleController.text = event['title']!;
+                                descriptionController.text = event['desc']!;
+                              });
+                            },
                           ),
-                        ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-                // Padding(
-                //   padding: const EdgeInsets.all(8.0),
-                //   child: Text(
-                //     'Selected Location: ${selectedLocation.latitude}, ${selectedLocation.longitude}',
-                //     style: const TextStyle(fontSize: 16),
-                //   ),
-                // ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildTextField(
-              "Description",
-              descriptionController,
-              maxLines: 3,
-              icon: Icons.description,
-            ),
+                    ),
 
-            const SizedBox(height: 12),
-            const Text("Optional Image"),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: pickImage,
-              child: Container(
-                height: 300,
-                width: double.infinity,
-                color: Colors.grey[200],
-                child:
-                    imagePath != null
-                        ? Stack(
-                          children: [
-                            SizedBox(
-                              height: 300,
-                              width: double.infinity,
-                              child: Image.file(
-                                File(imagePath),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Positioned(
-                              top: 10,
-                              right: 10,
-                              child: GestureDetector(
-                                onTap: () {
-                                  ref.read(pickedImageProvider.notifier).state =
-                                      null; // Clear the image.
+                    const SizedBox(height: 20),
+                    _buildTextField(
+                      "Event Title",
+                      titleController,
+                      icon: Icons.event,
+                    ),
+                    _buildDatePickerField(
+                      "Date",
+                      dateController,
+                      context,
+                      icon: Icons.calendar_today,
+                    ),
+                    _buildTimePickerField(
+                      "Time",
+                      timeController,
+                      context,
+                      selectedDate,
+                      icon: Icons.access_time,
+                    ),
+                    _buildTextField(
+                      "Location",
+                      locationController,
+                      icon: Icons.location_on,
+                    ),
+                    const SizedBox(height: 12),
+                    Column(
+                      children: [
+                        // Wrap FlutterMap in a fixed height container if needed:
+                        SizedBox(
+                          height: 400, // fix height to avoid layout issues
+                          child: GoogleMap(
+                            gestureRecognizers:
+                                <Factory<OneSequenceGestureRecognizer>>{
+                                  Factory<OneSequenceGestureRecognizer>(
+                                    () => EagerGestureRecognizer(),
+                                  ),
                                 },
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.6),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.cancel,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                                ),
-                              ),
+                            initialCameraPosition: CameraPosition(
+                              target: selectedLocation,
+                              zoom: 12,
                             ),
-                          ],
-                        )
-                        : const Icon(Icons.add_a_photo, size: 50),
-              ),
-            ),
+                            onMapCreated:
+                                (controller) => mapController = controller,
+                            markers: {
+                              Marker(
+                                markerId: MarkerId('selected-location'),
+                                position: selectedLocation,
+                              ),
+                            },
+                            onTap: (newPosition) {
+                              setState(() {
+                                selectedLocation = newPosition;
+                              });
+                              getPlaceName(selectedLocation);
+                            },
+                            mapType: MapType.normal,
+                            myLocationEnabled:
+                                true, // Disable if you don't need it
+                            myLocationButtonEnabled: true,
+                            zoomControlsEnabled: false, // You already have this
+                            mapToolbarEnabled: false,
+                            compassEnabled: false,
+                            rotateGesturesEnabled: true,
+                            scrollGesturesEnabled: true,
+                            zoomGesturesEnabled: true,
+                            tiltGesturesEnabled: false, // Disable
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTextField(
+                      "Description",
+                      descriptionController,
+                      maxLines: 3,
+                      icon: Icons.description,
+                    ),
 
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(
-                    0xFF71BB7B,
-                  ), // Updated button color
+                    const SizedBox(height: 12),
+                    const Text("Optional Image"),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: pickImage,
+                      child: Container(
+                        height: 300,
+                        width: double.infinity,
+                        color: Colors.grey[200],
+                        child:
+                            imagepath != null
+                                ? Stack(
+                                  children: [
+                                    SizedBox(
+                                      height: 300,
+                                      width: double.infinity,
+                                      child: Image.file(
+                                        imagepath!,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 10,
+                                      right: 10,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            imagepath = null;
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(
+                                              0.6,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.cancel,
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                                : const Icon(Icons.add_a_photo, size: 50),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(
+                            0xFF71BB7B,
+                          ), // Updated button color
+                        ),
+                        onPressed: storeEvents,
+                        child: const Text("Create Event"),
+                      ),
+                    ),
+                  ],
                 ),
-                onPressed: () {
-                  String lngStr = selectedLocation.longitude.toStringAsFixed(6);
-                  String latStr = selectedLocation.latitude.toStringAsFixed(6);
-
-                  events.add({
-                    'title': titleController.text.trim(),
-                    'desc': descriptionController.text.trim(),
-                    'img':
-                        'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
-                    'joined': 'true',
-                    'date': dateController.text.trim(),
-                    'location': locationController.text.trim(),
-                    'lng': double.tryParse(lngStr) ?? 0.0,
-                    'lat': double.tryParse(latStr) ?? 0.0,
-                    'tags': ['#community', '#event'],
-                  });
-
-                  // After adding event
-                  Navigator.pop(context, events);
-                  showSnackBarSuccess(context, 'Event creation succeed');
-                },
-                child: const Text("Create Event"),
               ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -517,7 +472,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        onTap: () => _pickDate(context),
+        onTap: () => _pickDate(context, controller),
       ),
     );
   }
@@ -525,7 +480,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   Widget _buildTimePickerField(
     String label,
     TextEditingController controller,
-    BuildContext context, {
+    BuildContext context,
+    DateTime selectedDate, { // Added selectedDate as a parameter
     IconData? icon,
   }) {
     return Padding(
@@ -554,7 +510,17 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        onTap: () => _pickTime(context),
+        onTap: () {
+          if (dateController.text.trim().isEmpty) {
+            showSnackBarError(context, "Please select a date");
+            return;
+          }
+          _pickTime(
+            context,
+            controller,
+            DateTime.parse(dateController.text),
+          ); //
+        },
       ),
     );
   }

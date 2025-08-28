@@ -91,7 +91,6 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
                 Center(child: Text("Start the conversation")),
               ],
             );
-        ;
       },
       error: (e, _) {
         return ListView(
@@ -305,6 +304,7 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                                                 ?.displayName, // get this from user state
                                                         'content': comment,
                                                         'parentID': replyTo,
+                                                        'reacts': 0,
                                                       };
                                                       ref
                                                           .read(

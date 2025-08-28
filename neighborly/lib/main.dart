@@ -5,7 +5,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/app_routes.dart';
 import 'package:neighborly/firebase_options.dart';
-import 'package:neighborly/pages/authPage.dart';
 import 'package:neighborly/providers/notification_provider.dart';
 import 'package:neighborly/providers/help_request_provider.dart';
 import 'package:provider/provider.dart' as provider;
@@ -57,8 +56,9 @@ class _MyAppState extends ConsumerState<MyApp> {
     final rememberMe = prefs.getBool('rememberMe') ?? false;
     if (!rememberMe) {
       await FirebaseAuth.instance.signOut();
+      print('signing out...');
     } else {
-      ref.read(authUserProvider.notifier).stateOnRemember();
+      //ref.read(authUserProvider.notifier).stateOnRemember();
     }
   }
 

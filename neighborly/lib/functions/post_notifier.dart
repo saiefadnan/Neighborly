@@ -17,7 +17,10 @@ class PostNotifier
   Future<void> loadPosts() async {
     try {
       final querySnapshot =
-          await FirebaseFirestore.instance.collection('posts').get();
+          await FirebaseFirestore.instance
+              .collection('posts')
+              .orderBy('timestamp', descending: true)
+              .get();
       final posts = querySnapshot.docs.map((doc) => {...doc.data()}).toList();
       state = AsyncData(posts);
     } catch (e, st) {

@@ -31,6 +31,7 @@ class CommentsNotifier
               .collection('posts')
               .doc(postID)
               .collection('comments')
+              .orderBy('createdAt', descending: true)
               .get();
       final comments =
           querySnapshot.docs.map((doc) => {...doc.data()}).toList();
@@ -80,7 +81,7 @@ class CommentsNotifier
 
   Future<bool> storeComments(Map<String, dynamic> commentData) async {
     final baseUrl = dotenv.env['BASE_URL'];
-    final url = Uri.parse('${baseUrl}/api/forum/store/comments');
+    final url = Uri.parse('$baseUrl/api/forum/store/comments');
     print(commentData);
     try {
       final response = await http.post(
@@ -106,8 +107,9 @@ class CommentsNotifier
     state = state.when(
       data: (comments) {
         // Prepend top-level comments, append replies
-        final updatedComments =
-            replyTo == null ? [comment, ...comments] : [...comments, comment];
+        // final updatedComments =
+        //     replyTo == null ? [comment, ...comments] : [...comments, comment];
+        final updatedComments = [comment, ...comments];
         return AsyncData(updatedComments);
       },
       loading: () => state,

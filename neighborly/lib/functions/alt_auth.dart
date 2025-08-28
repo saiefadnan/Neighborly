@@ -1,56 +1,86 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-// import 'package:twitter_login/twitter_login.dart'; // Temporarily commented out due to namespace issue gandu eita remove kor
+import 'package:neighborly/components/snackbar.dart';
 
-Future<UserCredential?> thirdPartyAuth(String logo) async {
-  if (logo == 'google') {
-    print(logo);
-    try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return null;
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+Future<UserCredential?> signInWithCredential(
+  OAuthCredential credential,
+  BuildContext context,
+) async {
+  try {
+    return await FirebaseAuth.instance.signInWithCredential(credential);
+  } on FirebaseAuthException catch (e) {
+    if (e.code == 'account-exists-with-different-credential') {
+      final pendingCredential = e.credential!;
 
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      print(credential);
-      return await FirebaseAuth.instance.signInWithCredential(credential);
-    } catch (e) {
-      return null;
+      final googleUserCredential = await signInWithGoogle(context);
+
+      await googleUserCredential!.user!.linkWithCredential(pendingCredential);
+
+      return googleUserCredential;
     }
-  } else if (logo == 'facebook') {
-    try {
-      final LoginResult loginResult = await FacebookAuth.instance.login();
-      print('fb login in');
-      if (loginResult.status != LoginStatus.success) {
-        print('fb login failed');
-        return null;
-      }
-      print('fb login success');
-      final OAuthCredential facebookAuthCredential =
-          FacebookAuthProvider.credential(loginResult.accessToken!.tokenString);
-
-      final fbAuth = await FirebaseAuth.instance.signInWithCredential(
-        facebookAuthCredential,
-      );
-
-      print(fbAuth);
-      return fbAuth;
-    } catch (e) {
-      print('firebase issue');
-      return null;
+    if (context.mounted) {
+      showSnackBarError(context, e.message ?? 'Firebase auth error');
     }
-  } else {
-    // Twitter login temporarily disabled due to package namespace issue
-    // TODO: Re-enable once twitter_login package is updated or replaced
-    print('Twitter login currently disabled');
     return null;
+  }
+}
 
-    /*
+Future<UserCredential?> signInWithGoogle(BuildContext context) async {
+  try {
+    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+    if (googleUser == null) return null;
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    final googleAuthcredential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+    if (!context.mounted) return null;
+    return await signInWithCredential(googleAuthcredential, context);
+  } catch (e) {
+    if (context.mounted) {
+      showSnackBarError(context, e.toString());
+    }
+    return null;
+  }
+}
+
+Future<UserCredential?> signInWithFacebook(BuildContext context) async {
+  try {
+    final LoginResult loginResult = await FacebookAuth.instance.login();
+    if (loginResult.status != LoginStatus.success) {
+      if (context.mounted) {
+        showSnackBarError(
+          context,
+          'Facebook login failed with status: ${loginResult.status}${loginResult.message != null ? ' (${loginResult.message})' : ''}',
+        );
+      }
+      return null;
+    }
+
+    final OAuthCredential facebookAuthCredential =
+        FacebookAuthProvider.credential(loginResult.accessToken!.tokenString);
+    if (!context.mounted) return null;
+    return await signInWithCredential(facebookAuthCredential, context);
+  } catch (e) {
+    if (context.mounted) {
+      showSnackBarError(context, e.toString());
+    }
+    return null;
+  }
+}
+
+
+
+
+
+
+
+  // print('Twitter login currently disabled');
+  /*
     final twitterLogin = TwitterLogin(
       apiKey: dotenv.env['TWITTER_API_KEY'] ?? '',
       apiSecretKey: dotenv.env['TWITTER_API_SECRET'] ?? '',
@@ -71,5 +101,3 @@ Future<UserCredential?> thirdPartyAuth(String logo) async {
       return null; // failed / cancelled
     }
     */
-  }
-}

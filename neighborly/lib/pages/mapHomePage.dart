@@ -229,7 +229,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     for (int idx = 0; idx < helpRequests.length; idx++) {
       Map<String, dynamic> req = helpRequests[idx];
       print(
-        'Creating marker for request ${idx}: ${req['id']} at ${req['location']}',
+        'Creating marker for request $idx: ${req['id']} at ${req['location']}',
       );
 
       BitmapDescriptor customIcon = await _createCustomMarker(req);

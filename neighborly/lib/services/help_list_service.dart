@@ -63,9 +63,9 @@ class HelpListService {
     // Priority -> urgency mapping (capitalize)
     String urgency = 'General';
     final pr = (api['priority'] ?? '').toString().toLowerCase();
-    if (pr == 'emergency')
+    if (pr == 'emergency') {
       urgency = 'Emergency';
-    else if (pr == 'urgent' || pr == 'high')
+    } else if (pr == 'urgent' || pr == 'high')
       urgency = 'Urgent';
     else
       urgency = 'General';

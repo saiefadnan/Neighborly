@@ -10,7 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
 
 class _ProfileNameHeader extends StatefulWidget {
-  const _ProfileNameHeader({Key? key}) : super(key: key);
+  const _ProfileNameHeader();
 
   @override
   State<_ProfileNameHeader> createState() => _ProfileNameHeaderState();

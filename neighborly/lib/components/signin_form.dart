@@ -7,6 +7,7 @@ import 'package:neighborly/functions/alt_auth.dart';
 import 'package:neighborly/functions/valid_email.dart';
 import 'package:neighborly/pages/authPage.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 bool rememberMe = true;
 
@@ -289,7 +290,15 @@ class _SigninFormState extends ConsumerState<SigninForm> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             GestureDetector(
-              onTap: () async => await thirdPartyAuth('google'),
+              onTap: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('rememberMe', rememberMe);
+                ref.read(authUserProvider.notifier).stateOnRemember();
+                final result = await signInWithGoogle(context);
+                if (result == null) {
+                  ref.read(authUserProvider.notifier).initState();
+                }
+              },
               child: FaIcon(
                 FontAwesomeIcons.google,
                 color: Color(0xFF71BB7B),
@@ -298,22 +307,30 @@ class _SigninFormState extends ConsumerState<SigninForm> {
             ),
             SizedBox(width: 30.0),
             GestureDetector(
-              onTap: () async => await thirdPartyAuth('facebook'),
+              onTap: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('rememberMe', rememberMe);
+                ref.read(authUserProvider.notifier).stateOnRemember();
+                final result = await signInWithFacebook(context);
+                if (result == null) {
+                  ref.read(authUserProvider.notifier).initState();
+                }
+              },
               child: FaIcon(
                 FontAwesomeIcons.facebook,
                 color: Color(0xFF71BB7B),
                 size: 30,
               ),
             ),
-            SizedBox(width: 30.0),
-            GestureDetector(
-              onTap: () async => await thirdPartyAuth('xtwitter'),
-              child: FaIcon(
-                FontAwesomeIcons.xTwitter,
-                color: Color(0xFF71BB7B),
-                size: 30,
-              ),
-            ),
+            // SizedBox(width: 30.0),
+            // GestureDetector(
+            //   onTap: () async => await thirdPartyAuth(context, 'xtwitter'),
+            //   child: FaIcon(
+            //     FontAwesomeIcons.xTwitter,
+            //     color: Color(0xFF71BB7B),
+            //     size: 30,
+            //   ),6
+            // ),
           ],
         ),
         SizedBox(height: 20.0),
