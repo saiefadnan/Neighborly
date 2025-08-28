@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:neighborly/pages/community_list.dart';
+import 'package:neighborly/pages/admin_community_management.dart';
 import 'users.dart';
 import 'announcements.dart';
 import 'team.dart';
 import 'Schedule.dart';
-import 'user_login.dart'; // Import the UserLoginPage class
+import 'admin_notifications.dart';
 
 //included backend connection
 class AdminHomePage extends StatefulWidget {
@@ -22,6 +22,9 @@ class _AdminHomePageState extends State<AdminHomePage>
   late AnimationController _headerSlideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _headerSlideAnimation;
+
+  // Mock notification count - in real app this would come from Firebase
+  int _notificationCount = 3;
 
   @override
   void initState() {
@@ -130,8 +133,9 @@ class _AdminHomePageState extends State<AdminHomePage>
     String title,
     IconData icon,
     Color color,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    int? badgeCount,
+  }) {
     return Builder(
       builder: (context) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -234,6 +238,43 @@ class _AdminHomePageState extends State<AdminHomePage>
                       ),
                     ),
                   ),
+                  // Notification badge
+                  if (badgeCount != null && badgeCount > 0)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          badgeCount > 99 ? '99+' : badgeCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -301,7 +342,27 @@ class _AdminHomePageState extends State<AdminHomePage>
                 childAspectRatio: aspectRatio,
                 children: [
                   _buildActionCard(
-                    'Manage Users',
+                    'Community Management',
+                    Icons.group_work_rounded,
+                    const Color(0xFF10B981),
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AdminCommunityManagementPage(),
+                      ),
+                    ),
+                  ),
+                  _buildActionCard(
+                    'Community Admins',
+                    Icons.supervised_user_circle_rounded,
+                    const Color(0xFFF59E0B),
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TeamPage()),
+                    ),
+                  ),
+                  _buildActionCard(
+                    'Community Users',
                     Icons.people_rounded,
                     const Color(0xFF06B6D4),
                     () => Navigator.push(
@@ -321,49 +382,29 @@ class _AdminHomePageState extends State<AdminHomePage>
                     ),
                   ),
                   _buildActionCard(
-                    'Community',
-                    Icons.groups_rounded,
-                    const Color(0xFF10B981),
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const CommunityListPage(),
-                      ),
-                    ),
-                  ),
-                  _buildActionCard(
-                    'Team',
-                    Icons.group_work_rounded,
-                    const Color(0xFFF59E0B),
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const TeamPage()),
-                    ),
-                  ),
-                  _buildActionCard(
                     'Schedules',
                     Icons.schedule_rounded,
                     const Color(0xFF3B82F6),
                     () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SchedulePage()),
-                ),
+                      context,
+                      MaterialPageRoute(builder: (_) => const SchedulePage()),
+                    ),
                   ),
                   _buildActionCard(
-                    'User Login',
-                    Icons.login_rounded,
+                    'Admin Notifications',
+                    Icons.notifications_rounded,
                     const Color(0xFF6366F1),
                     () {
-                      // Add user login navigation
+                      // Add admin notifications navigation
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => Scaffold(
-                            body: SigninForm(title: 'User Login'),
-                          ),
+                          builder:
+                              (_) => Scaffold(body: AdminNotificationsPage()),
                         ),
                       );
                     },
+                    badgeCount: _notificationCount,
                   ),
                 ],
               );
