@@ -3,6 +3,7 @@ import authRouter from './routes/authRoute';
 import forumRouter from './routes/forumRoute';
 import mapRouter from './routes/mapRoute';
 import infosRouter from './routes/infosRoute';
+import statRouter from './routes/statRoute';
 import { initializeApp, cert} from 'firebase-admin/app';
 import { readFileSync } from 'fs'
 import { join } from 'path';
@@ -22,7 +23,7 @@ app.route('/api/auth', authRouter);
 app.route('/api/forum',forumRouter);
 app.route('/api/map', mapRouter);
 app.route('/api/infos', infosRouter);
-
+app.route('/api/stats', statRouter);
 Bun.serve({
   fetch: app.fetch,
   port: 4000,
