@@ -37,8 +37,6 @@ class _SignupFormState extends ConsumerState<SignupForm> {
   final TextEditingController _postalCodeController = TextEditingController();
   final TextEditingController _contactNumberController =
       TextEditingController();
-  final TextEditingController _preferredCommunityController =
-      TextEditingController();
 
   // Focus nodes
   final FocusNode _usernameFocusNode = FocusNode();
@@ -51,7 +49,6 @@ class _SignupFormState extends ConsumerState<SignupForm> {
   final FocusNode _divisionFocusNode = FocusNode();
   final FocusNode _postalCodeFocusNode = FocusNode();
   final FocusNode _contactNumberFocusNode = FocusNode();
-  final FocusNode _preferredCommunityFocusNode = FocusNode();
 
   // Focus states
   bool _isUsernameFocused = false;
@@ -64,10 +61,10 @@ class _SignupFormState extends ConsumerState<SignupForm> {
   bool _isDivisionFocused = false;
   bool _isPostalCodeFocused = false;
   bool _isContactNumberFocused = false;
-  bool _isPreferredCommunityFocused = false;
 
   String name = '', email = '', pswd = '', cnfrmPswd = '';
   String? selectedBloodGroup;
+  String? selectedCommunity;
 
   // Blood group options
   final List<String> bloodGroups = [
@@ -79,6 +76,28 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     'AB-',
     'O+',
     'O-',
+  ];
+
+  // Community options
+  final List<String> communities = [
+    'Dhanmondi',
+    'Mirpur',
+    'Mohammadpur',
+    'Shahbagh',
+    'Rampura',
+    'Banani',
+    'Gulshan',
+    'Karwanbazar',
+    'Motijheel',
+    'Azimpur',
+    'Shadarghat',
+    'Badda',
+    'Hatirjheel',
+    'Kakrail',
+    'Moghbazar',
+    'Paltan',
+    'Uttara',
+    'Hazaribagh',
   ];
 
   // Updated method to save user info to Firestore with all fields
@@ -131,7 +150,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     final division = _divisionController.text.trim();
     final postalCode = _postalCodeController.text.trim();
     final contactNumber = _contactNumberController.text.trim();
-    final preferredCommunity = _preferredCommunityController.text.trim();
+    final preferredCommunity = selectedCommunity ?? '';
 
     // Validation
     if (name.isEmpty ||
@@ -246,11 +265,6 @@ class _SignupFormState extends ConsumerState<SignupForm> {
         _isContactNumberFocused = _contactNumberFocusNode.hasFocus;
       });
     });
-    _preferredCommunityFocusNode.addListener(() {
-      setState(() {
-        _isPreferredCommunityFocused = _preferredCommunityFocusNode.hasFocus;
-      });
-    });
   }
 
   @override
@@ -266,7 +280,6 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     _divisionController.dispose();
     _postalCodeController.dispose();
     _contactNumberController.dispose();
-    _preferredCommunityController.dispose();
 
     // Dispose focus nodes
     _usernameFocusNode.dispose();
@@ -279,7 +292,6 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     _divisionFocusNode.dispose();
     _postalCodeFocusNode.dispose();
     _contactNumberFocusNode.dispose();
-    _preferredCommunityFocusNode.dispose();
 
     super.dispose();
   }
@@ -869,12 +881,11 @@ class _SignupFormState extends ConsumerState<SignupForm> {
             ),
           ),
           SizedBox(height: 8.0),
-          TextField(
-            controller: _preferredCommunityController,
-            focusNode: _preferredCommunityFocusNode,
+          DropdownButtonFormField<String>(
+            value: selectedCommunity,
             decoration: InputDecoration(
               filled: false,
-              hintText: "Enter preferred community to join",
+              hintText: "Select your preferred community",
               hintStyle: TextStyle(
                 color: Colors.grey.shade400,
                 fontWeight: FontWeight.w400,
@@ -882,7 +893,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
               prefixIcon: Icon(
                 Icons.groups_outlined,
                 color:
-                    _isPreferredCommunityFocused
+                    selectedCommunity != null
                         ? Color(0xFF71BB7B)
                         : Colors.grey.shade400,
                 size: 20.0,
@@ -895,6 +906,18 @@ class _SignupFormState extends ConsumerState<SignupForm> {
               ),
               contentPadding: EdgeInsets.symmetric(vertical: 12.0),
             ),
+            items:
+                communities.map((String community) {
+                  return DropdownMenuItem<String>(
+                    value: community,
+                    child: Text(community),
+                  );
+                }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedCommunity = newValue;
+              });
+            },
           ),
           SizedBox(height: 30.0),
 
