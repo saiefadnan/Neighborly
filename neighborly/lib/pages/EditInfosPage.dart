@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
 import '../functions/pfp_uploader.dart';
+import '../components/tickbox_animate.dart';
 
 class CurvedHeaderClipper extends CustomClipper<Path> {
   @override
@@ -616,12 +617,37 @@ class _EditInfosPageState extends State<EditInfosPage> {
                                   print(
                                     '[ProfileImage] User info updated successfully.',
                                   );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('User info updated!'),
-                                    ),
+
+                                  // Show animated success dialog
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (BuildContext context) {
+                                      return Dialog(
+                                        backgroundColor: Colors.transparent,
+                                        child: AnimatedPrompt(
+                                          title: 'Profile Updated!',
+                                          subTitle:
+                                              'Your information has been updated successfully.',
+                                          child: const Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   );
-                                  await fetchAndSetUserInfo(); // Refresh fields
+
+                                  // Auto-dismiss dialog after 2 seconds and refresh
+                                  Future.delayed(
+                                    const Duration(seconds: 2),
+                                    () {
+                                      Navigator.of(
+                                        context,
+                                      ).pop(); // Close dialog
+                                      fetchAndSetUserInfo(); // Refresh fields
+                                    },
+                                  );
                                 } else {
                                   String errorMsg =
                                       'Failed to update user info';
