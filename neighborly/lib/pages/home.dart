@@ -144,6 +144,19 @@ class _HomePageState extends ConsumerState<HomePage>
   }
 
   Widget _buildWelcomeSection() {
+    final user = ref.watch(currentUserProvider);
+    final userName =
+        user?.username ??
+        FirebaseAuth.instance.currentUser?.displayName ??
+        'User';
+
+    // Debug info
+    print('🔍 User object: $user');
+    print('🔍 Username from user: ${user?.username}');
+    print(
+      '🔍 Firebase displayName: ${FirebaseAuth.instance.currentUser?.displayName}',
+    );
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       child: GestureDetector(
@@ -194,7 +207,7 @@ class _HomePageState extends ConsumerState<HomePage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Welcome back, ${FirebaseAuth.instance.currentUser?.displayName}',
+                      'Welcome back, $userName',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
@@ -218,6 +231,7 @@ class _HomePageState extends ConsumerState<HomePage>
                         height: 1.3,
                       ),
                     ),
+                    const SizedBox(height: 12),
                   ],
                 ),
               ),
@@ -1014,7 +1028,14 @@ class _HomePageState extends ConsumerState<HomePage>
   }
 
   Widget _buildUserSidebar() {
-    String username = "Ali";
+    final user = ref.watch(currentUserProvider);
+    final username =
+        user?.username ??
+        FirebaseAuth.instance.currentUser?.displayName ??
+        'User';
+    final userEmail =
+        user?.email ?? FirebaseAuth.instance.currentUser?.email ?? '';
+    final userCommunity = user?.preferredCommunity ?? 'Community not set';
 
     void signOut() async {
       try {
@@ -1136,10 +1157,18 @@ class _HomePageState extends ConsumerState<HomePage>
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  'Tap to view profile',
+                                  userCommunity,
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.8),
-                                    fontSize: 13,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Tap to view profile',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.7),
+                                    fontSize: 11,
                                   ),
                                 ),
                               ],
@@ -1154,6 +1183,50 @@ class _HomePageState extends ConsumerState<HomePage>
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // User Info Card
+                  if (user != null)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Profile Info',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (user.email.isNotEmpty)
+                            _buildInfoRow(Icons.email, 'Email', userEmail),
+                          if (user.contact != null && user.contact!.isNotEmpty)
+                            _buildInfoRow(
+                              Icons.phone,
+                              'Contact',
+                              user.contact!,
+                            ),
+                          if (user.bloodGroup != null &&
+                              user.bloodGroup!.isNotEmpty)
+                            _buildInfoRow(
+                              Icons.bloodtype,
+                              'Blood Group',
+                              user.bloodGroup!,
+                            ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -1250,20 +1323,23 @@ class _HomePageState extends ConsumerState<HomePage>
                                 );
                               },
                             ),
-                            _buildMenuItem(
-                              'Admin Dashboard',
-                              Icons.admin_panel_settings_rounded,
-                              Colors.deepPurple,
-                              () {
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const AdminHomePage(),
-                                  ),
-                                );
-                              },
-                            ),
+                            // Only show Admin Dashboard if user is an admin
+                            if (user?.isAdmin == true)
+                              _buildMenuItem(
+                                'Admin Dashboard',
+                                Icons.admin_panel_settings_rounded,
+                                Colors.deepPurple,
+                                () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => const AdminHomePage(),
+                                    ),
+                                  );
+                                },
+                              ),
                             _buildMenuItem(
                               'Forum',
                               Icons.forum_rounded,
@@ -1485,6 +1561,29 @@ class _HomePageState extends ConsumerState<HomePage>
               ),
             ],
           ),
+    );
+  }
+
+  // Helper method to build info rows for user details
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white.withOpacity(0.8), size: 14),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$label: $value',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 12,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
