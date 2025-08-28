@@ -133,7 +133,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
       print('✅ User data saved to Firestore successfully');
     } catch (e) {
       print('❌ Error saving user data to Firestore: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -519,7 +519,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
           SizedBox(height: 40.0),
 
           // Section Header for Additional Information
-          Container(
+          SizedBox(
             width: double.infinity,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
