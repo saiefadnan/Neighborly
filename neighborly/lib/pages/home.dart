@@ -100,6 +100,14 @@ class _HomePageState extends ConsumerState<HomePage>
     }
 
     _startAutoScroll();
+
+    // Debug info
+    final user = ref.read(currentUserProvider);
+    print('🔍 User object: $user');
+    print('🔍 Username from user: ${user?.username}');
+    print(
+      '🔍 Firebase displayName: ${FirebaseAuth.instance.currentUser?.displayName}',
+    );
   }
 
   void _startAutoScroll() {
@@ -149,13 +157,6 @@ class _HomePageState extends ConsumerState<HomePage>
         user?.username ??
         FirebaseAuth.instance.currentUser?.displayName ??
         'User';
-
-    // Debug info
-    print('🔍 User object: $user');
-    print('🔍 Username from user: ${user?.username}');
-    print(
-      '🔍 Firebase displayName: ${FirebaseAuth.instance.currentUser?.displayName}',
-    );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),

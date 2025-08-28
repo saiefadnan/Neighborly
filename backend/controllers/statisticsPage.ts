@@ -2,7 +2,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { Context } from 'hono';
 
-// Get help request statistics by title
+// help request statistics by title
 export const getHelpRequestStats = async (c: Context) => {
   console.log('getHelpRequestStats called');
   try {
@@ -49,5 +49,54 @@ export const getHelpRequestStats = async (c: Context) => {
   } catch (error) {
     console.error('Error fetching help request stats:', error);
     return c.json({ success: false, message: 'Failed to fetch help request statistics' }, 500);
+  }
+};
+
+// Get successful helps count for the logged-in user
+export const getUserSuccessfulHelpsCount = async (c: Context) => {
+  console.log('getUserSuccessfulHelpsCount called');
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+
+    if (!idToken) {
+      return c.json({ success: false, message: 'Missing Authorization header' }, 401);
+    }
+
+    // Verify user token
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+    console.log('User authenticated:', userId);
+
+    // Fetch all help requests where this user's ID is in acceptedResponderId
+    const helpRequestsCollection = await getFirestore().collection('helpRequests').get();
+    
+    if (helpRequestsCollection.empty) {
+      return c.json({ success: true, count: 0, message: 'No help requests found' });
+    }
+
+    // Count help requests where acceptedResponderId matches the user's UID
+    let successfulHelpsCount = 0;
+    
+    helpRequestsCollection.docs.forEach((doc) => {
+      const data = doc.data();
+      const acceptedResponderId = data.acceptedResponderId;
+      
+      if (acceptedResponderId === userId) {
+        successfulHelpsCount++;
+      }
+    });
+
+    console.log(`User ${userId} has ${successfulHelpsCount} successful helps`);
+
+    return c.json({ 
+      success: true, 
+      count: successfulHelpsCount,
+      message: `User has successfully helped in ${successfulHelpsCount} requests`
+    });
+
+  } catch (error) {
+    console.error('Error fetching user successful helps count:', error);
+    return c.json({ success: false, message: 'Failed to fetch successful helps count' }, 500);
   }
 };
