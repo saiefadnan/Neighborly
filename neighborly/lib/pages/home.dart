@@ -1036,7 +1036,12 @@ class _HomePageState extends ConsumerState<HomePage>
         'User';
     final userEmail =
         user?.email ?? FirebaseAuth.instance.currentUser?.email ?? '';
-    final userCommunity = user?.preferredCommunity ?? 'Community not set';
+    final userCommunity =
+        user?.preferredCommunity.isNotEmpty == true
+            ? user!
+                .preferredCommunity
+                .first // Show first community for sidebar
+            : 'Community not set';
 
     void signOut() async {
       try {

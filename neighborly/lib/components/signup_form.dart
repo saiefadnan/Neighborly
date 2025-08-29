@@ -111,7 +111,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     required String postalCode,
     required String contactNumber,
     required String bloodGroup,
-    required String preferredCommunity,
+    required List<String> preferredCommunity,
   }) async {
     try {
       await FirebaseFirestore.instance.collection('users').add({
@@ -150,7 +150,8 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     final division = _divisionController.text.trim();
     final postalCode = _postalCodeController.text.trim();
     final contactNumber = _contactNumberController.text.trim();
-    final preferredCommunity = selectedCommunity ?? '';
+    final preferredCommunity =
+        selectedCommunity != null ? [selectedCommunity!] : <String>[];
 
     // Validation
     if (name.isEmpty ||

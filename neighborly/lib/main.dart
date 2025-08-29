@@ -7,6 +7,7 @@ import 'package:neighborly/app_routes.dart';
 import 'package:neighborly/firebase_options.dart';
 import 'package:neighborly/providers/notification_provider.dart';
 import 'package:neighborly/providers/help_request_provider.dart';
+import 'package:neighborly/providers/community_provider.dart';
 import 'package:provider/provider.dart' as provider;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,6 +32,7 @@ void main() async {
       providers: [
         provider.ChangeNotifierProvider(create: (_) => NotificationProvider()),
         provider.ChangeNotifierProvider.value(value: helpRequestProvider),
+        provider.ChangeNotifierProvider(create: (_) => CommunityProvider()),
       ],
       child: ProviderScope(child: const MyApp()),
     ),

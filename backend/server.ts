@@ -5,6 +5,7 @@ import mapRouter from './routes/mapRoute';
 import infosRouter from './routes/infosRoute';
 import statRouter from './routes/statRoute';
 import activTRouter from './routes/activTRoute';
+import communityRouter from './routes/communityRoutes';
 import { initializeApp, cert} from 'firebase-admin/app';
 import { readFileSync } from 'fs'
 import { join } from 'path';
@@ -26,6 +27,7 @@ app.route('/api/map', mapRouter);
 app.route('/api/infos', infosRouter);
 app.route('/api/stats', statRouter);
 app.route('/api/activeT', activTRouter);
+app.route('/api/communities', communityRouter);
 Bun.serve({
   fetch: app.fetch,
   port: 4000,

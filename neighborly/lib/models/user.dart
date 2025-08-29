@@ -4,7 +4,8 @@ class User {
   final String? contact;
   final String? address;
   final String? bloodGroup;
-  final String? preferredCommunity;
+  final List<String>
+  preferredCommunity; // Changed to List<String> for multiple communities
   final String? profilePicture;
   final String firebaseUid;
   final bool isAdmin;
@@ -19,12 +20,26 @@ class User {
     this.contact,
     this.address,
     this.bloodGroup,
-    this.preferredCommunity,
+    this.preferredCommunity = const [], // Default to empty list
     this.profilePicture,
   });
 
   // Create User from Firestore data
   factory User.fromFirestore(Map<String, dynamic> data, String uid) {
+    // Handle both old format (String) and new format (List<String>) for preferredCommunity
+    List<String> communities = [];
+    final communityData = data['preferredCommunity'];
+
+    if (communityData != null) {
+      if (communityData is List) {
+        // New format: already a list
+        communities = List<String>.from(communityData);
+      } else if (communityData is String && communityData.isNotEmpty) {
+        // Old format: single string, convert to list
+        communities = [communityData];
+      }
+    }
+
     return User(
       email: data['email'] ?? '',
       username: data['username'] ?? '',
@@ -34,7 +49,7 @@ class User {
       contact: data['contact'],
       address: data['address'],
       bloodGroup: data['bloodGroup'],
-      preferredCommunity: data['preferredCommunity'],
+      preferredCommunity: communities,
       profilePicture: data['profilePicture'],
     );
   }
@@ -47,7 +62,7 @@ class User {
       'contact': contact,
       'address': address,
       'bloodGroup': bloodGroup,
-      'preferredCommunity': preferredCommunity,
+      'preferredCommunity': preferredCommunity, // Now saves as List<String>
       'profilePicture': profilePicture,
       'firebaseUid': firebaseUid,
       'isAdmin': isAdmin,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'announcements.dart';
+import '../providers/community_provider.dart';
 
 class CommunityListPage extends StatefulWidget {
   const CommunityListPage({super.key});
@@ -17,130 +19,6 @@ class _CommunityListPageState extends State<CommunityListPage>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   final Set<String> _expandedCommunities = {};
-
-  final List<Community> _myCommunities = [
-    Community(
-      name: 'Dhanmondi',
-      memberCount: 1248,
-      description:
-          'A vibrant residential area known for its cultural heritage and green spaces.',
-      location: 'Dhaka, Bangladesh',
-      joinDate: 'Joined 6 months ago',
-      moderators: ['Rashid Ahmed', 'Fatima Khan'],
-      recentActivity: 'Last active 2 hours ago',
-      tags: ['Residential', 'Cultural', 'Safe'],
-      image: 'assets/images/Image1.jpg',
-    ),
-    Community(
-      name: 'Gulshan',
-      memberCount: 2156,
-      description:
-          'Upscale commercial and residential area with modern amenities.',
-      location: 'Dhaka, Bangladesh',
-      joinDate: 'Joined 1 year ago',
-      moderators: ['Karim Hassan', 'Nadia Sultana'],
-      recentActivity: 'Last active 1 hour ago',
-      tags: ['Commercial', 'Upscale', 'Modern'],
-      image: 'assets/images/Image2.jpg',
-    ),
-  ];
-
-  final List<Community> _otherCommunities = [
-    Community(
-      name: 'Mohammadpur',
-      memberCount: 987,
-      description:
-          'Densely populated residential area with rich local culture.',
-      location: 'Dhaka, Bangladesh',
-      moderators: ['Abdul Rahman', 'Salma Begum'],
-      recentActivity: 'Last active 30 minutes ago',
-      tags: ['Residential', 'Cultural', 'Busy'],
-      image: 'assets/images/Image3.jpg',
-    ),
-    Community(
-      name: 'Mirpur',
-      memberCount: 1543,
-      description:
-          'Large residential area known for its diversity and community spirit.',
-      location: 'Dhaka, Bangladesh',
-      moderators: ['Mahmud Ali', 'Rohana Khatun'],
-      recentActivity: 'Last active 15 minutes ago',
-      tags: ['Residential', 'Diverse', 'Active'],
-      image: 'assets/images/Image1.jpg',
-    ),
-    Community(
-      name: 'Baridhara',
-      memberCount: 756,
-      description: 'Diplomatic zone with embassies and upscale residences.',
-      location: 'Dhaka, Bangladesh',
-      moderators: ['Tariq Ahmed', 'Ayesha Rahman'],
-      recentActivity: 'Last active 1 hour ago',
-      tags: ['Diplomatic', 'Upscale', 'Secure'],
-      image: 'assets/images/Image2.jpg',
-    ),
-    Community(
-      name: 'Rampura',
-      memberCount: 834,
-      description: 'Growing residential area with good connectivity.',
-      location: 'Dhaka, Bangladesh',
-      moderators: ['Habib Khan', 'Nasreen Akter'],
-      recentActivity: 'Last active 45 minutes ago',
-      tags: ['Residential', 'Growing', 'Connected'],
-      image: 'assets/images/Image3.jpg',
-    ),
-    Community(
-      name: 'Bashundhara',
-      memberCount: 1876,
-      description: 'Modern planned residential area with excellent facilities.',
-      location: 'Dhaka, Bangladesh',
-      moderators: ['Rafiq Islam', 'Shahnaz Parveen'],
-      recentActivity: 'Last active 20 minutes ago',
-      tags: ['Modern', 'Planned', 'Facilities'],
-      image: 'assets/images/Image1.jpg',
-    ),
-    Community(
-      name: 'Kakrail',
-      memberCount: 456,
-      description:
-          'Central location with mix of residential and commercial spaces.',
-      location: 'Dhaka, Bangladesh',
-      moderators: ['Aminul Haque', 'Ruma Khatun'],
-      recentActivity: 'Last active 3 hours ago',
-      tags: ['Central', 'Mixed', 'Accessible'],
-      image: 'assets/images/Image2.jpg',
-    ),
-    Community(
-      name: 'Malibagh',
-      memberCount: 623,
-      description:
-          'Historic area with traditional architecture and local markets.',
-      location: 'Dhaka, Bangladesh',
-      moderators: ['Nazrul Islam', 'Rabeya Sultana'],
-      recentActivity: 'Last active 2 hours ago',
-      tags: ['Historic', 'Traditional', 'Markets'],
-      image: 'assets/images/Image3.jpg',
-    ),
-    Community(
-      name: 'Farmgate',
-      memberCount: 1234,
-      description: 'Commercial hub with excellent transport connectivity.',
-      location: 'Dhaka, Bangladesh',
-      moderators: ['Selim Reza', 'Maksuda Begum'],
-      recentActivity: 'Last active 1 hour ago',
-      tags: ['Commercial', 'Transport', 'Hub'],
-      image: 'assets/images/Image1.jpg',
-    ),
-    Community(
-      name: 'Kathalbagan',
-      memberCount: 567,
-      description: 'Residential area known for its educational institutions.',
-      location: 'Dhaka, Bangladesh',
-      moderators: ['Mostofa Kamal', 'Shireen Akter'],
-      recentActivity: 'Last active 4 hours ago',
-      tags: ['Residential', 'Educational', 'Peaceful'],
-      image: 'assets/images/Image2.jpg',
-    ),
-  ];
 
   @override
   void initState() {
@@ -159,6 +37,12 @@ class _CommunityListPageState extends State<CommunityListPage>
     );
 
     _headerAnimationController.forward();
+
+    // Initialize communities data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<CommunityProvider>(context, listen: false);
+      provider.initializeCommunities();
+    });
   }
 
   @override
@@ -168,7 +52,34 @@ class _CommunityListPageState extends State<CommunityListPage>
     _searchController.dispose();
     super.dispose();
   }
-  
+
+  // Convert CommunityData to Community for UI compatibility
+  Community _convertToLegacyCommunity(CommunityData data) {
+    return Community(
+      name: data.name,
+      memberCount: data.memberCount,
+      description: data.description,
+      location: data.location,
+      joinDate:
+          data.joinDate?.toString() ??
+          (data.members.isNotEmpty ? 'Joined' : null),
+      moderators: data.admins,
+      recentActivity: data.recentActivity ?? 'Active recently',
+      tags: data.tags,
+      image: data.imageUrl ?? 'assets/images/Image1.jpg', // fallback image
+    );
+  }
+
+  // Build community list using provider data
+  Widget _buildCommunityListFromProvider(
+    List<CommunityData> communities,
+    bool isMyCommunity,
+  ) {
+    final legacyCommunities =
+        communities.map(_convertToLegacyCommunity).toList();
+    return _buildCommunityList(legacyCommunities, isMyCommunity);
+  }
+
   List<Community> _getFilteredCommunities(List<Community> communities) {
     if (_searchQuery.isEmpty) return communities;
     return communities
@@ -187,22 +98,42 @@ class _CommunityListPageState extends State<CommunityListPage>
         .toList();
   }
 
-  void _joinCommunity(Community community) {
+  void _joinCommunity(Community community) async {
     HapticFeedback.lightImpact();
-    setState(() {
-      _otherCommunities.remove(community);
-      community.joinDate = 'Just joined';
-      _myCommunities.add(community);
-    });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Joined ${community.name} community!'),
-        backgroundColor: const Color(0xFF71BB7B),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+    final provider = Provider.of<CommunityProvider>(context, listen: false);
+
+    // Find the community ID by name from the all communities list
+    final communityData = provider.allCommunities.firstWhere(
+      (c) => c.name == community.name,
+      orElse: () => throw Exception('Community not found'),
     );
+
+    final success = await provider.joinCommunity(communityData.id);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Joined ${community.name} community!'),
+          backgroundColor: const Color(0xFF71BB7B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to join ${community.name}. Please try again.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
   }
 
   void _leaveCommunity(Community community) {
@@ -222,23 +153,47 @@ class _CommunityListPageState extends State<CommunityListPage>
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _myCommunities.remove(community);
-                  community.joinDate = null;
-                  _otherCommunities.add(community);
-                });
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Left ${community.name} community'),
-                    backgroundColor: Colors.orange,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+              onPressed: () async {
+                final provider = Provider.of<CommunityProvider>(
+                  context,
+                  listen: false,
                 );
+
+                // Find the community ID by name from the my communities list
+                final communityData = provider.myCommunities.firstWhere(
+                  (c) => c.name == community.name,
+                  orElse: () => throw Exception('Community not found'),
+                );
+
+                final success = await provider.leaveCommunity(communityData.id);
+
+                Navigator.of(context).pop();
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Left ${community.name} community'),
+                      backgroundColor: Colors.orange,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Failed to leave ${community.name}. Please try again.',
+                      ),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -640,7 +595,7 @@ class _CommunityListPageState extends State<CommunityListPage>
               ),
             );
           },
-        ),//announcements icon connected to announcement page
+        ), //announcements icon connected to announcement page
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -652,19 +607,21 @@ class _CommunityListPageState extends State<CommunityListPage>
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Announcements'),
-                  content: SizedBox(
-                    width: double.maxFinite,
-                    child: AnnouncementsList(), // Only the list, not the posting UI
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Close'),
+                builder:
+                    (context) => AlertDialog(
+                      title: const Text('Announcements'),
+                      content: SizedBox(
+                        width: double.maxFinite,
+                        child:
+                            AnnouncementsList(), // Only the list, not the posting UI
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Close'),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
               );
             },
           ),
@@ -676,25 +633,33 @@ class _CommunityListPageState extends State<CommunityListPage>
           indicatorColor: Colors.white,
           indicatorWeight: 3,
           tabs: [
-            Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.group),
-                  const SizedBox(width: 8),
-                  Text('My Communities (${_myCommunities.length})'),
-                ],
-              ),
+            Consumer<CommunityProvider>(
+              builder: (context, provider, child) {
+                return Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.group),
+                      const SizedBox(width: 8),
+                      Text('My Communities (${provider.myCommunities.length})'),
+                    ],
+                  ),
+                );
+              },
             ),
-            Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.explore),
-                  const SizedBox(width: 8),
-                  Text('Explore (${_otherCommunities.length})'),
-                ],
-              ),
+            Consumer<CommunityProvider>(
+              builder: (context, provider, child) {
+                return Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.explore),
+                      const SizedBox(width: 8),
+                      Text('Explore (${provider.availableCommunities.length})'),
+                    ],
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -703,12 +668,52 @@ class _CommunityListPageState extends State<CommunityListPage>
         children: [
           _buildSearchBar(),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildCommunityList(_myCommunities, true),
-                _buildCommunityList(_otherCommunities, false),
-              ],
+            child: Consumer<CommunityProvider>(
+              builder: (context, provider, child) {
+                if (provider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (provider.error != null) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Error: ${provider.error}',
+                          style: TextStyle(color: Colors.grey[600]),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => provider.refresh(),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildCommunityListFromProvider(
+                      provider.myCommunities,
+                      true,
+                    ),
+                    _buildCommunityListFromProvider(
+                      provider.availableCommunities,
+                      false,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
