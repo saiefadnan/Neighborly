@@ -1932,6 +1932,11 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                       _createMarkers(); // Refresh markers
                     });
 
+                    // Add this log to confirm helpedRequests creation is triggered
+                    print(
+                      '✅ Request ${helpData['id']} completed - helpedRequests entry should be created if responder was accepted',
+                    );
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: const Text(

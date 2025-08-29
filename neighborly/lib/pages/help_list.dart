@@ -53,10 +53,17 @@ class _HelpListPageState extends State<HelpListPage>
     _headerAnimationController.forward();
 
     // Fetch backend data once provider is available
+    // Fetch backend data once provider is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<HelpRequestProvider>(context, listen: false);
+
+      // Fetch community help requests
       provider.fetchHelpRequestsFromBackend();
-      // Keep sample data only if backend empty
+
+      // Fetch user's own help requests
+      provider.fetchMyHelpRequests();
+
+      // Only add sample data if both are empty (for demo)
       if (provider.helpRequests.isEmpty) {
         provider.initializeSampleData();
       }

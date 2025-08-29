@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/help_list_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 class HelpRequestData {
   final String id;
@@ -109,6 +112,7 @@ class HelpRequestProvider with ChangeNotifier {
         .where(
           (h) => h.requesterName != 'Ali Rahman' && h.requesterName != 'Ali',
         )
+        
         .toList();
   }
 
@@ -116,11 +120,8 @@ class HelpRequestProvider with ChangeNotifier {
     if (_currentUserId != null) {
       return _helpRequests.where((h) => h.userId == _currentUserId).toList();
     }
-    return _helpRequests
-        .where(
-          (h) => h.requesterName == 'Ali Rahman' || h.requesterName == 'Ali',
-        )
-        .toList();
+
+    return [];
   }
 
   void addHelpRequest(HelpRequestData helpRequest) {
@@ -161,6 +162,108 @@ class HelpRequestProvider with ChangeNotifier {
       // Keep sample data if already there
       debugPrint('Failed to fetch help requests: $e');
     }
+  }
+
+  Future<void> fetchMyHelpRequests({bool force = false}) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      _currentUserId = user.uid;
+
+      // Get Firebase ID token
+      final token = await user.getIdToken();
+
+      final response = await http.get(
+        Uri.parse(
+          '${ApiConfig.baseUrl}/api/map/help-requests?userId=${user.uid}',
+        ),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          final List<dynamic> helpRequestsJson = data['data'] ?? [];
+
+          // Clear existing requests and add fetched ones
+          _helpRequests.removeWhere((h) => h.userId == _currentUserId);
+
+          for (final helpJson in helpRequestsJson) {
+            final helpRequest = _convertBackendDataToHelpRequest(helpJson);
+            _helpRequests.add(helpRequest);
+          }
+
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch my help requests: $e');
+    }
+  }
+
+  // Helper method to convert backend data to HelpRequestData
+  HelpRequestData _convertBackendDataToHelpRequest(Map<String, dynamic> data) {
+    String capitalizeUrgency(String priority) {
+      switch (priority.toLowerCase()) {
+        case 'emergency':
+          return 'Emergency';
+        case 'urgent':
+        case 'high':
+          return 'Urgent';
+        case 'general':
+        case 'medium':
+        case 'low':
+          return 'General';
+        default:
+          return 'General';
+      }
+    }
+
+    // Calculate time ago
+    String getTimeAgo(String createdAt) {
+      try {
+        final createdTime = DateTime.parse(createdAt);
+        final now = DateTime.now();
+        final difference = now.difference(createdTime);
+
+        if (difference.inMinutes < 1) {
+          return 'Just now';
+        } else if (difference.inMinutes < 60) {
+          return '${difference.inMinutes} min ago';
+        } else if (difference.inHours < 24) {
+          return '${difference.inHours} hours ago';
+        } else {
+          return '${difference.inDays} days ago';
+        }
+      } catch (e) {
+        return 'Recently';
+      }
+    }
+
+    return HelpRequestData(
+      id: data['id'] ?? '',
+      userId: data['userId'] ?? '',
+      title: data['title'] ?? 'Help Request',
+      description: data['description'] ?? '',
+      helpType: data['type'] ?? 'General',
+      urgency: capitalizeUrgency(data['priority'] ?? 'General'),
+      location: data['address'] ?? '',
+      distance: '0 km', // Default for user's own requests
+      timePosted: getTimeAgo(data['createdAt'] ?? ''),
+      requesterName: data['username'] ?? 'Anonymous',
+      requesterImage: 'assets/images/dummy.png',
+      contactNumber: data['phone'] ?? '',
+      coordinates:
+          data['location'] != null
+              ? LatLng(
+                data['location']['latitude']?.toDouble() ?? 0.0,
+                data['location']['longitude']?.toDouble() ?? 0.0,
+              )
+              : null,
+      isResponded: false,
+      responderCount: data['responses']?.length ?? 0,
+    );
   }
 
   void removeHelpRequest(String id) {

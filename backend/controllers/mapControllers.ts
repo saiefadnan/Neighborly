@@ -292,13 +292,13 @@ export const acceptResponder = async (c: Context) => {
     const responseData = responseDoc.data();
 
     // Update help request status and accepted responder
-    await helpRequestRef.update({
-      status: 'in_progress',
-      acceptedResponderId: responseId,
-      acceptedResponderUserId: responseData?.userId,
-      updatedAt: new Date().toISOString()
-    });
-
+    
+await helpRequestRef.update({
+  status: 'in_progress',
+  acceptedResponderId: responseId,
+  acceptedResponderUserId: responseData?.userId,
+  updatedAt: new Date().toISOString()
+});
     // Update response status
     await responseRef.update({
       status: 'accepted',
@@ -391,6 +391,29 @@ export const updateHelpRequestStatus = async (c: Context) => {
 
     if (status === 'completed') {
       updateData.completedAt = new Date().toISOString();
+      
+      // If there's an accepted responder, create entry in helpedRequests collection
+      if (helpRequestData.acceptedResponderUserId) {
+        console.log(`Creating helpedRequests entry for request ${requestId} with accepted responder ${helpRequestData.acceptedResponderUserId}`);
+        
+        const helpedRequestRef = getFirestore().collection('helpedRequests').doc(requestId);
+        const helpedRequestData = {
+          requestId: requestId,
+          acceptedUserID: helpRequestData.acceptedResponderUserId,
+          completedAt: new Date().toISOString(),
+          originalRequestData: {
+            title: helpRequestData.title,
+            type: helpRequestData.type,
+            description: helpRequestData.description,
+            priority: helpRequestData.priority,
+            requesterId: helpRequestData.userId,
+            requesterUsername: helpRequestData.username
+          }
+        };
+        
+        await helpedRequestRef.set(helpedRequestData);
+        console.log(`Successfully created helpedRequests entry for ${requestId}`);
+      }
     } else if (status === 'cancelled') {
       updateData.cancelledAt = new Date().toISOString();
       // Reset accepted responder if cancelling
