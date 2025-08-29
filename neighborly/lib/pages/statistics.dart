@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -29,30 +30,60 @@ class _StatisticsPageState extends State<StatisticsPage>
   late Animation<double> _breathingAnimation4;
 
   Future<void> _fetchHelpRequestStats() async {
+    setState(() {
+      isLoadingStats = true;
+    });
+
+    bool success = false;
+
+    // 1. Try HTTP API first
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user != null) {
+        final token = await user.getIdToken();
+        final response = await http.get(
+          Uri.parse('${ApiConfig.baseUrl}/api/stats/help-request-counts'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
 
-      final token = await user.getIdToken();
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/stats/help-request-counts'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          setState(() {
-            helpRequestStats = Map<String, int>.from(data['data']);
-            isLoadingStats = false;
-          });
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            setState(() {
+              helpRequestStats = Map<String, int>.from(data['data']);
+              isLoadingStats = false;
+            });
+            success = true;
+          }
         }
       }
     } catch (e) {
-      print('Error fetching help request stats: $e');
-      setState(() {
-        isLoadingStats = false;
-      });
+      print('API fetch failed, will try Firestore. Error: $e');
+    }
+
+    // 2. If API failed, try Firestore directly
+    if (!success) {
+      try {
+        final snapshot =
+            await FirebaseFirestore.instance.collection('helpRequests').get();
+        final Map<String, int> counts = {};
+
+        for (final doc in snapshot.docs) {
+          final data = doc.data();
+          final title = data['title'] ?? 'Unknown';
+          counts[title] = (counts[title] ?? 0) + 1;
+        }
+
+        setState(() {
+          helpRequestStats = counts;
+          isLoadingStats = false;
+        });
+      } catch (e) {
+        print('Error fetching help request stats from Firestore: $e');
+        setState(() {
+          isLoadingStats = false;
+        });
+      }
     }
   }
 
