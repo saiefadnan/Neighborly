@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/help_request_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/map_service.dart';
+import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../components/responses_drawer.dart';
 
 class HelpListPage extends StatefulWidget {
   const HelpListPage({super.key});
@@ -1202,25 +1207,43 @@ class _HelpListPageState extends State<HelpListPage>
                 const SizedBox(height: 20),
 
                 // Response status
+                // Response status
                 if (help.responderCount > 0) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.people, color: Colors.blue),
-                        const SizedBox(width: 12),
-                        Text(
-                          '${help.responderCount} people are responding to this request',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blue,
+                  InkWell(
+                    onTap: () {
+                      Navigator.of(context).pop(); // Close current bottom sheet
+                      ResponsesDrawer.show(
+                        context,
+                        help,
+                      ); // Show responses drawer
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.people, color: Colors.blue),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              '${help.responderCount} people are responding to this request',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            color: Colors.blue,
+                            size: 16,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),

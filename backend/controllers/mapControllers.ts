@@ -293,12 +293,41 @@ export const acceptResponder = async (c: Context) => {
 
     // Update help request status and accepted responder
     
+// Update help request status and accepted responder
 await helpRequestRef.update({
   status: 'in_progress',
   acceptedResponderId: responseId,
   acceptedResponderUserId: responseData?.userId,
   updatedAt: new Date().toISOString()
 });
+
+// Create entry in helpedRequests collection when responder is accepted
+const helpedRequestRef = getFirestore().collection('helpedRequests').doc(requestId);
+const helpedRequestData = {
+  requestId: requestId,
+  acceptedUserID: responseData?.userId, // This is the responder's userId
+  acceptedAt: new Date().toISOString(),
+  status: 'in_progress', // Initially in progress
+  originalRequestData: {
+    title: helpRequestData.title,
+    type: helpRequestData.type,
+    description: helpRequestData.description,
+    priority: helpRequestData.priority,
+    requesterId: helpRequestData.userId,
+    requesterUsername: helpRequestData.username,
+    location: helpRequestData.location,
+    address: helpRequestData.address
+  },
+  responderData: {
+    userId: responseData?.userId,
+    username: responseData?.username,
+    phone: responseData?.phone,
+    message: responseData?.message
+  }
+};
+
+await helpedRequestRef.set(helpedRequestData);
+console.log(`Created helpedRequests entry for ${requestId} with acceptedUserID: ${responseData?.userId}`);
     // Update response status
     await responseRef.update({
       status: 'accepted',
@@ -390,31 +419,22 @@ export const updateHelpRequestStatus = async (c: Context) => {
     };
 
     if (status === 'completed') {
-      updateData.completedAt = new Date().toISOString();
-      
-      // If there's an accepted responder, create entry in helpedRequests collection
-      if (helpRequestData.acceptedResponderUserId) {
-        console.log(`Creating helpedRequests entry for request ${requestId} with accepted responder ${helpRequestData.acceptedResponderUserId}`);
-        
-        const helpedRequestRef = getFirestore().collection('helpedRequests').doc(requestId);
-        const helpedRequestData = {
-          requestId: requestId,
-          acceptedUserID: helpRequestData.acceptedResponderUserId,
-          completedAt: new Date().toISOString(),
-          originalRequestData: {
-            title: helpRequestData.title,
-            type: helpRequestData.type,
-            description: helpRequestData.description,
-            priority: helpRequestData.priority,
-            requesterId: helpRequestData.userId,
-            requesterUsername: helpRequestData.username
-          }
-        };
-        
-        await helpedRequestRef.set(helpedRequestData);
-        console.log(`Successfully created helpedRequests entry for ${requestId}`);
-      }
-    } else if (status === 'cancelled') {
+  updateData.completedAt = new Date().toISOString();
+  
+  // Update the existing helpedRequests entry to mark as completed
+  if (helpRequestData.acceptedResponderUserId) {
+    console.log(`Updating helpedRequests entry for request ${requestId} to completed status`);
+    
+    const helpedRequestRef = getFirestore().collection('helpedRequests').doc(requestId);
+    await helpedRequestRef.update({
+      status: 'completed',
+      completedAt: new Date().toISOString()
+    });
+    console.log(`Successfully updated helpedRequests entry for ${requestId} to completed`);
+  }
+} 
+
+else if (status === 'cancelled') {
       updateData.cancelledAt = new Date().toISOString();
       // Reset accepted responder if cancelling
       updateData.acceptedResponderId = null;
