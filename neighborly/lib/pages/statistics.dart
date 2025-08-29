@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import '../config/api_config.dart';
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -11,6 +15,8 @@ class StatisticsPage extends StatefulWidget {
 
 class _StatisticsPageState extends State<StatisticsPage>
     with TickerProviderStateMixin {
+  Map<String, int> helpRequestStats = {};
+  bool isLoadingStats = true;
   // Declare AnimationControllers for each card
   late AnimationController _breathingController1;
   late AnimationController _breathingController2;
@@ -21,6 +27,34 @@ class _StatisticsPageState extends State<StatisticsPage>
   late Animation<double> _breathingAnimation2;
   late Animation<double> _breathingAnimation3;
   late Animation<double> _breathingAnimation4;
+
+  Future<void> _fetchHelpRequestStats() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final token = await user.getIdToken();
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/stats/help-request-counts'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            helpRequestStats = Map<String, int>.from(data['data']);
+            isLoadingStats = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching help request stats: $e');
+      setState(() {
+        isLoadingStats = false;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -57,6 +91,8 @@ class _StatisticsPageState extends State<StatisticsPage>
     _breathingAnimation4 = Tween<double>(begin: 1.0, end: 1.05).animate(
       CurvedAnimation(parent: _breathingController4, curve: Curves.easeInOut),
     );
+
+    _fetchHelpRequestStats();
   }
 
   @override
@@ -296,19 +332,80 @@ class _StatisticsPageState extends State<StatisticsPage>
   }
 
   Widget _strongestTopicsCard(BuildContext context) {
-    // 7 random icons and values
-    final helpTypes = [
-      {'icon': Icons.shopping_cart, 'active': 20.0},
-      {'icon': Icons.directions_car, 'active': 28.0},
-      {'icon': Icons.pets, 'active': 15.0},
-      {'icon': Icons.local_hospital, 'active': 10.0},
-      {'icon': Icons.home_repair_service, 'active': 25.0},
-      {'icon': Icons.school, 'active': 18.0},
-      {'icon': Icons.restaurant, 'active': 22.0},
-    ];
+    // Map help types to icons (including all types you provided)
+    final Map<String, IconData> helpTypeIcons = {
+      'Grocery': Icons.shopping_cart,
+      'Route': Icons.directions,
+      'Pets': Icons.pets,
+      'Medical': Icons.local_hospital,
+      'Home Repair': Icons.home_repair_service,
+      'School': Icons.school,
+      'Restaurant': Icons.restaurant,
+      'Traffic Update': Icons.traffic,
+      'Fire': Icons.local_fire_department,
+    };
+
+    // If still loading, show loading indicator
+    if (isLoadingStats) {
+      return Container(
+        height: 260, // Same height as before
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(color: const Color(0xFFF2F2F7), width: 1.5),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: Color(0xFF2FEA9B)),
+        ),
+      );
+    }
+
+    // Prepare chart data from real backend data
+    // Prepare chart data from real backend data (filter out 0-count types)
+    List<MapEntry<String, int>> sortedEntries =
+        helpRequestStats.entries.where((entry) => entry.value > 0).toList()
+          ..sort(
+            (a, b) => b.value.compareTo(a.value),
+          ); // Sort by count descending
+
+    // If all are zero, show a message
+    if (sortedEntries.isEmpty) {
+      return Container(
+        height: 120,
+        alignment: Alignment.center,
+        child: const Text(
+          "No help requests yet!",
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+
+    // Build helpTypes list for the chart
+    List<Map<String, dynamic>> helpTypes =
+        sortedEntries.map((entry) {
+          return {
+            'label': entry.key,
+            'icon': helpTypeIcons[entry.key] ?? Icons.help_outline,
+            'active': entry.value.toDouble(),
+          };
+        }).toList();
+    // Find max value for chart scaling
+    double maxValue = helpTypes
+        .map((e) => e['active'] as double)
+        .reduce((a, b) => a > b ? a : b);
+    maxValue = maxValue > 0 ? maxValue + 5 : 30; // Add padding or default to 30
 
     return Container(
-      height: 260,
+      height: 260, // Same height as before
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
       decoration: BoxDecoration(
@@ -327,21 +424,26 @@ class _StatisticsPageState extends State<StatisticsPage>
         padding: const EdgeInsets.only(top: 8.0),
         child: SizedBox(
           width: double.infinity,
-          height: 180,
+          height: 180, // Same chart height as before
           child: BarChart(
             BarChartData(
-              maxY: 30,
+              maxY: maxValue,
               minY: 0,
               barGroups: List.generate(helpTypes.length, (index) {
                 final type = helpTypes[index];
+                final count = type['active'] as double;
+
                 return BarChartGroupData(
                   x: index,
                   barRods: [
                     BarChartRodData(
                       fromY: 0,
-                      toY: type['active'] as double,
-                      width: 32,
-                      color: const Color(0xFF2FEA9B),
+                      toY: count,
+                      width: 32, // Same bar width as before
+                      color:
+                          count > 0
+                              ? const Color(0xFF2FEA9B)
+                              : Colors.grey.shade300,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(16),
                         topRight: Radius.circular(16),
@@ -350,15 +452,18 @@ class _StatisticsPageState extends State<StatisticsPage>
                   ],
                 );
               }),
-              groupsSpace: 8, // closer bars
+              groupsSpace: 8, // Same space between bars as before
               titlesData: FlTitlesData(
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: 44,
-                    interval: 10,
+                    interval:
+                        maxValue > 20 ? (maxValue / 5).ceil().toDouble() : 5,
                     getTitlesWidget: (value, meta) {
-                      if (value % 10 == 0 && value >= 0 && value <= 30) {
+                      if (value % (maxValue > 20 ? (maxValue / 5).ceil() : 5) ==
+                              0 &&
+                          value >= 0) {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: Text(
@@ -377,17 +482,32 @@ class _StatisticsPageState extends State<StatisticsPage>
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
+                    reservedSize: 60, // Same space for bottom labels
                     getTitlesWidget: (value, meta) {
                       final idx = value.toInt();
                       if (idx < 0 || idx >= helpTypes.length) {
                         return const SizedBox();
                       }
                       return Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Icon(
-                          helpTypes[idx]['icon'] as IconData,
-                          size: 20,
-                          color: Colors.black54,
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              helpTypes[idx]['icon'] as IconData,
+                              size: 18, // Same icon size as before
+                              color: Colors.black54,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${(helpTypes[idx]['active'] as double).toInt()}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -397,7 +517,8 @@ class _StatisticsPageState extends State<StatisticsPage>
                 topTitles: const AxisTitles(),
               ),
               gridData: FlGridData(
-                horizontalInterval: 10,
+                horizontalInterval:
+                    maxValue > 20 ? (maxValue / 5).ceil().toDouble() : 5,
                 getDrawingHorizontalLine: (value) {
                   return FlLine(color: Colors.grey.shade200, strokeWidth: 1);
                 },
