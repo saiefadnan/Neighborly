@@ -1051,6 +1051,7 @@ class _HomePageState extends ConsumerState<HomePage>
         final prefs = await SharedPreferences.getInstance();
         prefs.setBool('rememberMe', false);
         ref.read(authUserProvider.notifier).initState();
+        ref.read(authUserProvider.notifier).logout();
         await FirebaseAuth.instance.signOut();
         await GoogleSignIn().signOut();
         await FacebookAuth.instance.logOut();

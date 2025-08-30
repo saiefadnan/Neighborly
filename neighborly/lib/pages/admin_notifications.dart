@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:neighborly/models/event.dart';
@@ -44,15 +45,17 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
       icon: Icons.event,
       color: const Color(0xFF8B5CF6),
       eventData: EventModel(
+        id: 'evt_12345',
         title: 'Community Cleanup Drive',
         description:
             'Join us for a neighborhood cleanup to make our community beautiful!',
         imageUrl: 'assets/images/Image1.jpg',
-        joined: 'false',
-        date: DateTime.now().add(const Duration(days: 7)),
+        approved: true,
+        createdAt: Timestamp.now(),
         location: 'Gulshan Park',
         lng: 90.4125,
         lat: 23.7808,
+        raduis: 5,
         tags: ['community', 'environment', 'cleanup'],
       ),
     ),
@@ -275,7 +278,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '${notification.eventData!.date.day}/${notification.eventData!.date.month}/${notification.eventData!.date.year}',
+                      '${notification.eventData!.createdAt.toDate().day}/${notification.eventData!.createdAt.toDate().month}/${notification.eventData!.createdAt.toDate().year}',
                       style: TextStyle(color: Colors.grey[600]),
                     ),
                   ],

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math'; //  for cos and sin functions
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -17,6 +18,7 @@ class StatisticsPage extends StatefulWidget {
 class _StatisticsPageState extends State<StatisticsPage>
     with TickerProviderStateMixin {
   Map<String, int> helpRequestStats = {};
+  Map<String, int> helpedRequestStats = {};
   bool isLoadingStats = true;
   // Declare AnimationControllers for each card
   late AnimationController _breathingController1;
@@ -87,6 +89,30 @@ class _StatisticsPageState extends State<StatisticsPage>
     }
   }
 
+  Future<void> _fetchHelpedRequestStats() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+        final response = await http.get(
+          Uri.parse('${ApiConfig.baseUrl}/api/stats/helped-request-counts'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            setState(() {
+              helpedRequestStats = Map<String, int>.from(data['data']);
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching helped request stats: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -124,6 +150,7 @@ class _StatisticsPageState extends State<StatisticsPage>
     );
 
     _fetchHelpRequestStats();
+    _fetchHelpedRequestStats();
   }
 
   @override
@@ -148,7 +175,7 @@ class _StatisticsPageState extends State<StatisticsPage>
             children: [
               _statCard(
                 iconData: Icons.flash_on_outlined,
-                label: '55',
+                label: '55', // This is hardcoded
                 subLabel: 'Helped\nRequests',
                 gradient: const LinearGradient(
                   colors: [Color(0xFFFF9C64), Color(0xFFFF9C64)],
@@ -693,10 +720,31 @@ class _StatisticsPageState extends State<StatisticsPage>
 
   Widget _contributionsCard() {
     final List<_ContributionData> chartData = [
-      _ContributionData('Groceries', 30, const Color(0xFF4285F4)),
-      _ContributionData('Transport', 8, const Color(0xFF2FEA9B)),
-      _ContributionData('Medical', 10, const Color(0xFFFFB300)),
-      _ContributionData('Other', 7, const Color(0xFFFFE082)),
+      _ContributionData(
+        'Grocery',
+        helpedRequestStats['Grocery'] ?? 0,
+        const Color(0xFF4285F4),
+      ),
+      _ContributionData(
+        'Transport',
+        helpedRequestStats['Transport'] ?? 0,
+        const Color(0xFF2FEA9B),
+      ),
+      _ContributionData(
+        'Medical',
+        helpedRequestStats['Medical'] ?? 0,
+        const Color(0xFFFFB300),
+      ),
+      _ContributionData(
+        'Other',
+        helpedRequestStats['Other'] ?? 0,
+        const Color(0xFFFFE082),
+      ),
+      _ContributionData(
+        'Traffic',
+        helpedRequestStats['Traffic'] ?? 0,
+        const Color(0xFFE74C3C),
+      ),
     ];
 
     // Sort the chartData in ascending order based on the value
@@ -705,7 +753,9 @@ class _StatisticsPageState extends State<StatisticsPage>
     final int total = chartData.fold(0, (sum, item) => sum + item.value);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      height: 320,
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -721,13 +771,11 @@ class _StatisticsPageState extends State<StatisticsPage>
       child: Column(
         children: [
           // Radial Chart Section
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 250,
-                height: 250,
-                child: SfCircularChart(
+          Expanded(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SfCircularChart(
                   margin: EdgeInsets.zero,
                   legend: Legend(isVisible: false),
                   series: <CircularSeries>[
@@ -737,75 +785,74 @@ class _StatisticsPageState extends State<StatisticsPage>
                       yValueMapper: (_ContributionData data, _) => data.value,
                       pointColorMapper:
                           (_ContributionData data, _) => data.color,
-                      maximumValue: total.toDouble(),
-                      radius: '100%',
-                      innerRadius: '30%',
-                      gap: '12%',
+                      maximumValue: total > 0 ? total.toDouble() : 1.0,
+                      radius: '110%',
+                      innerRadius: '17%',
+                      gap: '7%',
                       cornerStyle: CornerStyle.bothCurve,
-                      dataLabelSettings: const DataLabelSettings(
-                        isVisible: false,
+                      //explode: true,
+                      //explodeIndex: 0,
+                      dataLabelSettings: DataLabelSettings(
+                        isVisible: true,
+                        labelPosition: ChartDataLabelPosition.outside,
+                        builder: (
+                          dynamic data,
+                          dynamic point,
+                          dynamic series,
+                          int pointIndex,
+                          int seriesIndex,
+                        ) {
+                          final _ContributionData contribution =
+                              data as _ContributionData;
+
+                          // Don't show icon if value is 0
+                          if (contribution.value <= 0) return Container();
+
+                          final Map<String, IconData> helpTypeIcons = {
+                            'Grocery': Icons.shopping_cart,
+                            'Transport': Icons.directions_car,
+                            'Medical': Icons.local_hospital,
+                            'Other': Icons.help_outline,
+                            'Traffic': Icons.traffic,
+                          };
+
+                          return Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: contribution.color,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: contribution.color.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              helpTypeIcons[contribution.label] ??
+                                  Icons.help_outline,
+                              size: 10,
+                              color: Colors.white,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],
                 ),
-              ),
-              Text(
-                '$total',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 36,
-                  color: Color(0xFF5B5B7E),
+                // Center text
+                Text(
+                  '$total',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 36,
+                    color: Color(0xFF5B5B7E),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20), // Space between chart and labels
-          // Label Section
-          Row(
-            mainAxisAlignment:
-                MainAxisAlignment.center, // Center labels horizontally
-            children:
-                chartData.map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: item.color,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: item.color.withOpacity(0.4),
-                                blurRadius: 8,
-                                spreadRadius: 3,
-                                offset: const Offset(0, 0),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          item.label,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF5B5B7E),
-                          ),
-                        ),
-                        Text(
-                          '${item.value}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: item.color,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+              ],
+            ),
           ),
         ],
       ),
