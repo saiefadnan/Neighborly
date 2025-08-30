@@ -5,7 +5,7 @@ import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_card.dart';
 import 'package:neighborly/components/comment_tree.dart';
-import 'package:neighborly/functions/comment_notifier.dart';
+import 'package:neighborly/notifiers/comment_notifier.dart';
 
 final Map<String, GlobalKey> commentKeys = {};
 final DraggableScrollableController _controller =
@@ -156,6 +156,41 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                     ),
                     child: Column(
                       children: [
+                        // Drag Handle
+                        Container(
+                          width: double.infinity,
+                          height: 36,
+                          decoration: const BoxDecoration(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(27.0),
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 50,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.grey[300]!,
+                                    Colors.grey[400]!,
+                                    Colors.grey[300]!,
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(3),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 2,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                         Padding(
                           padding: EdgeInsets.all(8.0),
                           child: Column(

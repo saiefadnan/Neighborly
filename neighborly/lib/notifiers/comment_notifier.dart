@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-import 'package:neighborly/functions/post_notifier.dart';
+import 'package:neighborly/notifiers/post_notifier.dart';
 
 final commentsProvider = StateNotifierProvider.family<
   CommentsNotifier,

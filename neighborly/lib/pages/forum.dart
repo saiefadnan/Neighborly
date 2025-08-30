@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:neighborly/components/post_card.dart';
-import 'package:neighborly/functions/post_notifier.dart';
+import 'package:neighborly/notifiers/post_notifier.dart';
 
 class ForumPage extends ConsumerStatefulWidget {
   const ForumPage({super.key, required this.title});

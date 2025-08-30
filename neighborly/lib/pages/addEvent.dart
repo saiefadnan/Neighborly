@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +8,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:neighborly/components/snackbar.dart';
-import 'package:neighborly/functions/event_notifier.dart';
+import 'package:neighborly/notifiers/event_notifier.dart';
 import 'package:neighborly/functions/media_upload.dart';
 import 'package:neighborly/models/event.dart';
 
@@ -187,44 +186,115 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         descriptionController.text.trim().isNotEmpty;
   }
 
+  // Get icon for event type
+  IconData _getEventIcon(String eventType) {
+    switch (eventType) {
+      case "Tree Plantation":
+        return Icons.eco_rounded;
+      case "Invitation Party":
+        return Icons.celebration_rounded;
+      case "Community Clean-Up":
+        return Icons.cleaning_services_rounded;
+      case "Food Drive":
+        return Icons.restaurant_rounded;
+      case "Block Party":
+        return Icons.party_mode_rounded;
+      default:
+        return Icons.event_rounded;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFAF8F5),
       appBar: AppBar(
-        title: const Text('Create Event'),
-        backgroundColor: const Color(
-          0xFF71BB7B,
-        ), // Updated to match the green shade
+        elevation: 0,
+        title: const Text(
+          'Create Event',
+          style: TextStyle(
+            color: Color(0xFF2C3E50),
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFAF8F5),
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF2C3E50)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body:
           isLoading
-              ? Center(child: CircularProgressIndicator())
+              ? Container(
+                decoration: const BoxDecoration(color: Color(0xFFFAF8F5)),
+                child: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF71BB7B),
+                        ),
+                        strokeWidth: 3,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        "Creating your event...",
+                        style: TextStyle(
+                          color: Color(0xFF5F6368),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
               : SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Helper text for required fields
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF71BB7B).withOpacity(0.3),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.info_outline,
-                            color: Colors.blue,
-                            size: 20,
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF71BB7B).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.info_outline_rounded,
+                              color: Color(0xFF71BB7B),
+                              size: 20,
+                            ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           const Expanded(
                             child: Text(
                               'Fields marked with * are required',
                               style: TextStyle(
-                                color: Colors.blue,
+                                color: Color(0xFF2C3E50),
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -233,264 +303,739 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    const Text("Notification Range"),
-                    Slider(
-                      value: notifRange,
-                      min: 1,
-                      max: 50,
-                      divisions: 49,
-                      label: "${notifRange.toInt()} km",
-                      onChanged:
-                          (val) => setState(() {
-                            notifRange = val;
-                          }),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Templates ',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    ),
-                    // Event type cards
-                    ...eventTypes.map(
-                      (event) => Card(
-                        color:
-                            eventType == event["title"]
-                                ? const Color(
-                                  0xFFE8F5E9,
-                                ) // Light green for selected cards
-                                : null,
-                        child: GestureDetector(
-                          child: ListTile(
-                            title: Text(event["title"]!),
-                            subtitle: Text(event["desc"]!),
-                            onTap: () {
-                              eventType = event["title"] ?? "";
-                              setState(() {
-                                titleController.text = event['title']!;
-                                descriptionController.text = event['desc']!;
-                              });
-                            },
-                          ),
+                    const SizedBox(height: 24),
+                    // Notification Range Section
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF71BB7B).withOpacity(0.2),
+                          width: 1,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ),
-
-                    const SizedBox(height: 20),
-                    _buildTextField(
-                      "Event Title *",
-                      titleController,
-                      icon: Icons.event,
-                    ),
-                    _buildDatePickerField(
-                      "Date *",
-                      dateController,
-                      context,
-                      icon: Icons.calendar_today,
-                    ),
-                    _buildTimePickerField(
-                      "Time *",
-                      timeController,
-                      context,
-                      selectedDate,
-                      icon: Icons.access_time,
-                    ),
-                    _buildTextField(
-                      "Location *",
-                      locationController,
-                      icon: Icons.location_on,
-                    ),
-                    const SizedBox(height: 12),
-                    Column(
-                      children: [
-                        // Wrap FlutterMap in a fixed height container if needed:
-                        SizedBox(
-                          height: 400, // fix height to avoid layout issues
-                          child: GoogleMap(
-                            gestureRecognizers:
-                                <Factory<OneSequenceGestureRecognizer>>{
-                                  Factory<OneSequenceGestureRecognizer>(
-                                    () => EagerGestureRecognizer(),
-                                  ),
-                                },
-                            initialCameraPosition: CameraPosition(
-                              target: selectedLocation,
-                              zoom: 12,
-                            ),
-                            onMapCreated:
-                                (controller) => mapController = controller,
-                            markers: {
-                              Marker(
-                                markerId: MarkerId('selected-location'),
-                                position: selectedLocation,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF71BB7B,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.notifications_active_rounded,
+                                  color: Color(0xFF71BB7B),
+                                  size: 20,
+                                ),
                               ),
-                            },
-                            onTap: (newPosition) {
-                              setState(() {
-                                selectedLocation = newPosition;
-                              });
-                              getPlaceName(selectedLocation);
-                            },
-                            mapType: MapType.normal,
-                            myLocationEnabled:
-                                true, // Disable if you don't need it
-                            myLocationButtonEnabled: true,
-                            zoomControlsEnabled: false, // You already have this
-                            mapToolbarEnabled: false,
-                            compassEnabled: false,
-                            rotateGesturesEnabled: true,
-                            scrollGesturesEnabled: true,
-                            zoomGesturesEnabled: true,
-                            tiltGesturesEnabled: false, // Disable
+                              const SizedBox(width: 12),
+                              const Text(
+                                "Notification Range",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2C3E50),
+                                ),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "People within ${notifRange.toInt()} km will be notified",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF5F6368),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor: const Color(0xFF71BB7B),
+                              inactiveTrackColor: const Color(
+                                0xFF71BB7B,
+                              ).withOpacity(0.2),
+                              thumbColor: const Color(0xFF71BB7B),
+                              overlayColor: const Color(
+                                0xFF71BB7B,
+                              ).withOpacity(0.2),
+                              valueIndicatorColor: const Color(0xFF71BB7B),
+                              trackHeight: 4,
+                            ),
+                            child: Slider(
+                              value: notifRange,
+                              min: 1,
+                              max: 50,
+                              divisions: 49,
+                              label: "${notifRange.toInt()} km",
+                              onChanged:
+                                  (val) => setState(() {
+                                    notifRange = val;
+                                  }),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Templates Section
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF71BB7B).withOpacity(0.2),
+                          width: 1,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      "Description *",
-                      descriptionController,
-                      maxLines: 3,
-                      icon: Icons.description,
-                    ),
-
-                    const SizedBox(height: 12),
-                    _buildTagsField(),
-
-                    const SizedBox(height: 12),
-                    const Text("Optional Image"),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: pickImage,
-                      child: Container(
-                        height: 300,
-                        width: double.infinity,
-                        color: Colors.grey[200],
-                        child:
-                            imagepath != null
-                                ? Stack(
-                                  children: [
-                                    SizedBox(
-                                      height: 300,
-                                      width: double.infinity,
-                                      child: Image.file(
-                                        imagepath!,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 10,
-                                      right: 10,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            imagepath = null;
-                                          });
-                                        },
-                                        child: Container(
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF71BB7B,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.auto_awesome_rounded,
+                                  color: Color(0xFF71BB7B),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Event Templates',
+                                style: TextStyle(
+                                  color: Color(0xFF2C3E50),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // Event type cards
+                          ...eventTypes.map(
+                            (event) => Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color:
+                                    eventType == event["title"]
+                                        ? const Color(
+                                          0xFF71BB7B,
+                                        ).withOpacity(0.1)
+                                        : const Color(0xFFFAF8F5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color:
+                                      eventType == event["title"]
+                                          ? const Color(0xFF71BB7B)
+                                          : const Color(
+                                            0xFF71BB7B,
+                                          ).withOpacity(0.2),
+                                  width: eventType == event["title"] ? 2 : 1,
+                                ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () {
+                                    eventType = event["title"] ?? "";
+                                    setState(() {
+                                      titleController.text = event['title']!;
+                                      descriptionController.text =
+                                          event['desc']!;
+                                    });
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Row(
+                                      children: [
+                                        Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(
-                                              0.6,
+                                            color:
+                                                eventType == event["title"]
+                                                    ? const Color(0xFF71BB7B)
+                                                    : const Color(
+                                                      0xFF71BB7B,
+                                                    ).withOpacity(0.2),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
                                             ),
-                                            shape: BoxShape.circle,
                                           ),
-                                          child: const Icon(
-                                            Icons.cancel,
-                                            color: Colors.white,
-                                            size: 24,
+                                          child: Icon(
+                                            _getEventIcon(event["title"]!),
+                                            color:
+                                                eventType == event["title"]
+                                                    ? Colors.white
+                                                    : const Color(0xFF71BB7B),
+                                            size: 20,
                                           ),
                                         ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                event["title"]!,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                  color:
+                                                      eventType ==
+                                                              event["title"]
+                                                          ? const Color(
+                                                            0xFF71BB7B,
+                                                          )
+                                                          : const Color(
+                                                            0xFF2C3E50,
+                                                          ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                event["desc"]!,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Color(0xFF5F6368),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (eventType == event["title"])
+                                          const Icon(
+                                            Icons.check_circle_rounded,
+                                            color: Color(0xFF71BB7B),
+                                            size: 24,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Form Fields Section
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF71BB7B).withOpacity(0.2),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF71BB7B,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.edit_rounded,
+                                  color: Color(0xFF71BB7B),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Event Details',
+                                style: TextStyle(
+                                  color: Color(0xFF2C3E50),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          _buildTextField(
+                            "Event Title *",
+                            titleController,
+                            icon: Icons.event,
+                          ),
+                          _buildDatePickerField(
+                            "Date *",
+                            dateController,
+                            context,
+                            icon: Icons.calendar_today,
+                          ),
+                          _buildTimePickerField(
+                            "Time *",
+                            timeController,
+                            context,
+                            selectedDate,
+                            icon: Icons.access_time,
+                          ),
+                          _buildTextField(
+                            "Location *",
+                            locationController,
+                            icon: Icons.location_on,
+                          ),
+                          _buildTextField(
+                            "Description *",
+                            descriptionController,
+                            maxLines: 3,
+                            icon: Icons.description,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Map Section
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF71BB7B).withOpacity(0.2),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF71BB7B,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.map_rounded,
+                                  color: Color(0xFF71BB7B),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Select Location',
+                                      style: TextStyle(
+                                        color: Color(0xFF2C3E50),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Tap on the map to set event location',
+                                      style: TextStyle(
+                                        color: Color(0xFF5F6368),
+                                        fontSize: 12,
                                       ),
                                     ),
                                   ],
-                                )
-                                : const Icon(Icons.add_a_photo, size: 50),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: SizedBox(
+                              height: 400,
+                              child: GoogleMap(
+                                gestureRecognizers:
+                                    <Factory<OneSequenceGestureRecognizer>>{
+                                      Factory<OneSequenceGestureRecognizer>(
+                                        () => EagerGestureRecognizer(),
+                                      ),
+                                    },
+                                initialCameraPosition: CameraPosition(
+                                  target: selectedLocation,
+                                  zoom: 12,
+                                ),
+                                onMapCreated:
+                                    (controller) => mapController = controller,
+                                markers: {
+                                  Marker(
+                                    markerId: const MarkerId(
+                                      'selected-location',
+                                    ),
+                                    position: selectedLocation,
+                                    infoWindow: const InfoWindow(
+                                      title: 'Event Location',
+                                    ),
+                                  ),
+                                },
+                                onTap: (newPosition) {
+                                  setState(() {
+                                    selectedLocation = newPosition;
+                                  });
+                                  getPlaceName(selectedLocation);
+                                },
+                                mapType: MapType.normal,
+                                myLocationEnabled: true,
+                                myLocationButtonEnabled: true,
+                                zoomControlsEnabled: false,
+                                mapToolbarEnabled: false,
+                                compassEnabled: false,
+                                rotateGesturesEnabled: true,
+                                scrollGesturesEnabled: true,
+                                zoomGesturesEnabled: true,
+                                tiltGesturesEnabled: false,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildTagsField(),
+
+                    // Image Upload Section
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF71BB7B).withOpacity(0.2),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF71BB7B,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.image_rounded,
+                                  color: Color(0xFF71BB7B),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Event Image (Optional)',
+                                      style: TextStyle(
+                                        color: Color(0xFF2C3E50),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Add a photo to make your event more appealing',
+                                      style: TextStyle(
+                                        color: Color(0xFF5F6368),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          GestureDetector(
+                            onTap: pickImage,
+                            child: Container(
+                              height: 400,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFAF8F5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFF71BB7B,
+                                  ).withOpacity(0.3),
+                                  width: 2,
+                                  style: BorderStyle.solid,
+                                ),
+                              ),
+                              child:
+                                  imagepath != null
+                                      ? Stack(
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                            child: SizedBox(
+                                              height: 400,
+                                              width: double.infinity,
+                                              child: Image.file(
+                                                imagepath!,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          ),
+                                          Positioned(
+                                            top: 8,
+                                            right: 8,
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  imagepath = null;
+                                                });
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  shape: BoxShape.circle,
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withOpacity(0.2),
+                                                      blurRadius: 4,
+                                                      offset: const Offset(
+                                                        0,
+                                                        2,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: const Icon(
+                                                  Icons.close_rounded,
+                                                  color: Colors.redAccent,
+                                                  size: 20,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                      : Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: const Color(
+                                                0xFF71BB7B,
+                                              ).withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.add_a_photo_rounded,
+                                              size: 32,
+                                              color: Color(0xFF71BB7B),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          const Text(
+                                            'Tap to add event image',
+                                            style: TextStyle(
+                                              color: Color(0xFF5F6368),
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
-                    const SizedBox(height: 20),
-                    SizedBox(
+                    const SizedBox(height: 32),
+                    // Create Event Button
+                    Container(
                       width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow:
+                            _areAllFieldsFilled
+                                ? [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF71BB7B,
+                                    ).withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                                : [],
+                      ),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
                               _areAllFieldsFilled
                                   ? const Color(0xFF71BB7B)
-                                  : Colors
-                                      .grey, // Dynamic color based on field completion
-                        ),
-                        onPressed: () async {
-                          // Validate all required fields
-                          final validationError = _validateFields();
-                          if (validationError != null) {
-                            showSnackBarError(context, validationError);
-                            return;
-                          }
-
-                          setState(() {
-                            isLoading = true;
-                          });
-
-                          try {
-                            final imageUrl = await uploadFile(imagepath);
-                            final docRef =
-                                FirebaseFirestore.instance
-                                    .collection('events')
-                                    .doc();
-                            ref
-                                .watch(eventProvider.notifier)
-                                .addEvents(
-                                  EventModel(
-                                    id: docRef.id,
-                                    title: titleController.text.trim(),
-                                    description:
-                                        descriptionController.text.trim(),
-                                    imageUrl: imageUrl,
-                                    approved: true,
-                                    createdAt: Timestamp.now(),
-                                    location: locationController.text.trim(),
-                                    lng: selectedLocation.longitude,
-                                    lat: selectedLocation.latitude,
-                                    raduis: notifRange,
-                                    tags:
-                                        selectedTags.isNotEmpty
-                                            ? selectedTags
-                                            : ['#community', '#event'],
-                                  ),
-                                  docRef,
-                                );
-                            showSnackBarSuccess(
-                              context,
-                              "Event added successfully",
-                            );
-                            Navigator.of(context).pop();
-                          } catch (e) {
-                            showSnackBarError(
-                              context,
-                              "Error creating event: ${e.toString()}",
-                            );
-                          } finally {
-                            setState(() {
-                              isLoading = false;
-                            });
-                          }
-                        },
-                        child: Text(
-                          _areAllFieldsFilled
-                              ? "Create Event"
-                              : "Fill All Required Fields",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                                  : Colors.grey[400],
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
+                        ),
+                        onPressed:
+                            _areAllFieldsFilled
+                                ? () async {
+                                  // Validate all required fields
+                                  final validationError = _validateFields();
+                                  if (validationError != null) {
+                                    showSnackBarError(context, validationError);
+                                    return;
+                                  }
+
+                                  setState(() {
+                                    isLoading = true;
+                                  });
+
+                                  try {
+                                    final imageUrl = await uploadFile(
+                                      imagepath,
+                                    );
+                                    final docRef =
+                                        FirebaseFirestore.instance
+                                            .collection('events')
+                                            .doc();
+                                    ref
+                                        .watch(eventProvider.notifier)
+                                        .addEvents(
+                                          EventModel(
+                                            id: docRef.id,
+                                            title: titleController.text.trim(),
+                                            description:
+                                                descriptionController.text
+                                                    .trim(),
+                                            imageUrl: imageUrl,
+                                            approved: true,
+                                            createdAt: Timestamp.now(),
+                                            location:
+                                                locationController.text.trim(),
+                                            lng: selectedLocation.longitude,
+                                            lat: selectedLocation.latitude,
+                                            raduis: notifRange,
+                                            tags:
+                                                selectedTags.isNotEmpty
+                                                    ? selectedTags
+                                                    : ['#community', '#event'],
+                                          ),
+                                          docRef,
+                                        );
+                                    showSnackBarSuccess(
+                                      context,
+                                      "Event added successfully",
+                                    );
+                                    Navigator.of(context).pop();
+                                  } catch (e) {
+                                    showSnackBarError(
+                                      context,
+                                      "Error creating event: ${e.toString()}",
+                                    );
+                                  } finally {
+                                    setState(() {
+                                      isLoading = false;
+                                    });
+                                  }
+                                }
+                                : null,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _areAllFieldsFilled
+                                  ? Icons.add_rounded
+                                  : Icons.warning_rounded,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _areAllFieldsFilled
+                                  ? "Create Event"
+                                  : "Fill All Required Fields",
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -713,34 +1258,42 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     String label,
     TextEditingController controller, {
     int maxLines = 1,
-    IconData? icon, // Optional icon parameter
+    IconData? icon,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        enabled: label != "Location",
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF71BB7B), // Updated label color
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAF8F5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF71BB7B).withOpacity(0.2),
+            width: 1,
           ),
-          prefixIcon:
-              icon != null ? Icon(icon, color: const Color(0xFF71BB7B)) : null,
-          filled: true,
-          fillColor: const Color(0xFFE8F5E9), // Light green background
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF71BB7B)),
+        ),
+        child: TextField(
+          controller: controller,
+          maxLines: maxLines,
+          enabled: label != "Location *",
+          style: const TextStyle(
+            color: Color(0xFF2C3E50),
+            fontWeight: FontWeight.w500,
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF71BB7B), width: 2),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF5F6368),
+            ),
+            prefixIcon:
+                icon != null
+                    ? Icon(icon, color: const Color(0xFF71BB7B), size: 20)
+                    : null,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.all(16),
+            floatingLabelBehavior: FloatingLabelBehavior.auto,
           ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
@@ -754,31 +1307,44 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TextField(
-        controller: controller,
-        readOnly: true,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF71BB7B),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAF8F5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF71BB7B).withOpacity(0.2),
+            width: 1,
           ),
-          prefixIcon:
-              icon != null ? Icon(icon, color: const Color(0xFF71BB7B)) : null,
-          filled: true,
-          fillColor: const Color(0xFFE8F5E9),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF71BB7B)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF71BB7B), width: 2),
-          ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        onTap: () => _pickDate(context, controller),
+        child: TextField(
+          controller: controller,
+          readOnly: true,
+          style: const TextStyle(
+            color: Color(0xFF2C3E50),
+            fontWeight: FontWeight.w500,
+          ),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF5F6368),
+            ),
+            prefixIcon:
+                icon != null
+                    ? Icon(icon, color: const Color(0xFF71BB7B), size: 20)
+                    : null,
+            suffixIcon: const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: Color(0xFF71BB7B),
+              size: 20,
+            ),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.all(16),
+            floatingLabelBehavior: FloatingLabelBehavior.auto,
+          ),
+          onTap: () => _pickDate(context, controller),
+        ),
       ),
     );
   }
@@ -787,46 +1353,55 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     String label,
     TextEditingController controller,
     BuildContext context,
-    DateTime selectedDate, { // Added selectedDate as a parameter
+    DateTime selectedDate, {
     IconData? icon,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TextField(
-        controller: controller,
-        readOnly: true,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF71BB7B),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAF8F5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF71BB7B).withOpacity(0.2),
+            width: 1,
           ),
-          prefixIcon:
-              icon != null ? Icon(icon, color: const Color(0xFF71BB7B)) : null,
-          filled: true,
-          fillColor: const Color(0xFFE8F5E9),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF71BB7B)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF71BB7B), width: 2),
-          ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        onTap: () {
-          if (dateController.text.trim().isEmpty) {
-            showSnackBarError(context, "Please select a date");
-            return;
-          }
-          _pickTime(
-            context,
-            controller,
-            DateTime.parse(dateController.text),
-          ); //
-        },
+        child: TextField(
+          controller: controller,
+          readOnly: true,
+          style: const TextStyle(
+            color: Color(0xFF2C3E50),
+            fontWeight: FontWeight.w500,
+          ),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF5F6368),
+            ),
+            prefixIcon:
+                icon != null
+                    ? Icon(icon, color: const Color(0xFF71BB7B), size: 20)
+                    : null,
+            suffixIcon: const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: Color(0xFF71BB7B),
+              size: 20,
+            ),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.all(16),
+            floatingLabelBehavior: FloatingLabelBehavior.auto,
+          ),
+          onTap: () {
+            if (dateController.text.trim().isEmpty) {
+              showSnackBarError(context, "Please select a date first");
+              return;
+            }
+            _pickTime(context, controller, DateTime.parse(dateController.text));
+          },
+        ),
       ),
     );
   }

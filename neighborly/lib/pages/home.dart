@@ -1045,13 +1045,13 @@ class _HomePageState extends ConsumerState<HomePage>
 
     void signOut() async {
       try {
-        ref.read(authUserProvider.notifier).logout();
         ref.read(hasSeenSplashProvider.notifier).state =
             true; // Ensure direct auth access
         initPageVal(ref);
         final prefs = await SharedPreferences.getInstance();
         prefs.setBool('rememberMe', false);
         ref.read(authUserProvider.notifier).initState();
+        ref.read(authUserProvider.notifier).logout();
         await FirebaseAuth.instance.signOut();
         await GoogleSignIn().signOut();
         await FacebookAuth.instance.logOut();
