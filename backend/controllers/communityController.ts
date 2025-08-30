@@ -46,11 +46,63 @@ class CommunityController {
     }
   }
 
+  // GET /api/communities/admin/:userEmail - Get communities where user is admin
+  async getAdminCommunities(c: Context) {
+    try {
+      const userEmail = c.req.param('userEmail');
+      
+      if (!userEmail) {
+        return c.json({
+          success: false,
+          message: 'User email is required'
+        }, 400);
+      }
+
+      const communities = await CommunityService.getAdminCommunities(userEmail);
+      return c.json({
+        success: true,
+        data: communities
+      }, 200);
+    } catch (error) {
+      console.error('Error in getAdminCommunities:', error);
+      return c.json({
+        success: false,
+        message: 'Failed to fetch admin communities'
+      }, 500);
+    }
+  }
+
+  // GET /api/communities/:communityId/members - Get community members with user details
+  async getCommunityMembers(c: Context) {
+    try {
+      const communityId = c.req.param('communityId');
+      
+      if (!communityId) {
+        return c.json({
+          success: false,
+          message: 'Community ID is required'
+        }, 400);
+      }
+
+      const members = await CommunityService.getCommunityMembers(communityId);
+      return c.json({
+        success: true,
+        data: members
+      }, 200);
+    } catch (error) {
+      console.error('Error in getCommunityMembers:', error);
+      return c.json({
+        success: false,
+        message: 'Failed to fetch community members'
+      }, 500);
+    }
+  }
+
   // POST /api/communities/join - Join a community
   async joinCommunity(c: Context) {
     try {
       const body = await c.req.json();
-      const { userId, communityId, userEmail, autoJoin = true } = body;
+      const { userId, communityId, userEmail, username, message } = body;
       
       if (!userId || !communityId || !userEmail) {
         return c.json({
@@ -59,7 +111,7 @@ class CommunityController {
         }, 400);
       }
 
-      const result = await CommunityService.joinCommunity(userId, communityId, userEmail, autoJoin);
+      const result = await CommunityService.joinCommunity(userId, communityId, userEmail, username, message);
       
       if (result.success) {
         return c.json(result, 200);
@@ -170,16 +222,17 @@ class CommunityController {
   async approveJoinRequest(c: Context) {
     try {
       const body = await c.req.json();
-      const { adminId, communityId, userEmail } = body;
+      const { communityId, userEmail } = body;
+      const adminEmail = c.req.header('admin-email');
       
-      if (!adminId || !communityId || !userEmail) {
+      if (!adminEmail || !communityId || !userEmail) {
         return c.json({
           success: false,
-          message: 'Admin ID, Community ID, and User Email are required'
+          message: 'Admin Email, Community ID, and User Email are required'
         }, 400);
       }
 
-      const result = await CommunityService.approveJoinRequest(adminId, communityId, userEmail);
+      const result = await CommunityService.approveJoinRequest(adminEmail, communityId, userEmail);
       
       if (result.success) {
         return c.json(result, 200);
@@ -199,16 +252,17 @@ class CommunityController {
   async rejectJoinRequest(c: Context) {
     try {
       const body = await c.req.json();
-      const { adminId, communityId, userEmail } = body;
+      const { communityId, userEmail } = body;
+      const adminEmail = c.req.header('admin-email');
       
-      if (!adminId || !communityId || !userEmail) {
+      if (!adminEmail || !communityId || !userEmail) {
         return c.json({
           success: false,
-          message: 'Admin ID, Community ID, and User Email are required'
+          message: 'Admin Email, Community ID, and User Email are required'
         }, 400);
       }
 
-      const result = await CommunityService.rejectJoinRequest(adminId, communityId, userEmail);
+      const result = await CommunityService.rejectJoinRequest(adminEmail, communityId, userEmail);
       
       if (result.success) {
         return c.json(result, 200);

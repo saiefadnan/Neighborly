@@ -789,14 +789,57 @@ class _StatisticsPageState extends State<StatisticsPage>
                       maximumValue: total > 0 ? total.toDouble() : 1.0,
                       radius: '110%',
                       innerRadius: '17%',
-                      gap: '10%',
+                      gap: '7%',
                       cornerStyle: CornerStyle.bothCurve,
-                      dataLabelSettings: const DataLabelSettings(
-                        isVisible: false,
+                      //explode: true,
+                      //explodeIndex: 0,
+                      dataLabelSettings: DataLabelSettings(
+                        isVisible: true,
+                        labelPosition: ChartDataLabelPosition.outside,
+                        builder: (
+                          dynamic data,
+                          dynamic point,
+                          dynamic series,
+                          int pointIndex,
+                          int seriesIndex,
+                        ) {
+                          final _ContributionData contribution =
+                              data as _ContributionData;
+
+                          // Don't show icon if value is 0
+                          if (contribution.value <= 0) return Container();
+
+                          final Map<String, IconData> helpTypeIcons = {
+                            'Grocery': Icons.shopping_cart,
+                            'Transport': Icons.directions_car,
+                            'Medical': Icons.local_hospital,
+                            'Other': Icons.help_outline,
+                            'Traffic': Icons.traffic,
+                          };
+
+                          return Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: contribution.color,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: contribution.color.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              helpTypeIcons[contribution.label] ??
+                                  Icons.help_outline,
+                              size: 10,
+                              color: Colors.white,
+                            ),
+                          );
+                        },
                       ),
-                      // Add data label builder for icons at end of bars
-                      dataLabelMapper:
-                          (_ContributionData data, _) => data.label,
                     ),
                   ],
                 ),
@@ -809,102 +852,12 @@ class _StatisticsPageState extends State<StatisticsPage>
                     color: Color(0xFF5B5B7E),
                   ),
                 ),
-                // Custom positioned icons at the end of each bar
-                ..._buildRadialIcons(chartData, total),
               ],
             ),
           ),
         ],
       ),
     );
-  }
-
-  // Add this new method to build icons at the end of radial bars
-  List<Widget> _buildRadialIcons(List<_ContributionData> chartData, int total) {
-    final Map<String, IconData> helpTypeIcons = {
-      'Grocery': Icons.shopping_cart,
-      'Transport': Icons.directions_car,
-      'Medical': Icons.local_hospital,
-      'Other': Icons.help_outline,
-      'Traffic': Icons.traffic,
-    };
-
-    List<Widget> iconWidgets = [];
-    double outerRadius =
-        160; // Outer radius of the chart (distance from center to outer edge)
-    double innerRadius =
-        50; // Inner radius of the chart (distance from center to the start of the bar)
-
-    // Place the icons inside the bars (between inner and outer radius)
-    double iconRadius =
-        (innerRadius + outerRadius) / 2; // Middle of the bar thickness
-    double center = 160; // Center of the chart widget (height/width/2)
-
-    double startAngle =
-        -135; // Start angle for the radial chart (3/4 circle starting from top left)
-    double totalAngle =
-        270; // Total sweep angle of the radial chart (3/4 of the circle)
-
-    double currentAngle = startAngle;
-
-    for (int i = 0; i < chartData.length; i++) {
-      final data = chartData[i];
-      final value = data.value;
-      final color = data.color;
-
-      if (value <= 0 || total == 0) continue;
-
-      // Calculate the sweep for this bar based on its value
-      double sweep = (value / total) * totalAngle;
-
-      // Calculate the angle at the start of this bar (in degrees)
-      double iconAngle =
-          currentAngle +
-          (sweep / 2); // Place the icon in the middle of the bar's arc
-
-      // Convert the angle to radians for trigonometric calculations
-      double radians = iconAngle * pi / 180;
-
-      // Calculate the position for the icon (at the middle of the arc inside the radial bar)
-      double x = iconRadius * cos(radians); // Horizontal position
-      double y = iconRadius * sin(radians); // Vertical position
-
-      // Add the icon as a rotating label
-      iconWidgets.add(
-        Positioned(
-          left: center + x - 12, // Adjust the position to center the icon
-          top: center + y - 12, // Adjust the position to center the icon
-          child: Transform.rotate(
-            angle: radians, // Rotate the icon along the angle of the bar
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withOpacity(0.3),
-                    blurRadius: 8,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Icon(
-                helpTypeIcons[data.label] ?? Icons.help_outline,
-                size: 14,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      // Move to the next bar's start angle
-      currentAngle += sweep; // Update the starting angle for the next bar
-    }
-
-    return iconWidgets;
   }
 }
 

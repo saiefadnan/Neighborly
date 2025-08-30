@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../providers/community_provider.dart';
+import '../services/community_service.dart'
+    show CommunityService, CommunityUser;
+import '../services/community_block_service.dart';
+import '../services/join_request_service.dart';
 
 class UsersPage extends StatefulWidget {
   const UsersPage({super.key});
@@ -13,33 +20,14 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
-  // Mock community data - will be replaced with Firebase data
-  final List<CommunityData> _communities = [
-    CommunityData(
-      id: 'dhanmondi',
-      name: 'Dhanmondi',
-      image: 'assets/images/Image1.jpg',
-      location: 'Dhaka, Bangladesh',
-      activeMembers: 0, // Will be calculated dynamically
-      blockedMembers: 0, // Will be calculated dynamically
-    ),
-    CommunityData(
-      id: 'gulshan',
-      name: 'Gulshan',
-      image: 'assets/images/Image2.jpg',
-      location: 'Dhaka, Bangladesh',
-      activeMembers: 0,
-      blockedMembers: 0,
-    ),
-    CommunityData(
-      id: 'bashundhara',
-      name: 'Bashundhara',
-      image: 'assets/images/Image3.jpg',
-      location: 'Dhaka, Bangladesh',
-      activeMembers: 0,
-      blockedMembers: 0,
-    ),
-  ];
+  // Community data from Firestore
+  List<CommunityData> _communities = [];
+  bool _isLoading = true;
+  String? _error;
+
+  // Services
+  final CommunityBlockService _blockService = CommunityBlockService();
+  final JoinRequestService _joinRequestService = JoinRequestService();
 
   // Mock users data - simulating Firebase users collection
   final List<CommunityUser> _allUsers = [
@@ -114,40 +102,8 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
     ),
   ];
 
-  // Mock join requests data
-  final List<JoinRequest> _joinRequests = [
-    JoinRequest(
-      requestId: '1',
-      userId: '7',
-      username: 'Maria Jose',
-      email: 'maria.jose@example.com',
-      profileImage: 'assets/images/Image3.jpg',
-      targetCommunity: 'dhanmondi',
-      requestDate: DateTime.now().subtract(const Duration(hours: 2)),
-      message:
-          'I live in Dhanmondi and would like to join the community to stay updated.',
-    ),
-    JoinRequest(
-      requestId: '2',
-      userId: '8',
-      username: 'Abdul Kader',
-      email: 'abdul.kader@example.com',
-      profileImage: 'assets/images/Image1.jpg',
-      targetCommunity: 'gulshan',
-      requestDate: DateTime.now().subtract(const Duration(hours: 6)),
-      message: 'Recently moved to Gulshan area.',
-    ),
-    JoinRequest(
-      requestId: '3',
-      userId: '9',
-      username: 'Nadia Islam',
-      email: 'nadia.islam@example.com',
-      profileImage: 'assets/images/Image2.jpg',
-      targetCommunity: 'bashundhara',
-      requestDate: DateTime.now().subtract(const Duration(days: 1)),
-      message: 'Want to connect with neighbors in Bashundhara.',
-    ),
-  ];
+  // Real join requests data - loaded from API
+  List<JoinRequest> _joinRequests = [];
 
   @override
   void initState() {
@@ -161,8 +117,97 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
       parent: _fadeController,
       curve: Curves.easeIn,
     );
-    _updateCommunityStats();
-    _fadeController.forward();
+    _loadAdminCommunities();
+  }
+
+  Future<void> _loadAdminCommunities() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.email == null) {
+        setState(() {
+          _error = 'User not logged in';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final communityProvider = Provider.of<CommunityProvider>(
+        context,
+        listen: false,
+      );
+      final adminCommunities = await communityProvider.fetchAdminCommunities(
+        user.email,
+      );
+
+      setState(() {
+        _communities =
+            adminCommunities.map((c) => CommunityData.fromProvider(c)).toList();
+        _isLoading = false;
+      });
+
+      // Load join requests for admin communities
+      await _loadJoinRequests();
+
+      _updateCommunityStats();
+      _fadeController.forward();
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadJoinRequests() async {
+    try {
+      List<JoinRequest> allRequests = [];
+
+      // Get current user email for admin authentication
+      final user = FirebaseAuth.instance.currentUser;
+      if (user?.email == null) {
+        print('No user email found for admin authentication');
+        return;
+      }
+      final adminEmail = user!.email!;
+
+      // Get join requests for each admin community
+      for (final community in _communities) {
+        final requests = await _joinRequestService.getPendingJoinRequests(
+          community.id,
+          adminEmail: adminEmail,
+        );
+        for (final req in requests) {
+          // Convert JoinRequestData to JoinRequest
+          allRequests.add(
+            JoinRequest(
+              requestId: req.userId,
+              userId: req.userId,
+              username: req.username,
+              email: req.userEmail,
+              profileImage:
+                  req.profileImage.isNotEmpty
+                      ? req.profileImage
+                      : 'assets/images/dummy.png',
+              targetCommunity: community.name,
+              requestDate: req.requestDate,
+              message: req.message,
+            ),
+          );
+        }
+      }
+
+      setState(() {
+        _joinRequests = allRequests;
+      });
+    } catch (e) {
+      print('Error loading join requests: $e');
+      // Don't show error to user, just log it
+    }
   }
 
   @override
@@ -174,6 +219,13 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
 
   void _updateCommunityStats() {
     for (var community in _communities) {
+      // Calculate active members (total members minus any blocked members)
+      // For now, we'll use the memberCount from Firestore
+      // In a real implementation, you'd fetch user status from a separate collection
+      community.activeMembers = community.members.length;
+
+      // Blocked members - this would come from a user status collection in Firestore
+      // For now, we'll use the mock blocked users count
       final communityUsers =
           _allUsers
               .where(
@@ -181,9 +233,6 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
                     user.preferredCommunity == community.id && !user.isAdmin,
               )
               .toList();
-
-      community.activeMembers =
-          communityUsers.where((user) => !user.blocked).length;
       community.blockedMembers =
           communityUsers.where((user) => user.blocked).length;
     }
@@ -198,37 +247,136 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
           (context) => _CommunityMembersModal(
             community: community,
             allUsers: _allUsers,
-            onUserAction: (action, user) => _handleUserAction(action, user),
+            onUserAction:
+                (action, user, {duration, reason}) => _handleUserAction(
+                  action,
+                  user,
+                  duration: duration,
+                  reason: reason,
+                ),
           ),
     );
   }
 
-  void _handleUserAction(UserAction action, CommunityUser user) {
-    setState(() {
+  void _handleUserAction(
+    UserAction action,
+    CommunityUser user, {
+    String? duration,
+    String? reason,
+  }) async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser?.email == null) {
+        _showErrorSnackBar('Admin authentication required');
+        return;
+      }
+
+      final adminEmail = currentUser!.email!;
+      bool success = false;
+
+      // Find the community ID for this user
+      final userCommunity = _communities.firstWhere(
+        (community) => community.members.contains(user.email),
+        orElse: () => _communities.first, // fallback to first community
+      );
+
       switch (action) {
         case UserAction.block:
-          user.blocked = true;
-          user.blockedDate = DateTime.now();
-          user.blockedReason = 'Blocked by admin';
+          if (duration == null || reason == null) {
+            _showErrorSnackBar('Duration and reason are required for blocking');
+            return;
+          }
+
+          String blockType;
+          if (duration == 'permanent') {
+            blockType = 'permanent';
+          } else if (duration == 'indefinite') {
+            blockType = 'indefinite';
+          } else {
+            blockType = 'temporary';
+          }
+
+          success = await _blockService.blockUserInCommunity(
+            communityId: userCommunity.id,
+            userEmail: user.email,
+            adminEmail: adminEmail,
+            blockType: blockType,
+            duration: blockType == 'temporary' ? duration : null,
+            reason: reason,
+          );
+
+          if (success) {
+            setState(() {
+              user.blocked = true;
+              user.blockedDate = DateTime.now();
+              user.blockedReason = reason;
+              if (duration != 'indefinite' && duration != 'permanent') {
+                user.blockedReason = '$reason (Blocked for $duration)';
+              }
+            });
+          }
           break;
+
         case UserAction.unblock:
-          user.blocked = false;
-          user.blockedDate = null;
-          user.blockedReason = null;
+          success = await _blockService.unblockUserInCommunity(
+            communityId: userCommunity.id,
+            userEmail: user.email,
+            adminEmail: adminEmail,
+          );
+
+          if (success) {
+            setState(() {
+              user.blocked = false;
+              user.blockedDate = null;
+              user.blockedReason = null;
+            });
+          }
           break;
+
         case UserAction.removeFromCommunity:
-          _allUsers.remove(user);
+          success = await _blockService.removeUserFromCommunity(
+            communityId: userCommunity.id,
+            userEmail: user.email,
+            adminEmail: adminEmail,
+          );
+
+          if (success) {
+            setState(() {
+              _allUsers.remove(user);
+            });
+          }
           break;
+
         case UserAction.permanentBlock:
-          // Permanent block = complete removal from community
-          _allUsers.remove(user);
-          // TODO: In real app, also add to permanent ban list and report to authorities
+          success = await _blockService.blockUserInCommunity(
+            communityId: userCommunity.id,
+            userEmail: user.email,
+            adminEmail: adminEmail,
+            blockType: 'permanent',
+            reason: reason ?? 'Permanently banned by admin',
+          );
+
+          if (success) {
+            setState(() {
+              _allUsers.remove(user);
+            });
+          }
           break;
       }
-      _updateCommunityStats();
-    });
 
-    // Show snackbar
+      if (success) {
+        _updateCommunityStats();
+        _showSuccessSnackBar(action, user);
+      } else {
+        _showErrorSnackBar('Failed to ${action.name} user. Please try again.');
+      }
+    } catch (e) {
+      print('Error in _handleUserAction: $e');
+      _showErrorSnackBar('An error occurred. Please try again.');
+    }
+  }
+
+  void _showSuccessSnackBar(UserAction action, CommunityUser user) {
     final message = switch (action) {
       UserAction.block => '${user.username} has been blocked',
       UserAction.unblock => '${user.username} has been unblocked',
@@ -251,54 +399,91 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
     );
   }
 
-  void _handleJoinRequest(JoinRequest request, bool accept) {
-    setState(() {
-      _joinRequests.remove(request);
-
-      if (accept) {
-        // Add user to community
-        _allUsers.add(
-          CommunityUser(
-            userId: request.userId,
-            username: request.username,
-            email: request.email,
-            profileImage: request.profileImage,
-            preferredCommunity: request.targetCommunity,
-            isAdmin: false,
-            blocked: false,
-            joinedDate: DateTime.now(),
-          ),
-        );
-        _updateCommunityStats();
-      }
-    });
-
-    // TODO: Add notification endpoint call here for other admins
-    // await NotificationService.notifyAdmins(request, accept);
-
-    final message =
-        accept
-            ? '${request.username} has been added to ${request.targetCommunity}'
-            : '${request.username}\'s request has been declined';
-
+  void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: accept ? Colors.green : Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red[700]),
     );
   }
 
+  void _handleJoinRequest(JoinRequest request, bool accept) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user?.email == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Admin email not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Find the community ID from the community name
+      final community = _communities.firstWhere(
+        (c) => c.name == request.targetCommunity,
+        orElse: () => throw Exception('Community not found'),
+      );
+
+      Map<String, dynamic> result;
+      if (accept) {
+        result = await _joinRequestService.approveJoinRequest(
+          adminEmail: user!.email!,
+          communityId: community.id,
+          userEmail: request.email,
+        );
+      } else {
+        result = await _joinRequestService.rejectJoinRequest(
+          adminEmail: user!.email!,
+          communityId: community.id,
+          userEmail: request.email,
+        );
+      }
+
+      if (result['success'] == true) {
+        setState(() {
+          _joinRequests.remove(request);
+        });
+
+        final message =
+            accept
+                ? '${request.username} has been added to ${request.targetCommunity}'
+                : '${request.username}\'s request has been declined';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: accept ? Colors.green : Colors.red,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to process request'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error handling join request: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Widget _buildStatsOverview() {
-    final totalActiveMembers = _communities.fold(
+    final totalMembers = _communities.fold(
       0,
-      (sum, community) => sum + community.activeMembers,
+      (sum, community) => sum + community.members.length,
     );
-    final totalBlockedMembers = _communities.fold(
+    final totalJoinRequests = _communities.fold(
       0,
-      (sum, community) => sum + community.blockedMembers,
+      (sum, community) => sum + community.joinRequests.length,
     );
-    final pendingRequests = _joinRequests.length;
+    final totalCommunities = _communities.length;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -330,14 +515,14 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
-                  Icons.people_rounded,
+                  Icons.admin_panel_settings,
                   color: Colors.white,
                   size: 24,
                 ),
               ),
               const SizedBox(width: 12),
               const Text(
-                'Community Users Overview',
+                'Admin Communities Overview',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -351,8 +536,17 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
             children: [
               Expanded(
                 child: _buildStatCard(
-                  'Active Members',
-                  totalActiveMembers.toString(),
+                  'Communities',
+                  totalCommunities.toString(),
+                  Icons.location_city,
+                  Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Total Members',
+                  totalMembers.toString(),
                   Icons.people,
                   Colors.green,
                 ),
@@ -360,17 +554,8 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
-                  'Blocked Users',
-                  totalBlockedMembers.toString(),
-                  Icons.block,
-                  Colors.red,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Pending Requests',
-                  pendingRequests.toString(),
+                  'Join Requests',
+                  totalJoinRequests.toString(),
                   Icons.pending_actions,
                   Colors.orange,
                 ),
@@ -439,12 +624,28 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
         contentPadding: const EdgeInsets.all(20),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: Image.asset(
-            community.image,
-            width: 60,
-            height: 60,
-            fit: BoxFit.cover,
-          ),
+          child:
+              community.imageUrl != null
+                  ? Image.network(
+                    community.imageUrl!,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/images/dummy.png',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  )
+                  : Image.asset(
+                    'assets/images/dummy.png',
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                  ),
         ),
         title: Text(
           community.name,
@@ -466,14 +667,14 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
             Row(
               children: [
                 _buildMemberBadge(
-                  '${community.activeMembers} Active',
-                  Colors.green,
+                  '${community.members.length} Members',
+                  Colors.blue,
                 ),
                 const SizedBox(width: 8),
-                if (community.blockedMembers > 0)
+                if (community.joinRequests.isNotEmpty)
                   _buildMemberBadge(
-                    '${community.blockedMembers} Blocked',
-                    Colors.red,
+                    '${community.joinRequests.length} Requests',
+                    Colors.orange,
                   ),
               ],
             ),
@@ -734,88 +935,160 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
           ],
         ),
       ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Column(
-          children: [
-            _buildStatsOverview(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  // Community Members Tab
-                  SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 10),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _communities.length,
-                          itemBuilder: (context, index) {
-                            return _buildCommunityCard(_communities[index]);
-                          },
-                        ),
-                        const SizedBox(height: 30),
-                      ],
-                    ),
-                  ),
-                  // Join Requests Tab
-                  _joinRequests.isEmpty
-                      ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.inbox,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No pending requests',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'New community join requests will appear here',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                      : SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 10),
-                            ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _joinRequests.length,
-                              itemBuilder: (context, index) {
-                                return _buildJoinRequestCard(
-                                  _joinRequests[index],
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 30),
-                          ],
-                        ),
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF06B6D4)),
+                ),
+              )
+              : _error != null
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error loading communities',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[700],
                       ),
-                ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _error!,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadAdminCommunities,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF06B6D4),
+                      ),
+                      child: const Text(
+                        'Retry',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              : _communities.isEmpty
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.admin_panel_settings_outlined,
+                      size: 64,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No Admin Communities',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'You are not an admin of any communities yet.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              )
+              : FadeTransition(
+                opacity: _fadeAnimation,
+                child: Column(
+                  children: [
+                    _buildStatsOverview(),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          // Community Members Tab
+                          SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 10),
+                                ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: _communities.length,
+                                  itemBuilder: (context, index) {
+                                    return _buildCommunityCard(
+                                      _communities[index],
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 30),
+                              ],
+                            ),
+                          ),
+                          // Join Requests Tab
+                          _joinRequests.isEmpty
+                              ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.inbox,
+                                      size: 64,
+                                      color: Colors.grey[400],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No pending requests',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'New community join requests will appear here',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                              : SingleChildScrollView(
+                                physics: const BouncingScrollPhysics(),
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 10),
+                                    ListView.builder(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      itemCount: _joinRequests.length,
+                                      itemBuilder: (context, index) {
+                                        return _buildJoinRequestCard(
+                                          _joinRequests[index],
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(height: 30),
+                                  ],
+                                ),
+                              ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -824,7 +1097,8 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
 class _CommunityMembersModal extends StatefulWidget {
   final CommunityData community;
   final List<CommunityUser> allUsers;
-  final Function(UserAction, CommunityUser) onUserAction;
+  final Function(UserAction, CommunityUser, {String? duration, String? reason})
+  onUserAction;
 
   const _CommunityMembersModal({
     required this.community,
@@ -842,10 +1116,49 @@ class _CommunityMembersModalState extends State<_CommunityMembersModal>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  // Real member data from Firestore
+  List<CommunityUser> _realMembers = [];
+  bool _isLoadingMembers = true;
+  String? _membersError;
+  final CommunityService _communityService = CommunityService();
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadCommunityMembers();
+  }
+
+  Future<void> _loadCommunityMembers() async {
+    try {
+      setState(() {
+        _isLoadingMembers = true;
+        _membersError = null;
+      });
+
+      final members = await _communityService.getCommunityMembers(
+        widget.community.id,
+      );
+
+      setState(() {
+        _realMembers = members;
+        _isLoadingMembers = false;
+      });
+    } catch (e) {
+      setState(() {
+        _membersError = e.toString();
+        _isLoadingMembers = false;
+        // Use mock data as fallback
+        _realMembers =
+            widget.allUsers
+                .where(
+                  (user) =>
+                      user.preferredCommunity == widget.community.id &&
+                      !user.isAdmin,
+                )
+                .toList();
+      });
+    }
   }
 
   @override
@@ -856,12 +1169,18 @@ class _CommunityMembersModalState extends State<_CommunityMembersModal>
   }
 
   List<CommunityUser> _getFilteredUsers(bool showBlocked) {
+    // Use real Firestore data if available, otherwise fallback to mock data
+    final sourceUsers = _isLoadingMembers ? widget.allUsers : _realMembers;
+
     final communityUsers =
-        widget.allUsers
+        sourceUsers
             .where(
               (user) =>
-                  user.preferredCommunity == widget.community.id &&
-                  !user.isAdmin &&
+                  (_isLoadingMembers
+                      ? user.preferredCommunity == widget.community.id &&
+                          !user.isAdmin
+                      : true // Real data is already filtered by community
+                      ) &&
                   user.blocked == showBlocked,
             )
             .toList();
@@ -892,15 +1211,19 @@ class _CommunityMembersModalState extends State<_CommunityMembersModal>
               // Check if it's a permanent block
               if (duration == 'permanent') {
                 // Permanent block = complete removal
-                widget.onUserAction(UserAction.permanentBlock, user);
+                widget.onUserAction(
+                  UserAction.permanentBlock,
+                  user,
+                  reason: reason,
+                );
               } else {
-                // Temporary block = move to blocked tab
-                user.blockedDate = DateTime.now();
-                user.blockedReason = reason;
-                if (duration != 'indefinite') {
-                  user.blockedReason = '$reason (Blocked for $duration)';
-                }
-                widget.onUserAction(UserAction.block, user);
+                // Temporary/Indefinite block = move to blocked tab
+                widget.onUserAction(
+                  UserAction.block,
+                  user,
+                  duration: duration,
+                  reason: reason,
+                );
               }
             },
           ),
@@ -1093,12 +1416,28 @@ class _CommunityMembersModalState extends State<_CommunityMembersModal>
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    widget.community.image,
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                  ),
+                  child:
+                      widget.community.imageUrl != null
+                          ? Image.network(
+                            widget.community.imageUrl!,
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset(
+                                'assets/images/dummy.png',
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                              );
+                            },
+                          )
+                          : Image.asset(
+                            'assets/images/dummy.png',
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                          ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1114,7 +1453,9 @@ class _CommunityMembersModalState extends State<_CommunityMembersModal>
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${activeUsers.length} active • ${blockedUsers.length} blocked',
+                        _isLoadingMembers
+                            ? 'Loading members...'
+                            : '${_realMembers.length} total members • ${activeUsers.length} active • ${blockedUsers.length} blocked',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
@@ -1128,196 +1469,273 @@ class _CommunityMembersModalState extends State<_CommunityMembersModal>
             ),
           ),
 
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: 'Search by name or email...',
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF06B6D4)),
-                suffixIcon:
-                    _searchQuery.isNotEmpty
-                        ? IconButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                          icon: const Icon(Icons.clear),
-                        )
-                        : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF06B6D4)),
-                ),
-              ),
-            ),
-          ),
-
-          // Tab Bar
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                color: const Color(0xFF06B6D4),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicatorPadding: const EdgeInsets.all(4),
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.grey[600],
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
-              dividerColor: Colors.transparent,
-              tabs: [
-                Container(
-                  height: 40,
-                  alignment: Alignment.center,
-                  child: Text('Active (${activeUsers.length})'),
-                ),
-                Container(
-                  height: 40,
-                  alignment: Alignment.center,
-                  child: Text('Blocked (${blockedUsers.length})'),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Tab Content
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // Active Users
-                activeUsers.isEmpty
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.people_outline,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _searchQuery.isNotEmpty
-                                ? 'No users match your search'
-                                : 'No active members',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
+          // Loading indicator for members
+          if (_isLoadingMembers)
+            const Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF06B6D4),
                       ),
-                    )
-                    : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      itemCount: activeUsers.length,
-                      itemBuilder: (context, index) {
-                        return _buildUserTile(activeUsers[index], false);
-                      },
                     ),
-
-                // Blocked Users
-                blockedUsers.isEmpty
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.block, size: 64, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            _searchQuery.isNotEmpty
-                                ? 'No blocked users match your search'
-                                : 'No blocked users',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
+                    SizedBox(height: 16),
+                    Text(
+                      'Loading community members...',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (_membersError != null)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Error loading members',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                    )
-                    : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      itemCount: blockedUsers.length,
-                      itemBuilder: (context, index) {
-                        return _buildUserTile(blockedUsers[index], true);
-                      },
                     ),
-              ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'Using cached data instead',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadCommunityMembers,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF06B6D4),
+                      ),
+                      child: const Text(
+                        'Retry',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) => setState(() => _searchQuery = value),
+                decoration: InputDecoration(
+                  hintText: 'Search by name or email...',
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Color(0xFF06B6D4),
+                  ),
+                  suffixIcon:
+                      _searchQuery.isNotEmpty
+                          ? IconButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                            icon: const Icon(Icons.clear),
+                          )
+                          : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF06B6D4)),
+                  ),
+                ),
+              ),
             ),
-          ),
+
+            // Tab Bar
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  color: const Color(0xFF06B6D4),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorPadding: const EdgeInsets.all(4),
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.grey[600],
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+                dividerColor: Colors.transparent,
+                tabs: [
+                  Container(
+                    height: 40,
+                    alignment: Alignment.center,
+                    child: Text('Active (${activeUsers.length})'),
+                  ),
+                  Container(
+                    height: 40,
+                    alignment: Alignment.center,
+                    child: Text('Blocked (${blockedUsers.length})'),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Tab Content
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // Active Users
+                  activeUsers.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? 'No users match your search'
+                                  : 'No active members',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        itemCount: activeUsers.length,
+                        itemBuilder: (context, index) {
+                          return _buildUserTile(activeUsers[index], false);
+                        },
+                      ),
+
+                  // Blocked Users
+                  blockedUsers.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.block,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? 'No blocked users match your search'
+                                  : 'No blocked users',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        itemCount: blockedUsers.length,
+                        itemBuilder: (context, index) {
+                          return _buildUserTile(blockedUsers[index], true);
+                        },
+                      ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-// Data Models
+// Updated CommunityData to include additional fields for admin management
 class CommunityData {
   final String id;
   final String name;
-  final String image;
+  final String description;
   final String location;
+  final String? imageUrl;
+  final List<String> admins;
+  final List<String> members;
+  final List<String> joinRequests;
+  final int memberCount;
+  final List<String> tags;
+  final DateTime? joinDate;
+  final String? recentActivity;
   int activeMembers;
   int blockedMembers;
 
   CommunityData({
     required this.id,
     required this.name,
-    required this.image,
+    required this.description,
     required this.location,
+    this.imageUrl,
+    required this.admins,
+    required this.members,
+    required this.joinRequests,
+    required this.memberCount,
+    required this.tags,
+    this.joinDate,
+    this.recentActivity,
     required this.activeMembers,
     required this.blockedMembers,
   });
-}
 
-class CommunityUser {
-  final String userId;
-  final String username;
-  final String email;
-  final String profileImage;
-  final String preferredCommunity;
-  final bool isAdmin;
-  bool blocked;
-  final DateTime joinedDate;
-  DateTime? blockedDate;
-  String? blockedReason;
+  // Create from provider CommunityData
+  factory CommunityData.fromProvider(dynamic providerCommunity) {
+    return CommunityData(
+      id: providerCommunity.id,
+      name: providerCommunity.name,
+      description: providerCommunity.description,
+      location: providerCommunity.location,
+      imageUrl: providerCommunity.imageUrl,
+      admins: List<String>.from(providerCommunity.admins ?? []),
+      members: List<String>.from(providerCommunity.members ?? []),
+      joinRequests: List<String>.from(providerCommunity.joinRequests ?? []),
+      memberCount: providerCommunity.memberCount,
+      tags: List<String>.from(providerCommunity.tags ?? []),
+      joinDate: providerCommunity.joinDate,
+      recentActivity: providerCommunity.recentActivity,
+      activeMembers: 0, // Will be calculated dynamically
+      blockedMembers: 0, // Will be calculated dynamically
+    );
+  }
 
-  CommunityUser({
-    required this.userId,
-    required this.username,
-    required this.email,
-    required this.profileImage,
-    required this.preferredCommunity,
-    required this.isAdmin,
-    required this.blocked,
-    required this.joinedDate,
-    this.blockedDate,
-    this.blockedReason,
-  });
+  String get image => imageUrl ?? 'assets/images/dummy.png';
 }
 
 class JoinRequest {

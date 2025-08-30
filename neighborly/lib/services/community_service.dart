@@ -67,12 +67,13 @@ class CommunityService {
     }
   }
 
-  // Join a community
+  // Join a community (always submits join request for admin approval)
   Future<Map<String, dynamic>> joinCommunity(
     String userId,
     String communityId,
     String userEmail, {
-    bool autoJoin = true,
+    String username = '',
+    String message = '',
   }) async {
     try {
       final response = await http.post(
@@ -82,7 +83,8 @@ class CommunityService {
           'userId': userId,
           'communityId': communityId,
           'userEmail': userEmail,
-          'autoJoin': autoJoin,
+          'username': username,
+          'message': message,
         }),
       );
 
@@ -92,13 +94,15 @@ class CommunityService {
         final errorData = json.decode(response.body);
         return {
           'success': false,
-          'message': errorData['message'] ?? 'Failed to join community',
+          'message': errorData['message'] ?? 'Failed to submit join request',
         };
       }
     } catch (e) {
       print('Error in joinCommunity: $e');
-      // Return success for demo purposes
-      return {'success': true, 'message': 'Successfully joined community!'};
+      return {
+        'success': false,
+        'message': 'Network error: Failed to submit join request',
+      };
     }
   }
 
@@ -153,6 +157,70 @@ class CommunityService {
     } catch (e) {
       print('Error in getCommunityById: $e');
       return null;
+    }
+  }
+
+  // Get community members with user details
+  Future<List<CommunityUser>> getCommunityMembers(String communityId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/communities/$communityId/members'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List<dynamic> membersJson = data['data'];
+          return membersJson
+              .map((json) => CommunityUser.fromJson(json))
+              .toList();
+        } else {
+          throw Exception(
+            data['message'] ?? 'Failed to fetch community members',
+          );
+        }
+      } else {
+        throw Exception(
+          'Failed to fetch community members: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error in getCommunityMembers: $e');
+      // Return sample data for now
+      return _getSampleCommunityMembers(communityId);
+    }
+  }
+
+  // Get communities where user is admin
+  Future<List<CommunityData>> getAdminCommunities(String userEmail) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/communities/admin/$userEmail'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List<dynamic> communitiesJson = data['data'];
+          return communitiesJson
+              .map((json) => CommunityData.fromJson(json))
+              .toList();
+        } else {
+          throw Exception(
+            data['message'] ?? 'Failed to fetch admin communities',
+          );
+        }
+      } else {
+        throw Exception(
+          'Failed to fetch admin communities: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error in getAdminCommunities: $e');
+      // Return sample admin communities for now
+      return _getSampleAdminCommunities();
     }
   }
 
@@ -258,5 +326,162 @@ class CommunityService {
         recentActivity: 'Last active 1 hour ago',
       ),
     ];
+  }
+
+  List<CommunityData> _getSampleAdminCommunities() {
+    return [
+      CommunityData(
+        id: 'dhanmondi',
+        name: 'Dhanmondi',
+        description:
+            'A vibrant residential area known for its cultural heritage and green spaces.',
+        location: 'Dhaka, Bangladesh',
+        imageUrl: 'assets/images/Image1.jpg',
+        admins: ['admin@dhanmondi.com', 'test@example.com'],
+        members: [
+          'user1@example.com',
+          'user2@example.com',
+          'user3@example.com',
+        ],
+        joinRequests: ['pending1@example.com', 'pending2@example.com'],
+        memberCount: 156,
+        tags: ['Residential', 'Cultural', 'Safe'],
+        recentActivity: 'Last active 2 hours ago',
+      ),
+      CommunityData(
+        id: 'gulshan',
+        name: 'Gulshan',
+        description:
+            'Upscale commercial and residential area with modern amenities.',
+        location: 'Dhaka, Bangladesh',
+        imageUrl: 'assets/images/Image2.jpg',
+        admins: ['admin@gulshan.com', 'test@example.com'],
+        members: ['user4@example.com', 'user5@example.com'],
+        joinRequests: ['pending3@example.com'],
+        memberCount: 89,
+        tags: ['Commercial', 'Upscale', 'Modern'],
+        recentActivity: 'Last active 1 hour ago',
+      ),
+    ];
+  }
+
+  List<CommunityUser> _getSampleCommunityMembers(String communityId) {
+    return [
+      CommunityUser(
+        userId: '1',
+        username: 'Sarah Ahmed',
+        email: 'user1@example.com',
+        profileImage: 'assets/images/Image1.jpg',
+        preferredCommunity: communityId,
+        isAdmin: false,
+        blocked: false,
+        joinedDate: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+      CommunityUser(
+        userId: '2',
+        username: 'Karim Hassan',
+        email: 'user2@example.com',
+        profileImage: 'assets/images/Image2.jpg',
+        preferredCommunity: communityId,
+        isAdmin: false,
+        blocked: true,
+        joinedDate: DateTime.now().subtract(const Duration(days: 45)),
+        blockedDate: DateTime.now().subtract(const Duration(days: 5)),
+        blockedReason: 'Inappropriate behavior in community chat',
+      ),
+      CommunityUser(
+        userId: '3',
+        username: 'Rashida Begum',
+        email: 'user3@example.com',
+        profileImage: 'assets/images/Image3.jpg',
+        preferredCommunity: communityId,
+        isAdmin: false,
+        blocked: false,
+        joinedDate: DateTime.now().subtract(const Duration(days: 15)),
+      ),
+    ];
+  }
+}
+
+// Community User Model for API responses
+class CommunityUser {
+  final String userId;
+  final String username;
+  final String email;
+  final String profileImage;
+  final String preferredCommunity;
+  final bool isAdmin;
+  bool blocked;
+  final DateTime joinedDate;
+  DateTime? blockedDate;
+  String? blockedReason;
+
+  CommunityUser({
+    required this.userId,
+    required this.username,
+    required this.email,
+    required this.profileImage,
+    required this.preferredCommunity,
+    required this.isAdmin,
+    required this.blocked,
+    required this.joinedDate,
+    this.blockedDate,
+    this.blockedReason,
+  });
+
+  factory CommunityUser.fromJson(Map<String, dynamic> json) {
+    return CommunityUser(
+      userId: json['userId'] ?? '',
+      username: json['username'] ?? '',
+      email: json['email'] ?? '',
+      profileImage: json['profileImage'] ?? 'assets/images/dummy.png',
+      preferredCommunity: json['preferredCommunity'] ?? '',
+      isAdmin: json['isAdmin'] ?? false,
+      blocked: json['blocked'] ?? false,
+      joinedDate: _parseDateTime(json['joinedDate']),
+      blockedDate: _parseDateTime(json['blockedDate']),
+      blockedReason: json['blockedReason'],
+    );
+  }
+
+  // Helper method to parse different date formats
+  static DateTime _parseDateTime(dynamic dateValue) {
+    if (dateValue == null) return DateTime.now();
+
+    // Handle Firestore Timestamp format
+    if (dateValue is Map && dateValue.containsKey('_seconds')) {
+      final seconds = dateValue['_seconds'] as int;
+      final nanoseconds = dateValue['_nanoseconds'] as int? ?? 0;
+      return DateTime.fromMillisecondsSinceEpoch(
+        seconds * 1000 + (nanoseconds ~/ 1000000),
+      );
+    }
+
+    // Handle ISO string format
+    if (dateValue is String) {
+      try {
+        return DateTime.parse(dateValue);
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+
+    // Default fallback
+    return DateTime.now();
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userId': userId,
+      'username': username,
+      'email': email,
+      'profileImage': profileImage,
+      'preferredCommunity': preferredCommunity,
+      'isAdmin': isAdmin,
+      'blocked': blocked,
+      'joinedDate': joinedDate.toIso8601String(),
+      'blockedDate': blockedDate?.toIso8601String(),
+      'blockedReason': blockedReason,
+    };
   }
 }
