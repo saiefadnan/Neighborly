@@ -6,6 +6,8 @@ const communityRouter = new Hono();
 // Community routes
 communityRouter.get('/', CommunityController.getAllCommunities);
 communityRouter.get('/user/:userId', CommunityController.getUserCommunities);
+communityRouter.get('/admin/:userEmail', CommunityController.getAdminCommunities);
+communityRouter.get('/:communityId/members', CommunityController.getCommunityMembers);
 communityRouter.get('/:communityId', CommunityController.getCommunityById);
 communityRouter.post('/join', CommunityController.joinCommunity);
 communityRouter.post('/leave', CommunityController.leaveCommunity);

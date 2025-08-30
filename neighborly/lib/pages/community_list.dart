@@ -114,8 +114,8 @@ class _CommunityListPageState extends State<CommunityListPage>
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Joined ${community.name} community!'),
-          backgroundColor: const Color(0xFF71BB7B),
+          content: Text('Join request sent to ${community.name} admins!'),
+          backgroundColor: const Color(0xFF06B6D4),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -125,7 +125,7 @@ class _CommunityListPageState extends State<CommunityListPage>
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to join ${community.name}. Please try again.'),
+          content: Text('Failed to send join request. Please try again.'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
