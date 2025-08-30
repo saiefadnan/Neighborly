@@ -99,6 +99,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   @override
   void dispose() {
     _headerAnimationController.dispose();
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -206,6 +207,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       }
     } catch (e) {
       print('Error loading help requests: $e');
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -284,21 +286,28 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     }
 
     print('Created ${markers.length} markers total');
-    setState(() {
-      _markers = markers;
-    });
+    if (mounted) {
+      setState(() {
+        _markers = markers;
+      });
+    }
   }
 
   Future<void> _navigateToTargetLocation() async {
-    if (widget.targetLocation != null && _mapController != null) {
-      await _mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: widget.targetLocation!,
-            zoom: 16.0, // Zoom closer to show the specific location
+    if (widget.targetLocation != null && _mapController != null && mounted) {
+      try {
+        await _mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: widget.targetLocation!,
+              zoom: 16.0, // Zoom closer to show the specific location
+            ),
           ),
-        ),
-      );
+        );
+      } catch (e) {
+        print('Error animating camera in _navigateToTargetLocation: $e');
+        return;
+      }
 
       // Show a snackbar to indicate navigation
       if (mounted) {
@@ -376,14 +385,21 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       }
 
       // Animate to the target location
-      await _mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: targetLocation,
-            zoom: 17.0, // Good zoom level for neighborhood view
-          ),
-        ),
-      );
+      if (mounted && _mapController != null) {
+        try {
+          await _mapController!.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: targetLocation,
+                zoom: 17.0, // Good zoom level for neighborhood view
+              ),
+            ),
+          );
+        } catch (e) {
+          print('Error animating camera in _navigateToCurrentLocation: $e');
+          return;
+        }
+      }
 
       // Show location indicator
       if (mounted) {
@@ -414,11 +430,21 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     } catch (e) {
       print('Error navigating to current location: $e');
       // Fallback to MIST coordinates
-      await _mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: const LatLng(23.8223, 90.3654), zoom: 17.0),
-        ),
-      );
+      if (mounted && _mapController != null) {
+        try {
+          await _mapController!.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: const LatLng(23.8223, 90.3654),
+                zoom: 17.0,
+              ),
+            ),
+          );
+        } catch (fallbackError) {
+          print('Error in fallback camera animation: $fallbackError');
+          return;
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

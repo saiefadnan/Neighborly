@@ -26,4 +26,12 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
       state = AsyncError(e, st);
     }
   }
+
+  Future<void> addEvents(EventModel event) async {
+    state = state.when(
+      data: (events) => AsyncData([event, ...events]),
+      error: (e, st) => state,
+      loading: () => state,
+    );
+  }
 }
