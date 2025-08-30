@@ -20,11 +20,6 @@ class _EventPlanState extends ConsumerState<EventPlan>
   late Animation<double> _headerSlideAnimation;
   final Set<int> _selectedIndexes = {};
 
-  Future<void> _handleRefresh() async {
-    // Fetch new events or update state
-    await Future.delayed(Duration(seconds: 2));
-  }
-
   // Future<void> fetchEvents() async {
   //   try {
   //     await FirebaseFirestore.instance.collection('events').get().then((
@@ -114,92 +109,100 @@ class _EventPlanState extends ConsumerState<EventPlan>
       body: asyncEvent.when(
         data:
             (events) => RefreshIndicator(
-              onRefresh: _handleRefresh,
-              child: MasonryGridView.count(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                padding: const EdgeInsets.all(12),
-                itemCount: events.length,
-                itemBuilder: (context, index) {
-                  final event = events[index];
-                  final isSelected = _selectedIndexes.contains(index);
-                  // final joined = _joinedIndexes.contains(index);
-                  return GestureDetector(
-                    onTap: () {
-                      EventModel newEvent = EventModel(
-                        title: event.title,
-                        imageUrl: event.imageUrl,
-                        description: event.description,
-                        date: event.date,
-                        joined: event.joined,
-                        location: event.location,
-                        lat: (event.lat as num).toDouble(),
-                        lng: (event.lng as num).toDouble(),
-                        tags: event.tags,
-                      );
-                      context.push('/eventDetails', extra: newEvent);
-                    },
-                    child: Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      color: Colors.white,
-                      elevation: isSelected ? 8 : 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Event Image
-                          Image.network(
-                            event.imageUrl!,
-                            height: 150,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 150,
-                                color: Colors.grey[300],
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.broken_image,
-                                    size: 40,
-                                    color: Colors.grey,
-                                  ),
-                                ),
+              onRefresh: ref.read(eventProvider.notifier).handleRefresh,
+              child:
+                  events.isEmpty
+                      ? const Center(
+                        child: Text("No events available in your area"),
+                      )
+                      : MasonryGridView.count(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        padding: const EdgeInsets.all(12),
+                        itemCount: events.length,
+                        itemBuilder: (context, index) {
+                          final event = events[index];
+                          final isSelected = _selectedIndexes.contains(index);
+                          // final joined = _joinedIndexes.contains(index);
+                          return GestureDetector(
+                            onTap: () {
+                              EventModel newEvent = EventModel(
+                                id: event.id,
+                                title: event.title,
+                                imageUrl: event.imageUrl,
+                                description: event.description,
+                                createdAt: event.createdAt,
+                                approved: event.approved,
+                                location: event.location,
+                                lat: (event.lat as num).toDouble(),
+                                lng: (event.lng as num).toDouble(),
+                                raduis: (event.raduis as num).toDouble(),
+                                tags: event.tags,
                               );
+                              context.push('/eventDetails', extra: newEvent);
                             },
-                          ),
-                          // Event Text
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  event.title!,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                            child: Card(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              color: Colors.white,
+                              elevation: isSelected ? 8 : 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Event Image
+                                  Image.network(
+                                    event.imageUrl!,
+                                    height: 150,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        height: 150,
+                                        color: Colors.grey[300],
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 40,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ),
-                                SizedBox(height: 6),
-                                Text(
-                                  event.description!,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[700],
+                                  // Event Text
+                                  Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          event.title!,
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        SizedBox(height: 6),
+                                        Text(
+                                          event.description!,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[700],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                    ),
-                  );
-                },
-              ),
             ),
         loading: () => Center(child: CircularProgressIndicator()),
         error:
@@ -233,14 +236,6 @@ class _EventPlanState extends ConsumerState<EventPlan>
               builder: (_) => CreateEventPage(title: 'Add Event'),
             ),
           );
-
-          if (updatedEvents != null) {
-            setState(() {
-              events = updatedEvents;
-            });
-          }
-
-          //context.push('/addEvent');
         },
       ),
     );

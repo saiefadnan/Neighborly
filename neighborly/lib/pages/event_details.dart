@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +18,7 @@ class EventDetailsPage extends ConsumerStatefulWidget {
 
 class _EventDetailsState extends ConsumerState<EventDetailsPage> {
   bool hasJoined = false;
+  int totalParticipants = 0;
   LatLng? userLocation;
   GoogleMapController? mapController;
   Set<Polyline> polylines = {};
@@ -23,8 +26,61 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
   @override
   void initState() {
     super.initState();
-    hasJoined = widget.event.joined == 'true';
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await checkJoinedStatus();
+      await loadParticipantCount();
+    });
     _getCurrentLocation();
+  }
+
+  Future<void> checkJoinedStatus() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser!.uid;
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('events')
+              .doc(widget.event.id)
+              .collection('participants')
+              .doc(uid)
+              .get();
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null) {
+          setState(() {
+            hasJoined = data['joined'];
+          });
+        }
+      }
+    } catch (e) {
+      print('Error checking join status: $e');
+    }
+  }
+
+  Future<int> getParticipantCount(String eventId) async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('events')
+              .doc(eventId)
+              .collection('participants')
+              .get();
+
+      return snapshot.docs.length;
+    } catch (e) {
+      print('Error getting participant count: $e');
+      return 0;
+    }
+  }
+
+  Future<void> loadParticipantCount() async {
+    try {
+      final count = await getParticipantCount(widget.event.id!);
+      setState(() {
+        totalParticipants = count;
+      });
+    } catch (e) {
+      print('Error loading participant count: $e');
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -71,14 +127,39 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
     }
   }
 
-  void handleJoin() {
-    setState(() {
-      hasJoined = true;
-    });
+  Future<void> toggleJoinStatus() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser!.uid;
+      if (hasJoined) {
+        await FirebaseFirestore.instance
+            .collection('events')
+            .doc(widget.event.id)
+            .collection('participants')
+            .doc(uid)
+            .delete();
+      } else {
+        await FirebaseFirestore.instance
+            .collection('events')
+            .doc(widget.event.id)
+            .collection('participants')
+            .doc(uid)
+            .set({'joined': true}, SetOptions(merge: true));
+      }
+      setState(() {
+        hasJoined = !hasJoined;
+      });
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("You've joined the event!")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            hasJoined ? "You've joined the event!" : "You've left the event!",
+          ),
+        ),
+      );
+      await loadParticipantCount();
+    } catch (e) {
+      print('Error joining event: $e');
+    }
   }
 
   @override
@@ -135,7 +216,7 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
                   const Icon(Icons.calendar_today, size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    "${event.date.day}/${event.date.month}/${event.date.year}  •  ${event.date.hour}:${event.date.minute.toString().padLeft(2, '0')}",
+                    "${event.createdAt.toDate().day}/${event.createdAt.toDate().month}/${event.createdAt.toDate().year}  •  ${event.createdAt.toDate().hour}:${event.createdAt.toDate().minute.toString().padLeft(2, '0')}",
                     style: const TextStyle(fontSize: 16),
                   ),
                 ],
@@ -197,8 +278,8 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
                   const SizedBox(width: 8),
                   Text(
                     hasJoined
-                        ? "You're in! Total: 23 joined"
-                        : "22 people have joined",
+                        ? "You're in! Total: ${totalParticipants} joined"
+                        : "$totalParticipants people have joined",
                     style: const TextStyle(fontSize: 16),
                   ),
                 ],
@@ -210,7 +291,9 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
             // Join Button
             Center(
               child: ElevatedButton.icon(
-                onPressed: hasJoined ? null : handleJoin,
+                onPressed: () async {
+                  await toggleJoinStatus();
+                },
                 icon: Icon(
                   hasJoined ? Icons.check_circle : Icons.check_circle_outline,
                 ),

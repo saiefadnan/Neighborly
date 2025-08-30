@@ -294,6 +294,7 @@ class _SigninFormState extends ConsumerState<SigninForm> {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setBool('rememberMe', rememberMe);
                 ref.read(authUserProvider.notifier).stateOnRemember();
+                if (!context.mounted) return;
                 final result = await signInWithGoogle(context);
                 if (result == null) {
                   ref.read(authUserProvider.notifier).initState();

@@ -1045,6 +1045,7 @@ class _HomePageState extends ConsumerState<HomePage>
 
     void signOut() async {
       try {
+        ref.read(authUserProvider.notifier).logout();
         ref.read(hasSeenSplashProvider.notifier).state =
             true; // Ensure direct auth access
         initPageVal(ref);

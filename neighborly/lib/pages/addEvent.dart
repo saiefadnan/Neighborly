@@ -9,7 +9,9 @@ import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:neighborly/components/snackbar.dart';
+import 'package:neighborly/functions/event_notifier.dart';
 import 'package:neighborly/functions/media_upload.dart';
+import 'package:neighborly/models/event.dart';
 
 class CreateEventPage extends ConsumerStatefulWidget {
   final String title;
@@ -26,12 +28,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   final TextEditingController timeController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController tagsController = TextEditingController();
   GoogleMapController? mapController;
   final ImagePicker imagePicker = ImagePicker();
   File? imagepath;
   String eventType = '';
   double notifRange = 5;
   bool isLoading = false;
+  List<String> selectedTags = [];
   List<Map<String, String>> eventTypes = [
     {"title": "Tree Plantation", "desc": "Join a green cause."},
     {"title": "Invitation Party", "desc": "Celebrate and invite friends."},
@@ -39,44 +43,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     {"title": "Food Drive", "desc": "Donate and distribute food."},
     {"title": "Block Party", "desc": "Fun gathering with the block."},
   ]; // Default to San Francisco
-
-  Future<void> storeEvents() async {
-    setState(() {
-      isLoading = true;
-    });
-    try {
-      String lngStr = selectedLocation.longitude.toStringAsFixed(6);
-      String latStr = selectedLocation.latitude.toStringAsFixed(6);
-      String uid = FirebaseAuth.instance.currentUser!.uid;
-      String? imageUrl = await uploadFile(imagepath);
-      final event = {
-        'title': titleController.text.trim(),
-        'desc': descriptionController.text.trim(),
-        'img':
-            imageUrl ??
-            'https://res.cloudinary.com/dpmgqsubd/image/upload/v1754651567/tegan-mierle-fDostElVhN8-unsplash_kackpp.jpg',
-        'joined': 'true',
-        'createdBy': uid,
-        'date': dateController.text.trim(),
-        'location': locationController.text.trim(),
-        'lng': double.tryParse(lngStr) ?? 0.0,
-        'lat': double.tryParse(latStr) ?? 0.0,
-        'tags': ['#community', '#event'],
-      };
-      events.add(event);
-      await FirebaseFirestore.instance.collection('events').add(event);
-
-      // After adding event
-      Navigator.pop(context, events);
-      showSnackBarSuccess(context, 'Event creation succeed');
-    } catch (e) {
-      showSnackBarError(context, 'Event creation failed');
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
 
   Future<void> pickImage() async {
     final image = await imagePicker.pickImage(source: ImageSource.gallery);
@@ -184,11 +150,41 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     timeController.dispose();
     locationController.dispose();
     descriptionController.dispose();
+    tagsController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
     mapController?.dispose();
     imagepath = null;
     super.dispose();
+  }
+
+  // Validation function to check if all required fields are filled
+  String? _validateFields() {
+    if (titleController.text.trim().isEmpty) {
+      return 'Please enter an event title';
+    }
+    if (dateController.text.trim().isEmpty) {
+      return 'Please select a date';
+    }
+    if (timeController.text.trim().isEmpty) {
+      return 'Please select a time';
+    }
+    if (locationController.text.trim().isEmpty) {
+      return 'Please select a location on the map';
+    }
+    if (descriptionController.text.trim().isEmpty) {
+      return 'Please enter a description';
+    }
+    return null; // All fields are valid
+  }
+
+  // Check if all required fields are filled (for UI state)
+  bool get _areAllFieldsFilled {
+    return titleController.text.trim().isNotEmpty &&
+        dateController.text.trim().isNotEmpty &&
+        timeController.text.trim().isNotEmpty &&
+        locationController.text.trim().isNotEmpty &&
+        descriptionController.text.trim().isNotEmpty;
   }
 
   @override
@@ -208,6 +204,36 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Helper text for required fields
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Colors.blue,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Fields marked with * are required',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     const Text("Notification Range"),
                     Slider(
                       value: notifRange,
@@ -256,25 +282,25 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
                     const SizedBox(height: 20),
                     _buildTextField(
-                      "Event Title",
+                      "Event Title *",
                       titleController,
                       icon: Icons.event,
                     ),
                     _buildDatePickerField(
-                      "Date",
+                      "Date *",
                       dateController,
                       context,
                       icon: Icons.calendar_today,
                     ),
                     _buildTimePickerField(
-                      "Time",
+                      "Time *",
                       timeController,
                       context,
                       selectedDate,
                       icon: Icons.access_time,
                     ),
                     _buildTextField(
-                      "Location",
+                      "Location *",
                       locationController,
                       icon: Icons.location_on,
                     ),
@@ -326,11 +352,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                     ),
                     const SizedBox(height: 12),
                     _buildTextField(
-                      "Description",
+                      "Description *",
                       descriptionController,
                       maxLines: 3,
                       icon: Icons.description,
                     ),
+
+                    const SizedBox(height: 12),
+                    _buildTagsField(),
 
                     const SizedBox(height: 12),
                     const Text("Optional Image"),
@@ -389,17 +418,294 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(
-                            0xFF71BB7B,
-                          ), // Updated button color
+                          backgroundColor:
+                              _areAllFieldsFilled
+                                  ? const Color(0xFF71BB7B)
+                                  : Colors
+                                      .grey, // Dynamic color based on field completion
                         ),
-                        onPressed: storeEvents,
-                        child: const Text("Create Event"),
+                        onPressed: () async {
+                          // Validate all required fields
+                          final validationError = _validateFields();
+                          if (validationError != null) {
+                            showSnackBarError(context, validationError);
+                            return;
+                          }
+
+                          setState(() {
+                            isLoading = true;
+                          });
+
+                          try {
+                            final imageUrl = await uploadFile(imagepath);
+                            final docRef =
+                                FirebaseFirestore.instance
+                                    .collection('events')
+                                    .doc();
+                            ref
+                                .watch(eventProvider.notifier)
+                                .addEvents(
+                                  EventModel(
+                                    id: docRef.id,
+                                    title: titleController.text.trim(),
+                                    description:
+                                        descriptionController.text.trim(),
+                                    imageUrl: imageUrl,
+                                    approved: true,
+                                    createdAt: Timestamp.now(),
+                                    location: locationController.text.trim(),
+                                    lng: selectedLocation.longitude,
+                                    lat: selectedLocation.latitude,
+                                    raduis: notifRange,
+                                    tags:
+                                        selectedTags.isNotEmpty
+                                            ? selectedTags
+                                            : ['#community', '#event'],
+                                  ),
+                                  docRef,
+                                );
+                            showSnackBarSuccess(
+                              context,
+                              "Event added successfully",
+                            );
+                            Navigator.of(context).pop();
+                          } catch (e) {
+                            showSnackBarError(
+                              context,
+                              "Error creating event: ${e.toString()}",
+                            );
+                          } finally {
+                            setState(() {
+                              isLoading = false;
+                            });
+                          }
+                        },
+                        child: Text(
+                          _areAllFieldsFilled
+                              ? "Create Event"
+                              : "Fill All Required Fields",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
+    );
+  }
+
+  Widget _buildTagsField() {
+    final List<String> predefinedTags = [
+      '#community',
+      '#event',
+      '#fun',
+      '#education',
+      '#sports',
+      '#charity',
+      '#environment',
+      '#culture',
+      '#networking',
+      '#volunteer',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.tag, color: Color(0xFF71BB7B)),
+            const SizedBox(width: 8),
+            const Text(
+              'Tags',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF71BB7B),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        // Add custom tag input
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: tagsController,
+                decoration: InputDecoration(
+                  hintText: 'Add custom tag (press Enter)',
+                  prefixText: '#',
+                  filled: true,
+                  fillColor: const Color(0xFFE8F5E9),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF71BB7B)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF71BB7B)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF71BB7B),
+                      width: 2,
+                    ),
+                  ),
+                ),
+                onSubmitted: (value) {
+                  if (value.trim().isNotEmpty) {
+                    final tag = '#${value.trim().replaceAll('#', '')}';
+                    if (!selectedTags.contains(tag)) {
+                      setState(() {
+                        selectedTags.add(tag);
+                        tagsController.clear();
+                      });
+                    }
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: () {
+                final value = tagsController.text.trim();
+                if (value.isNotEmpty) {
+                  final tag = '#${value.replaceAll('#', '')}';
+                  if (!selectedTags.contains(tag)) {
+                    setState(() {
+                      selectedTags.add(tag);
+                      tagsController.clear();
+                    });
+                  }
+                }
+              },
+              icon: const Icon(Icons.add, color: Color(0xFF71BB7B)),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // Predefined tags
+        const Text(
+          'Popular Tags:',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children:
+              predefinedTags.map((tag) {
+                final isSelected = selectedTags.contains(tag);
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        selectedTags.remove(tag);
+                      } else {
+                        selectedTags.add(tag);
+                      }
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          isSelected
+                              ? const Color(0xFF71BB7B)
+                              : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color:
+                            isSelected
+                                ? const Color(0xFF71BB7B)
+                                : Colors.grey[400]!,
+                      ),
+                    ),
+                    child: Text(
+                      tag,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.black,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Selected tags display
+        if (selectedTags.isNotEmpty) ...[
+          const Text(
+            'Selected Tags:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF71BB7B),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children:
+                selectedTags.map((tag) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF71BB7B),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          tag,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedTags.remove(tag);
+                            });
+                          },
+                          child: const Icon(
+                            Icons.close,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+          ),
+        ],
+      ],
     );
   }
 
