@@ -511,6 +511,7 @@ class _EventPlanState extends ConsumerState<EventPlan>
           ],
         ),
         child: FloatingActionButton.extended(
+          heroTag: "create_event_fab",
           backgroundColor: const Color(0xFF71BB7B),
           foregroundColor: Colors.white,
           elevation: 0,

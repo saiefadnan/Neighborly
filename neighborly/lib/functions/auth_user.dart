@@ -108,43 +108,43 @@ class AuthUser extends AsyncNotifier<bool> {
       print('🔍 Firebase user: ${firebaseUser?.email}');
 
       if (firebaseUser != null) {
-        print('🔍 Fetching from Firestore with email: ${firebaseUser.email}');
-        final doc =
+        // print('🔍 Fetching from Firestore with email: ${firebaseUser.email}');
+        // final doc =
+        //     await FirebaseFirestore.instance
+        //         .collection('users')
+        //         .doc(firebaseUser.email)
+        //         .get();
+
+        // print('🔍 Document exists: ${doc.exists}');
+        // if (doc.exists) {
+        //   print('🔍 Document data: ${doc.data()}');
+        //   currentUser = User.fromFirestore(doc.data()!, firebaseUser.uid);
+        //   print('✅ User data loaded: ${currentUser?.username}');
+        //   _notifyUserDataChanged(); // Notify UI to update
+        // } else {
+        //   print(
+        //     '⚠️ No user document found in Firestore for email: ${firebaseUser.email}',
+        //   );
+        //   // Let's also try to check if document exists with a different ID
+        final querySnapshot =
             await FirebaseFirestore.instance
                 .collection('users')
-                .doc(firebaseUser.email)
+                .where('email', isEqualTo: firebaseUser.email)
                 .get();
-
-        print('🔍 Document exists: ${doc.exists}');
-        if (doc.exists) {
-          print('🔍 Document data: ${doc.data()}');
-          currentUser = User.fromFirestore(doc.data()!, firebaseUser.uid);
-          print('✅ User data loaded: ${currentUser?.username}');
+        print('🔍 Query results: ${querySnapshot.docs.length} documents found');
+        if (querySnapshot.docs.isNotEmpty) {
+          print('🔍 Found user document with different ID');
+          currentUser = User.fromFirestore(
+            querySnapshot.docs.first.data(),
+            firebaseUser.uid,
+          );
+          print('✅ User data loaded from query: ${currentUser?.username}');
           _notifyUserDataChanged(); // Notify UI to update
-        } else {
-          print(
-            '⚠️ No user document found in Firestore for email: ${firebaseUser.email}',
-          );
-          // Let's also try to check if document exists with a different ID
-          final querySnapshot =
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .where('email', isEqualTo: firebaseUser.email)
-                  .get();
-          print(
-            '🔍 Query results: ${querySnapshot.docs.length} documents found',
-          );
-          if (querySnapshot.docs.isNotEmpty) {
-            print('🔍 Found user document with different ID');
-            currentUser = User.fromFirestore(
-              querySnapshot.docs.first.data(),
-              firebaseUser.uid,
-            );
-            print('✅ User data loaded from query: ${currentUser?.username}');
-            _notifyUserDataChanged(); // Notify UI to update
-          }
+          print(currentUser);
         }
-      } else {
+      }
+      // }
+      else {
         print('❌ No Firebase user found');
       }
     } catch (e) {

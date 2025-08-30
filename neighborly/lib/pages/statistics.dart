@@ -82,6 +82,7 @@ class _StatisticsPageState extends State<StatisticsPage>
         });
       } catch (e) {
         print('Error fetching help request stats from Firestore: $e');
+        if (!mounted) return;
         setState(() {
           isLoadingStats = false;
         });

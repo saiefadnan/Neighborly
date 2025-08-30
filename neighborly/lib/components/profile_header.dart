@@ -76,6 +76,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
       });
