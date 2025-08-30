@@ -298,6 +298,8 @@ class _SigninFormState extends ConsumerState<SigninForm> {
                 final result = await signInWithGoogle(context);
                 if (result == null) {
                   ref.read(authUserProvider.notifier).initState();
+                } else {
+                  //ref.read(authUserProvider.notifier).fetchUserData();
                 }
               },
               child: FaIcon(
@@ -312,9 +314,12 @@ class _SigninFormState extends ConsumerState<SigninForm> {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setBool('rememberMe', rememberMe);
                 ref.read(authUserProvider.notifier).stateOnRemember();
+                if (!context.mounted) return;
                 final result = await signInWithFacebook(context);
                 if (result == null) {
                   ref.read(authUserProvider.notifier).initState();
+                } else {
+                  //ref.read(authUserProvider.notifier).fetchUserData();
                 }
               },
               child: FaIcon(

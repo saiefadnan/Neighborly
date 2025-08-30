@@ -153,6 +153,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });

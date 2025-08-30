@@ -82,10 +82,11 @@ class AuthUser extends AsyncNotifier<User?> {
   }
 
   void initState() {
-    state = const AsyncData(null);
+    state = const AsyncData(false);
   }
 
   void stateOnRemember() {
+    state = const AsyncData(true);
     // Fetch user data when remembering state
     _checkExistingUser();
   }
@@ -133,8 +134,20 @@ class AuthUser extends AsyncNotifier<User?> {
             print('✅ User data loaded from query: ${userData.username}');
             state = AsyncData(userData); // Update state with user data
           }
+        print('🔍 Query results: ${querySnapshot.docs.length} documents found');
+        if (querySnapshot.docs.isNotEmpty) {
+          print('🔍 Found user document with different ID');
+          currentUser = User.fromFirestore(
+            querySnapshot.docs.first.data(),
+            firebaseUser.uid,
+          );
+          print('✅ User data loaded from query: ${currentUser?.username}');
+          _notifyUserDataChanged(); // Notify UI to update
+          print(currentUser);
         }
-      } else {
+      }
+      // }
+      else {
         print('❌ No Firebase user found');
       }
     } catch (e) {

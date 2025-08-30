@@ -157,7 +157,8 @@ class _HomePageState extends ConsumerState<HomePage>
         user?.username ??
         FirebaseAuth.instance.currentUser?.displayName ??
         'User';
-
+    final userPic =
+        user?.profilePicture ?? FirebaseAuth.instance.currentUser?.photoURL;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       child: GestureDetector(
@@ -197,9 +198,12 @@ class _HomePageState extends ConsumerState<HomePage>
                     width: 2,
                   ),
                 ),
-                child: const CircleAvatar(
+                child: CircleAvatar(
                   radius: 28,
-                  backgroundImage: AssetImage('assets/images/dummy.png'),
+                  backgroundImage:
+                      userPic != null && userPic.isNotEmpty
+                          ? NetworkImage(userPic)
+                          : AssetImage('assets/images/anonymous.jpg'),
                 ),
               ),
               const SizedBox(width: 18),
@@ -1036,6 +1040,8 @@ class _HomePageState extends ConsumerState<HomePage>
         'User';
     final userEmail =
         user?.email ?? FirebaseAuth.instance.currentUser?.email ?? '';
+    final userPic =
+        user?.profilePicture ?? FirebaseAuth.instance.currentUser?.photoURL;
     final userCommunity =
         user?.preferredCommunity.isNotEmpty == true
             ? user!
@@ -1142,11 +1148,14 @@ class _HomePageState extends ConsumerState<HomePage>
                                 ),
                               ],
                             ),
-                            child: const CircleAvatar(
+                            child: CircleAvatar(
                               radius: 26,
-                              backgroundImage: AssetImage(
-                                'assets/images/dummy.png',
-                              ),
+                              backgroundImage:
+                                  userPic != null && userPic.isNotEmpty
+                                      ? NetworkImage(userPic)
+                                      : AssetImage(
+                                        'assets/images/anonymous.jpg',
+                                      ),
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -1596,6 +1605,9 @@ class _HomePageState extends ConsumerState<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+    final userPic =
+        user?.profilePicture ?? FirebaseAuth.instance.currentUser?.photoURL;
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFFAFAFA),
@@ -1702,9 +1714,12 @@ class _HomePageState extends ConsumerState<HomePage>
               onPressed: () {
                 _scaffoldKey.currentState?.openEndDrawer();
               },
-              icon: const CircleAvatar(
+              icon: CircleAvatar(
                 radius: 18,
-                backgroundImage: AssetImage('assets/images/dummy.png'),
+                backgroundImage:
+                    userPic != null && userPic.isNotEmpty
+                        ? NetworkImage(userPic)
+                        : AssetImage('assets/images/anonymous.jpg'),
               ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -1713,6 +1728,7 @@ class _HomePageState extends ConsumerState<HomePage>
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "home_fab",
         onPressed: () {
           // Use the specialized callback to navigate to map and auto-open help drawer
           if (widget.onNavigateToMapWithHelp != null) {

@@ -528,6 +528,7 @@ class _ForumPageState extends ConsumerState<ForumPage>
           },
         ),
         floatingActionButton: FloatingActionButton(
+          heroTag: "forum_fab",
           backgroundColor: const Color(0xFF71BB7B),
           foregroundColor: const Color(0xFFFAF8F5),
           elevation: 4,
