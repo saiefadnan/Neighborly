@@ -8,21 +8,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class AuthUser extends AsyncNotifier<User?> {
+class AuthUser extends AsyncNotifier<bool> {
+  // Simple user object that's available everywhere
+  User? currentUser;
+
   @override
-  User? build() {
+  bool build() {
     // Check if user is already logged in when the provider initializes
     _checkExistingUser();
-    return null;
+    return false;
   }
 
   // Get current user (simple access from anywhere)
-  User? get user => state.value;
+  User? get user => currentUser;
+
+  // Notify listeners when user data changes
+  void _notifyUserDataChanged() {
+    // Force a rebuild by updating the state
+    state = AsyncData(state.value ?? false);
+  }
 
   // Method to ensure user data is loaded
   Future<void> ensureUserDataLoaded() async {
     final user = firebase_auth.FirebaseAuth.instance.currentUser;
-    if (user != null && state.value == null) {
+    if (user != null && currentUser == null) {
       await _fetchUserData();
     }
   }
@@ -30,7 +39,7 @@ class AuthUser extends AsyncNotifier<User?> {
   // Check if there's an existing logged-in user and fetch their data
   Future<void> _checkExistingUser() async {
     final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
-    if (firebaseUser != null && state.value == null) {
+    if (firebaseUser != null && currentUser == null) {
       print('🔄 Found existing logged-in user, fetching data...');
       await _fetchUserData();
     }
@@ -72,7 +81,7 @@ class AuthUser extends AsyncNotifier<User?> {
         // Fetch user data from Firestore after successful login
         await _fetchUserData();
 
-        // State is already updated in _fetchUserData via _notifyUserDataChanged
+        state = AsyncData(true);
       } else {
         throw Exception('Invalid user credentials!');
       }
@@ -87,7 +96,7 @@ class AuthUser extends AsyncNotifier<User?> {
 
   void stateOnRemember() {
     state = const AsyncData(true);
-    // Fetch user data when remembering state
+    // Also fetch user data when remembering state
     _checkExistingUser();
   }
 
@@ -109,9 +118,9 @@ class AuthUser extends AsyncNotifier<User?> {
         print('🔍 Document exists: ${doc.exists}');
         if (doc.exists) {
           print('🔍 Document data: ${doc.data()}');
-          final userData = User.fromFirestore(doc.data()!, firebaseUser.uid);
-          print('✅ User data loaded: ${userData.username}');
-          state = AsyncData(userData); // Update state with user data
+          currentUser = User.fromFirestore(doc.data()!, firebaseUser.uid);
+          print('✅ User data loaded: ${currentUser?.username}');
+          _notifyUserDataChanged(); // Notify UI to update
         } else {
           print(
             '⚠️ No user document found in Firestore for email: ${firebaseUser.email}',
@@ -127,27 +136,15 @@ class AuthUser extends AsyncNotifier<User?> {
           );
           if (querySnapshot.docs.isNotEmpty) {
             print('🔍 Found user document with different ID');
-            final userData = User.fromFirestore(
+            currentUser = User.fromFirestore(
               querySnapshot.docs.first.data(),
               firebaseUser.uid,
             );
-            print('✅ User data loaded from query: ${userData.username}');
-            state = AsyncData(userData); // Update state with user data
+            print('✅ User data loaded from query: ${currentUser?.username}');
+            _notifyUserDataChanged(); // Notify UI to update
           }
-        print('🔍 Query results: ${querySnapshot.docs.length} documents found');
-        if (querySnapshot.docs.isNotEmpty) {
-          print('🔍 Found user document with different ID');
-          currentUser = User.fromFirestore(
-            querySnapshot.docs.first.data(),
-            firebaseUser.uid,
-          );
-          print('✅ User data loaded from query: ${currentUser?.username}');
-          _notifyUserDataChanged(); // Notify UI to update
-          print(currentUser);
         }
-      }
-      // }
-      else {
+      } else {
         print('❌ No Firebase user found');
       }
     } catch (e) {
@@ -157,7 +154,8 @@ class AuthUser extends AsyncNotifier<User?> {
 
   // Clear user data on logout
   void logout() {
-    state = const AsyncData(null);
+    currentUser = null;
+    state = const AsyncData(false);
   }
 
   // Public method to manually fetch user data (for testing)

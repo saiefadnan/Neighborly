@@ -98,6 +98,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     'Paltan',
     'Uttara',
     'Hazaribagh',
+    'Bashundhara'
   ];
 
   void onTapSignup(BuildContext context) async {
