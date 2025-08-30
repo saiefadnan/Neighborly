@@ -16,12 +16,16 @@ notificationRoute.get('/notifications', async (c: Context) => {
     }
 
     const decodedToken = await getAuth().verifyIdToken(idToken);
-    const userId = decodedToken.uid;
+    const userEmail = decodedToken.email;
+
+    if (!userEmail) {
+      return c.json({ success: false, message: 'User email not found in token' }, 401);
+    }
 
     const { limit = '50' } = c.req.query();
     
-    const notifications = await notificationService.getUserNotifications(
-      userId, 
+    const notifications = await notificationService.getUserNotificationsByEmail(
+      userEmail, 
       parseInt(limit)
     );
 
@@ -82,9 +86,13 @@ notificationRoute.put('/notifications/read-all', async (c: Context) => {
     }
 
     const decodedToken = await getAuth().verifyIdToken(idToken);
-    const userId = decodedToken.uid;
+    const userEmail = decodedToken.email;
+
+    if (!userEmail) {
+      return c.json({ success: false, message: 'User email not found in token' }, 401);
+    }
     
-    const result = await notificationService.markAllNotificationsAsRead(userId);
+    const result = await notificationService.markAllNotificationsAsReadByEmail(userEmail);
 
     return c.json(result);
 

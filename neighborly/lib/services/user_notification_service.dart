@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/api_config.dart';
 
 class UserNotification {
@@ -36,6 +37,29 @@ class UserNotification {
     this.metadata,
   });
 
+  // Factory method for creating from Firestore document
+  factory UserNotification.fromFirestore(Map<String, dynamic> data, String id) {
+    return UserNotification(
+      id: id,
+      recipientUserId: data['recipientUserId'] ?? '',
+      recipientEmail: data['recipientEmail'] ?? '',
+      type: data['type'] ?? '',
+      title: data['title'] ?? '',
+      message: data['message'] ?? '',
+      helpRequestId: data['helpRequestId'],
+      helpRequestData:
+          data['helpRequestData'] != null
+              ? HelpRequestData.fromJson(data['helpRequestData'])
+              : null,
+      communityId: data['communityId'] ?? '',
+      communityName: data['communityName'] ?? '',
+      isRead: data['isRead'] ?? false,
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      expiresAt: (data['expiresAt'] as Timestamp?)?.toDate(),
+      metadata: data['metadata'],
+    );
+  }
+
   factory UserNotification.fromJson(Map<String, dynamic> json) {
     return UserNotification(
       id: json['id'] ?? '',
@@ -52,13 +76,32 @@ class UserNotification {
       communityId: json['communityId'] ?? '',
       communityName: json['communityName'] ?? '',
       isRead: json['isRead'] ?? false,
-      createdAt: DateTime.tryParse(json['createdAt']) ?? DateTime.now(),
-      expiresAt:
-          json['expiresAt'] != null
-              ? DateTime.tryParse(json['expiresAt'])
-              : null,
+      createdAt: _parseDateTime(json['createdAt']) ?? DateTime.now(),
+      expiresAt: _parseDateTime(json['expiresAt']),
       metadata: json['metadata'],
     );
+  }
+
+  // Helper method to parse various datetime formats
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+
+    if (value is Timestamp) {
+      return value.toDate();
+    } else if (value is Map<String, dynamic>) {
+      // Handle Firestore Timestamp object from API response
+      if (value.containsKey('_seconds')) {
+        final seconds = value['_seconds'] as int;
+        final nanoseconds = (value['_nanoseconds'] as int?) ?? 0;
+        return DateTime.fromMillisecondsSinceEpoch(
+          seconds * 1000 + (nanoseconds / 1000000).round(),
+        );
+      }
+    } else if (value is String) {
+      return DateTime.tryParse(value);
+    }
+
+    return null;
   }
 
   Map<String, dynamic> toJson() {
@@ -176,11 +219,13 @@ class UserNotificationService {
     int limit = 50,
   }) async {
     try {
+      print('🌐 Fetching notifications from backend API...');
       final token = await _getAuthToken();
       if (token == null) {
         throw Exception('User not authenticated');
       }
 
+      print('🔑 Auth token obtained, making API request...');
       final response = await http.get(
         Uri.parse('$_baseUrl/api/notifications?limit=$limit'),
         headers: {
@@ -189,10 +234,14 @@ class UserNotificationService {
         },
       );
 
+      print('📡 API Response status: ${response.statusCode}');
+      print('📡 API Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           final List<dynamic> notificationsJson = data['data'] ?? [];
+          print('✅ API returned ${notificationsJson.length} notifications');
           return notificationsJson
               .map((json) => UserNotification.fromJson(json))
               .toList();
@@ -205,7 +254,7 @@ class UserNotificationService {
         );
       }
     } catch (e) {
-      print('Error fetching notifications: $e');
+      print('❌ Error fetching notifications: $e');
       throw Exception('Failed to fetch notifications: $e');
     }
   }

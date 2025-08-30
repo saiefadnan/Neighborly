@@ -37,13 +37,27 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _initializeNotifications();
+    // Listen for auth state changes to reinitialize notifications
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        _initializeNotifications();
+      }
+    });
   }
 
   Future<void> _initializeNotifications() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final notificationProvider = context.read<NotificationProvider>();
-      await notificationProvider.initializeNotifications();
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final notificationProvider = context.read<NotificationProvider>();
+        print('🔔 Initializing notifications for user: ${user.uid}');
+        await notificationProvider.initializeNotifications();
+        print('✅ Notifications initialized successfully');
+      } else {
+        print('❌ No authenticated user found for notification initialization');
+      }
+    } catch (e) {
+      print('❌ Error initializing notifications: $e');
     }
   }
 

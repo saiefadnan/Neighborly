@@ -33,42 +33,99 @@ class PushNotificationService {
     _onMessageReceived = onMessageReceived;
     _onMessageOpenedApp = onMessageOpenedApp;
 
-    // Request permission
-    await _requestPermission();
+    debugPrint('Initializing push notifications...');
 
-    // Initialize local notifications
+    // Initialize local notifications first
     await _initializeLocalNotifications();
 
-    // Get FCM token
-    await _getFCMToken();
+    // Request permission
+    bool permissionGranted = await _requestPermission();
 
-    // Configure message handlers
+    if (permissionGranted) {
+      debugPrint('Permissions granted, getting FCM token...');
+      // Get FCM token only if permission is granted
+      await _getFCMToken();
+    } else {
+      debugPrint('Notification permissions not granted, skipping FCM token');
+    }
+
+    // Configure message handlers regardless of permission status
     _configureMessageHandlers();
 
     debugPrint('Push notifications initialized successfully');
   }
 
   // Request notification permissions
-  static Future<void> _requestPermission() async {
-    // Request Firebase Messaging permission
-    NotificationSettings settings = await _messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
-    );
+  static Future<bool> _requestPermission() async {
+    try {
+      debugPrint('Requesting notification permissions...');
 
-    // Request system notification permission
-    if (await Permission.notification.isDenied) {
-      await Permission.notification.request();
+      // Request Firebase Messaging permission
+      NotificationSettings settings = await _messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+
+      debugPrint(
+        'Firebase Messaging permission status: ${settings.authorizationStatus}',
+      );
+
+      // Request system notification permission (Android)
+      PermissionStatus permissionStatus = await Permission.notification.status;
+      debugPrint('System notification permission status: $permissionStatus');
+
+      if (permissionStatus.isDenied) {
+        debugPrint('Requesting system notification permission...');
+        permissionStatus = await Permission.notification.request();
+        debugPrint(
+          'System notification permission after request: $permissionStatus',
+        );
+      }
+
+      bool isGranted =
+          settings.authorizationStatus == AuthorizationStatus.authorized &&
+          permissionStatus.isGranted;
+
+      debugPrint('Final permission status - Granted: $isGranted');
+      return isGranted;
+    } catch (e) {
+      debugPrint('Error requesting permissions: $e');
+      return false;
     }
+  }
 
-    debugPrint(
-      'Notification permission status: ${settings.authorizationStatus}',
-    );
+  // Manual permission request (can be called from UI)
+  static Future<bool> requestNotificationPermission() async {
+    debugPrint('Manual notification permission request initiated');
+    return await _requestPermission();
+  }
+
+  // Check current permission status
+  static Future<bool> isNotificationPermissionGranted() async {
+    try {
+      NotificationSettings settings =
+          await _messaging.getNotificationSettings();
+      PermissionStatus systemPermission = await Permission.notification.status;
+
+      bool isGranted =
+          settings.authorizationStatus == AuthorizationStatus.authorized &&
+          systemPermission.isGranted;
+
+      debugPrint('Current notification permission status: $isGranted');
+      debugPrint(
+        'Firebase: ${settings.authorizationStatus}, System: $systemPermission',
+      );
+
+      return isGranted;
+    } catch (e) {
+      debugPrint('Error checking permission status: $e');
+      return false;
+    }
   }
 
   // Initialize local notifications

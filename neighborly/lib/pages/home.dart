@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/app_routes.dart';
+import 'package:neighborly/components/notification_permission_dialog.dart';
+import 'package:neighborly/services/push_notification_service.dart';
 import 'community_list.dart';
 import 'profile.dart';
 import 'chat_screen.dart';
@@ -1650,6 +1652,35 @@ class _HomePageState extends ConsumerState<HomePage>
           },
         ),
         actions: [
+          // Notification permission button (only show if not granted)
+          FutureBuilder<bool>(
+            future: PushNotificationService.isNotificationPermissionGranted(),
+            builder: (context, snapshot) {
+              if (snapshot.data == false) {
+                return Container(
+                  margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(50),
+                    border: Border.all(
+                      color: Colors.orange.withOpacity(0.5),
+                      width: 2,
+                    ),
+                  ),
+                  child: IconButton(
+                    onPressed: () => showNotificationPermissionDialog(context),
+                    icon: const Icon(
+                      Icons.notifications_off,
+                      color: Colors.orange,
+                      size: 20,
+                    ),
+                    tooltip: 'Enable Notifications',
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           // Emergency button
           Container(
             margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),

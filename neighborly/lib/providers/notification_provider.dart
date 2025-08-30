@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:async';
 import '../pages/notification.dart';
 import '../services/user_notification_service.dart';
 
@@ -63,7 +62,6 @@ class NotificationProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  StreamSubscription<QuerySnapshot>? _notificationStream;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Getters
@@ -76,31 +74,54 @@ class NotificationProvider extends ChangeNotifier {
 
   // Combined notifications getter for UI compatibility
   List<NotificationData> get notifications {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final currentUserEmail = currentUser?.email;
+
     // Convert UserNotifications to NotificationData for UI compatibility
     final convertedNotifications =
-        _userNotifications.map((userNotif) {
-          return NotificationData(
-            id: userNotif.id,
-            name: userNotif.helpRequestData?.requesterName ?? 'Unknown User',
-            message: userNotif.message,
-            image: 'assets/images/dummy.png', // Default image
-            urgency: _mapTypeToUrgency(
-              userNotif.type,
-              userNotif.helpRequestData?.urgency,
-            ),
-            type: _mapNotificationType(userNotif.type),
-            timestamp: userNotif.createdAt,
-            location: userNotif.helpRequestData?.location ?? 'Unknown location',
-            isRead: userNotif.isRead,
-            extraData: {
-              'helpRequestId': userNotif.helpRequestId,
-              'requesterUserId': userNotif.helpRequestData?.requesterUserId,
-              'notificationType': userNotif.type,
-              'communityId': userNotif.communityId,
-              'communityName': userNotif.communityName,
-            },
-          );
-        }).toList();
+        _userNotifications
+            .where((userNotif) {
+              // Simple filter: if current user email matches recipient email, filter it out
+              if (currentUserEmail != null) {
+                final recipientEmail = userNotif.recipientEmail;
+
+                // If current user is recipient, it might be their own notification
+                if (recipientEmail == currentUserEmail) {
+                  print(
+                    '🚫 Filtering out notification for current user: ${userNotif.title}',
+                  );
+                  return false;
+                }
+              }
+
+              return true;
+            })
+            .map((userNotif) {
+              return NotificationData(
+                id: userNotif.id,
+                name:
+                    userNotif.helpRequestData?.requesterName ?? 'Unknown User',
+                message: userNotif.message,
+                image: 'assets/images/dummy.png', // Default image
+                urgency: _mapTypeToUrgency(
+                  userNotif.type,
+                  userNotif.helpRequestData?.urgency,
+                ),
+                type: _mapNotificationType(userNotif.type),
+                timestamp: userNotif.createdAt,
+                location:
+                    userNotif.helpRequestData?.location ?? 'Unknown location',
+                isRead: userNotif.isRead,
+                extraData: {
+                  'helpRequestId': userNotif.helpRequestId,
+                  'requesterUserId': userNotif.helpRequestData?.requesterUserId,
+                  'notificationType': userNotif.type,
+                  'communityId': userNotif.communityId,
+                  'communityName': userNotif.communityName,
+                },
+              );
+            })
+            .toList();
 
     // Combine and sort by timestamp
     final allNotifications = [
@@ -109,6 +130,9 @@ class NotificationProvider extends ChangeNotifier {
     ];
     allNotifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
+    print(
+      '📊 Showing ${allNotifications.length} notifications after filtering',
+    );
     return allNotifications;
   }
 
@@ -118,64 +142,32 @@ class NotificationProvider extends ChangeNotifier {
     return legacyUnread + userUnread;
   }
 
-  // Initialize real-time listener
+  // Initialize notifications (using backend API only)
   Future<void> initializeNotifications() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      print('❌ No authenticated user found for notifications');
+      return;
+    }
+
+    print('🔔 Initializing notifications for user: ${user.uid}');
+    print('🔔 User email: ${user.email}');
 
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      // Load initial notifications from backend
+      // Load notifications from backend API (which handles community-based filtering)
+      print('📡 Loading notifications from backend...');
       await loadNotifications();
-
-      // Set up real-time listener
-      _setupRealtimeListener(user.uid);
+      print('✅ Notifications initialized successfully');
     } catch (e) {
       _error = 'Failed to initialize notifications: $e';
-      debugPrint('Error initializing notifications: $e');
+      print('❌ Error initializing notifications: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
-    }
-  }
-
-  // Set up real-time Firestore listener
-  void _setupRealtimeListener(String userId) {
-    _notificationStream?.cancel();
-
-    _notificationStream = _firestore
-        .collection('user_notifications')
-        .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen(
-          (snapshot) {
-            _handleRealtimeUpdate(snapshot);
-          },
-          onError: (error) {
-            _error = 'Real-time listener error: $error';
-            debugPrint('Firestore listener error: $error');
-            notifyListeners();
-          },
-        );
-  }
-
-  // Handle real-time updates from Firestore
-  void _handleRealtimeUpdate(QuerySnapshot snapshot) {
-    try {
-      final notifications =
-          snapshot.docs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            return UserNotification.fromJson({...data, 'id': doc.id});
-          }).toList();
-
-      _userNotifications = notifications;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error handling real-time update: $e');
     }
   }
 
@@ -186,11 +178,19 @@ class NotificationProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
+      print('📡 Fetching notifications from backend API...');
       _userNotifications =
           await UserNotificationService.fetchUserNotifications();
+      print(
+        '✅ Backend API returned ${_userNotifications.length} notifications',
+      );
+
+      for (var notif in _userNotifications) {
+        print('📋 Notification: ${notif.title} - ${notif.message}');
+      }
     } catch (e) {
       _error = 'Failed to load notifications: $e';
-      debugPrint('Error loading notifications: $e');
+      print('❌ Error loading notifications from backend: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -355,13 +355,14 @@ class NotificationProvider extends ChangeNotifier {
 
   // Refresh notifications
   Future<void> refresh() async {
+    print('🔄 Refreshing notifications...');
     await loadNotifications();
+    print('✅ Notifications refresh completed');
   }
 
-  // Dispose method to clean up streams
+  // Dispose method
   @override
   void dispose() {
-    _notificationStream?.cancel();
     super.dispose();
   }
 }

@@ -98,7 +98,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     'Paltan',
     'Uttara',
     'Hazaribagh',
-    'Bashundhara'
+    'Bashundhara',
   ];
 
   void onTapSignup(BuildContext context) async {
@@ -1015,8 +1015,8 @@ class _SignupFormState extends ConsumerState<SignupForm> {
   Widget build(BuildContext context) {
     final asyncAuthUser = ref.watch(authUserProvider);
     return asyncAuthUser.when(
-      data: (user) {
-        if (user == null) {
+      data: (isAuthenticated) {
+        if (!isAuthenticated) {
           return buildSignUpForm(context);
         } else {
           return SizedBox.shrink();

@@ -631,85 +631,93 @@ class _NotificationPageState extends State<NotificationPage>
 
           // Notifications List
           Expanded(
-            child:
-                filteredNotifications.isEmpty
-                    ? _buildEmptyState(_selectedFilter)
-                    : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      itemCount: filteredNotifications.length,
-                      itemBuilder: (context, index) {
-                        final notification = filteredNotifications[index];
-                        return NotificationCard(
-                          notification: notification,
-                          onTap: () {
-                            // Mark this notification as read
-                            _markAsRead(notification.id);
-
-                            // Navigate to map with location
-                            if (notification.extraData != null &&
-                                notification.extraData!['coordinates'] !=
-                                    null) {
-                              final coords =
-                                  notification.extraData!['coordinates']
-                                      as Map<String, dynamic>;
-                              final location = LatLng(
-                                coords['lat'].toDouble(),
-                                coords['lng'].toDouble(),
-                              );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                print('🔄 Refreshing notifications...');
+                await notificationProvider.initializeNotifications();
+                print('✅ Notifications refresh completed');
+              },
+              color: const Color(0xFF71BB7B),
+              child:
+                  filteredNotifications.isEmpty
+                      ? _buildEmptyState(_selectedFilter)
+                      : ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        itemCount: filteredNotifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = filteredNotifications[index];
+                          return NotificationCard(
+                            notification: notification,
+                            onTap: () {
+                              // Mark this notification as read
+                              _markAsRead(notification.id);
 
                               // Navigate to map with location
-                              if (widget.onLocationNavigate != null) {
-                                widget.onLocationNavigate!(
-                                  location,
-                                  notification.name,
+                              if (notification.extraData != null &&
+                                  notification.extraData!['coordinates'] !=
+                                      null) {
+                                final coords =
+                                    notification.extraData!['coordinates']
+                                        as Map<String, dynamic>;
+                                final location = LatLng(
+                                  coords['lat'].toDouble(),
+                                  coords['lng'].toDouble(),
                                 );
+
+                                // Navigate to map with location
+                                if (widget.onLocationNavigate != null) {
+                                  widget.onLocationNavigate!(
+                                    location,
+                                    notification.name,
+                                  );
+                                } else {
+                                  // Fallback to just navigate to map tab
+                                  widget.onNavigate?.call(1);
+                                }
                               } else {
                                 // Fallback to just navigate to map tab
                                 widget.onNavigate?.call(1);
                               }
-                            } else {
-                              // Fallback to just navigate to map tab
-                              widget.onNavigate?.call(1);
-                            }
 
-                            // Show subtle feedback
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.map_outlined,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        'Opening ${notification.name}\'s location on map',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
+                              // Show subtle feedback
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.map_outlined,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Opening ${notification.name}\'s location on map',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                                  backgroundColor: _getNotificationColor(
+                                    notification.urgency,
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: const EdgeInsets.all(16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
-                                backgroundColor: _getNotificationColor(
-                                  notification.urgency,
-                                ),
-                                duration: const Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                                margin: const EdgeInsets.all(16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+            ),
           ),
         ],
       ),

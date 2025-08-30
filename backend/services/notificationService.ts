@@ -411,10 +411,84 @@ class NotificationService {
     await notificationRef.set(notification);
   }
 
+  // Get notifications for a user by email - SIMPLIFIED: Just fetch all from user's communities
+  async getUserNotificationsByEmail(userEmail: string, limit: number = 50): Promise<UserNotification[]> {
+    try {
+      console.log(`🔍 Getting all notifications from communities for user: ${userEmail}`);
+      
+      // First get the user's communities
+      const userCommunities = await this.getUserCommunities(userEmail);
+      
+      if (userCommunities.length === 0) {
+        console.log(`❌ No communities found for user: ${userEmail}`);
+        return [];
+      }
+      
+      console.log(`✅ User ${userEmail} is in communities:`, userCommunities.map(c => c.name));
+      
+      // Get ALL notifications from user's communities - no filtering
+      const allNotifications: UserNotification[] = [];
+      
+      for (const community of userCommunities) {
+        console.log(`📡 Fetching ALL notifications from community: ${community.name}`);
+        
+        let snapshot;
+        try {
+          // Simple query: just get all notifications from this community
+          snapshot = await getDB().collection('user_notifications')
+            .where('communityId', '==', community.id)
+            .orderBy('createdAt', 'desc')
+            .limit(limit)
+            .get();
+        } catch (indexError: any) {
+          console.warn(`Index not available for community ${community.name}, using simple query:`, indexError?.message || 'Unknown error');
+          // Fallback to simple query without ordering
+          snapshot = await getDB().collection('user_notifications')
+            .where('communityId', '==', community.id)
+            .limit(limit)
+            .get();
+        }
+        
+        const communityNotifications = snapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data()
+        } as UserNotification));
+        
+        console.log(`✅ Found ${communityNotifications.length} notifications in community ${community.name}`);
+        allNotifications.push(...communityNotifications);
+      }
+      
+      // Remove duplicates and sort by creation date
+      const uniqueNotifications = allNotifications.filter((notification, index, self) =>
+        index === self.findIndex(n => n.id === notification.id)
+      );
+      
+      // Sort manually by creation date (newest first)
+      uniqueNotifications.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+        const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      // Limit results
+      const finalNotifications = uniqueNotifications.slice(0, limit);
+      
+      console.log(`📊 SIMPLIFIED fetch results for user ${userEmail}:`);
+      console.log(`   Total notifications from communities: ${finalNotifications.length}`);
+      console.log(`   Communities: ${userCommunities.map(c => c.name).join(', ')}`);
+      
+      return finalNotifications;
+      
+    } catch (error) {
+      console.error('❌ Error getting notifications from communities:', error);
+      return [];
+    }
+  }
+
   // Get notifications for a user
   async getUserNotifications(userId: string, limit: number = 50): Promise<UserNotification[]> {
     try {
-      // Try the compound query first
+      // Get all notifications for the user first
       let snapshot;
       try {
         snapshot = await getDB().collection('user_notifications')
@@ -431,10 +505,22 @@ class NotificationService {
           .get();
       }
 
-      const notifications = snapshot.docs.map((doc: any) => ({
+      const allNotifications = snapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       } as UserNotification));
+
+      // Filter out user's own help requests  
+      const notifications = allNotifications.filter((notification: UserNotification) => {
+        // Exclude notifications where the user is the requester (their own help requests)
+        const isOwnRequest = notification.helpRequestData?.requesterUserId === userId;
+        return !isOwnRequest;
+      });
+
+      console.log(`📊 Notification filtering for user ${userId}:`);
+      console.log(`   Total notifications: ${allNotifications.length}`);
+      console.log(`   After filtering own requests: ${notifications.length}`);
+      console.log(`   Filtered out: ${allNotifications.length - notifications.length} own help requests`);
 
       // Sort manually if we used the fallback query
       if (notifications.length > 0 && !notifications[0].createdAt) {
@@ -465,6 +551,31 @@ class NotificationService {
     } catch (error) {
       console.error('Error marking notification as read:', error);
       return { success: false, message: 'Failed to mark notification as read' };
+    }
+  }
+
+  // Mark all notifications as read for a user by email
+  async markAllNotificationsAsReadByEmail(userEmail: string): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log(`Marking all notifications as read for user email: ${userEmail}`);
+      
+      // First get the user document by email
+      const userQuery = await getDB().collection('users').where('email', '==', userEmail).get();
+      
+      if (userQuery.empty) {
+        console.log(`No user found with email: ${userEmail}`);
+        return { success: false, message: 'User not found' };
+      }
+      
+      const userDoc = userQuery.docs[0];
+      const userId = userDoc.id;
+      console.log(`Found user with document ID: ${userId} for email: ${userEmail}`);
+      
+      // Now mark notifications as read using the user document ID
+      return await this.markAllNotificationsAsRead(userId);
+    } catch (error) {
+      console.error('Error marking all notifications as read by email:', error);
+      return { success: false, message: 'Failed to mark notifications as read' };
     }
   }
 
