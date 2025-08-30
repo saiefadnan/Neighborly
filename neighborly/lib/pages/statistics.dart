@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math'; //  for cos and sin functions
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -17,6 +18,7 @@ class StatisticsPage extends StatefulWidget {
 class _StatisticsPageState extends State<StatisticsPage>
     with TickerProviderStateMixin {
   Map<String, int> helpRequestStats = {};
+  Map<String, int> helpedRequestStats = {};
   bool isLoadingStats = true;
   // Declare AnimationControllers for each card
   late AnimationController _breathingController1;
@@ -87,6 +89,30 @@ class _StatisticsPageState extends State<StatisticsPage>
     }
   }
 
+  Future<void> _fetchHelpedRequestStats() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+        final response = await http.get(
+          Uri.parse('${ApiConfig.baseUrl}/api/stats/helped-request-counts'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            setState(() {
+              helpedRequestStats = Map<String, int>.from(data['data']);
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching helped request stats: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -124,6 +150,7 @@ class _StatisticsPageState extends State<StatisticsPage>
     );
 
     _fetchHelpRequestStats();
+    _fetchHelpedRequestStats();
   }
 
   @override
@@ -148,7 +175,7 @@ class _StatisticsPageState extends State<StatisticsPage>
             children: [
               _statCard(
                 iconData: Icons.flash_on_outlined,
-                label: '55',
+                label: '55', // This is hardcoded
                 subLabel: 'Helped\nRequests',
                 gradient: const LinearGradient(
                   colors: [Color(0xFFFF9C64), Color(0xFFFF9C64)],
@@ -693,10 +720,31 @@ class _StatisticsPageState extends State<StatisticsPage>
 
   Widget _contributionsCard() {
     final List<_ContributionData> chartData = [
-      _ContributionData('Groceries', 30, const Color(0xFF4285F4)),
-      _ContributionData('Transport', 8, const Color(0xFF2FEA9B)),
-      _ContributionData('Medical', 10, const Color(0xFFFFB300)),
-      _ContributionData('Other', 7, const Color(0xFFFFE082)),
+      _ContributionData(
+        'Grocery',
+        helpedRequestStats['Grocery'] ?? 0,
+        const Color(0xFF4285F4),
+      ),
+      _ContributionData(
+        'Transport',
+        helpedRequestStats['Transport'] ?? 0,
+        const Color(0xFF2FEA9B),
+      ),
+      _ContributionData(
+        'Medical',
+        helpedRequestStats['Medical'] ?? 0,
+        const Color(0xFFFFB300),
+      ),
+      _ContributionData(
+        'Other',
+        helpedRequestStats['Other'] ?? 0,
+        const Color(0xFFFFE082),
+      ),
+      _ContributionData(
+        'Traffic',
+        helpedRequestStats['Traffic'] ?? 0,
+        const Color(0xFFE74C3C),
+      ),
     ];
 
     // Sort the chartData in ascending order based on the value
@@ -705,7 +753,9 @@ class _StatisticsPageState extends State<StatisticsPage>
     final int total = chartData.fold(0, (sum, item) => sum + item.value);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      height: 320,
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -721,13 +771,11 @@ class _StatisticsPageState extends State<StatisticsPage>
       child: Column(
         children: [
           // Radial Chart Section
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 250,
-                height: 250,
-                child: SfCircularChart(
+          Expanded(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SfCircularChart(
                   margin: EdgeInsets.zero,
                   legend: Legend(isVisible: false),
                   series: <CircularSeries>[
@@ -737,79 +785,125 @@ class _StatisticsPageState extends State<StatisticsPage>
                       yValueMapper: (_ContributionData data, _) => data.value,
                       pointColorMapper:
                           (_ContributionData data, _) => data.color,
-                      maximumValue: total.toDouble(),
-                      radius: '100%',
-                      innerRadius: '30%',
-                      gap: '12%',
+                      maximumValue: total > 0 ? total.toDouble() : 1.0,
+                      radius: '110%',
+                      innerRadius: '17%',
+                      gap: '10%',
                       cornerStyle: CornerStyle.bothCurve,
                       dataLabelSettings: const DataLabelSettings(
                         isVisible: false,
                       ),
+                      // Add data label builder for icons at end of bars
+                      dataLabelMapper:
+                          (_ContributionData data, _) => data.label,
                     ),
                   ],
                 ),
-              ),
-              Text(
-                '$total',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 36,
-                  color: Color(0xFF5B5B7E),
+                // Center text
+                Text(
+                  '$total',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 36,
+                    color: Color(0xFF5B5B7E),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20), // Space between chart and labels
-          // Label Section
-          Row(
-            mainAxisAlignment:
-                MainAxisAlignment.center, // Center labels horizontally
-            children:
-                chartData.map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: item.color,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: item.color.withOpacity(0.4),
-                                blurRadius: 8,
-                                spreadRadius: 3,
-                                offset: const Offset(0, 0),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          item.label,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF5B5B7E),
-                          ),
-                        ),
-                        Text(
-                          '${item.value}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: item.color,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                // Custom positioned icons at the end of each bar
+                ..._buildRadialIcons(chartData, total),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  // Add this new method to build icons at the end of radial bars
+  List<Widget> _buildRadialIcons(List<_ContributionData> chartData, int total) {
+    final Map<String, IconData> helpTypeIcons = {
+      'Grocery': Icons.shopping_cart,
+      'Transport': Icons.directions_car,
+      'Medical': Icons.local_hospital,
+      'Other': Icons.help_outline,
+      'Traffic': Icons.traffic,
+    };
+
+    List<Widget> iconWidgets = [];
+    double outerRadius =
+        160; // Outer radius of the chart (distance from center to outer edge)
+    double innerRadius =
+        50; // Inner radius of the chart (distance from center to the start of the bar)
+
+    // Place the icons inside the bars (between inner and outer radius)
+    double iconRadius =
+        (innerRadius + outerRadius) / 2; // Middle of the bar thickness
+    double center = 160; // Center of the chart widget (height/width/2)
+
+    double startAngle =
+        -135; // Start angle for the radial chart (3/4 circle starting from top left)
+    double totalAngle =
+        270; // Total sweep angle of the radial chart (3/4 of the circle)
+
+    double currentAngle = startAngle;
+
+    for (int i = 0; i < chartData.length; i++) {
+      final data = chartData[i];
+      final value = data.value;
+      final color = data.color;
+
+      if (value <= 0 || total == 0) continue;
+
+      // Calculate the sweep for this bar based on its value
+      double sweep = (value / total) * totalAngle;
+
+      // Calculate the angle at the start of this bar (in degrees)
+      double iconAngle =
+          currentAngle +
+          (sweep / 2); // Place the icon in the middle of the bar's arc
+
+      // Convert the angle to radians for trigonometric calculations
+      double radians = iconAngle * pi / 180;
+
+      // Calculate the position for the icon (at the middle of the arc inside the radial bar)
+      double x = iconRadius * cos(radians); // Horizontal position
+      double y = iconRadius * sin(radians); // Vertical position
+
+      // Add the icon as a rotating label
+      iconWidgets.add(
+        Positioned(
+          left: center + x - 12, // Adjust the position to center the icon
+          top: center + y - 12, // Adjust the position to center the icon
+          child: Transform.rotate(
+            angle: radians, // Rotate the icon along the angle of the bar
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Icon(
+                helpTypeIcons[data.label] ?? Icons.help_outline,
+                size: 14,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Move to the next bar's start angle
+      currentAngle += sweep; // Update the starting angle for the next bar
+    }
+
+    return iconWidgets;
   }
 }
 
