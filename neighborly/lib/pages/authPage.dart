@@ -10,14 +10,13 @@ import 'package:neighborly/functions/auth_user.dart';
 import 'package:neighborly/models/user.dart';
 
 final pageNumberProvider = StateProvider<int>((ref) => 0);
-final authUserProvider = AsyncNotifierProvider<AuthUser, bool>(AuthUser.new);
+final authUserProvider = AsyncNotifierProvider<AuthUser, User?>(AuthUser.new);
 
 // Simple global access to current user - use this anywhere in your app!
 final currentUserProvider = Provider<User?>((ref) {
-  // Watch the auth state to trigger rebuilds
-  ref.watch(authUserProvider);
-  final authUser = ref.watch(authUserProvider.notifier);
-  return authUser.currentUser;
+  // Watch the auth state to get the user directly
+  final authState = ref.watch(authUserProvider);
+  return authState.value;
 });
 
 class AuthPage extends ConsumerStatefulWidget {

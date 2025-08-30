@@ -8,6 +8,7 @@ import 'package:neighborly/firebase_options.dart';
 import 'package:neighborly/providers/notification_provider.dart';
 import 'package:neighborly/providers/help_request_provider.dart';
 import 'package:neighborly/providers/community_provider.dart';
+import 'package:neighborly/services/push_notification_service.dart';
 import 'package:provider/provider.dart' as provider;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,14 +24,30 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   print("✅ Firebase initialized!");
+
+  // Initialize push notifications
+  await PushNotificationService.initialize(
+    onMessageReceived: (data) {
+      print("📱 Foreground notification received: $data");
+      // Handle foreground notification
+    },
+    onMessageOpenedApp: (data) {
+      print("📱 App opened from notification: $data");
+      // Handle notification tap
+    },
+  );
+  print("✅ Push notifications initialized!");
+
   // Create providers
   final helpRequestProvider = HelpRequestProvider();
   helpRequestProvider.initializeSampleData(); // Initialize with sample data
 
+  final notificationProvider = NotificationProvider();
+
   runApp(
     provider.MultiProvider(
       providers: [
-        provider.ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        provider.ChangeNotifierProvider.value(value: notificationProvider),
         provider.ChangeNotifierProvider.value(value: helpRequestProvider),
         provider.ChangeNotifierProvider(create: (_) => CommunityProvider()),
       ],

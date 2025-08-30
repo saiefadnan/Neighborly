@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import notificationService from '../services/notificationService';
 
 // Create a new help request
 export const createHelpRequest = async (c: Context) => {
@@ -18,7 +19,12 @@ export const createHelpRequest = async (c: Context) => {
     
     // Get user info from Firebase Auth
     const userRecord = await getAuth().getUser(userId);
+    const userEmail = userRecord.email;
     const username = userRecord.displayName || userRecord.email?.split('@')[0] || 'Anonymous User';
+    
+    if (!userEmail) {
+      return c.json({ success: false, message: 'User email not found' }, 400);
+    }
     
     const requestData = await c.req.json();
     const { 
@@ -46,6 +52,7 @@ export const createHelpRequest = async (c: Context) => {
     const helpRequest = {
       id: helpRequestId,
       userId: userId,
+      userEmail: userEmail,
       username: username,
       type,
       title,
@@ -65,11 +72,16 @@ export const createHelpRequest = async (c: Context) => {
 
     await helpRequestRef.set(helpRequest);
 
+    // Create notifications for community members
+    const notificationResult = await notificationService.createHelpRequestNotifications(helpRequest);
+    console.log('Notification result:', notificationResult);
+
     return c.json({ 
       success: true, 
       message: 'Help request created successfully',
       requestId: helpRequestId,
-      data: helpRequest
+      data: helpRequest,
+      notifications: notificationResult
     }, 201);
 
   } catch (error) {
@@ -221,10 +233,15 @@ export const respondToHelpRequest = async (c: Context) => {
 
     await responseRef.set(responseData);
 
+    // Create notification for the help request owner
+    const notificationResult = await notificationService.createHelpResponseNotification(requestId, responseData);
+    console.log('Response notification result:', notificationResult);
+
     return c.json({ 
       success: true, 
       message: 'Response submitted successfully',
-      responseId: responseRef.id
+      responseId: responseRef.id,
+      notifications: notificationResult
     });
 
   } catch (error) {
@@ -443,9 +460,21 @@ else if (status === 'cancelled') {
 
     await helpRequestRef.update(updateData);
 
+    // Get user info for notification
+    const userRecord = await getAuth().getUser(userId);
+    
+    // Create status update notifications
+    const notificationResult = await notificationService.createHelpStatusNotification(
+      requestId, 
+      status, 
+      userRecord.displayName || userRecord.email?.split('@')[0] || 'Someone'
+    );
+    console.log('Status notification result:', notificationResult);
+
     return c.json({ 
       success: true, 
-      message: `Help request status updated to ${status}` 
+      message: `Help request status updated to ${status}`,
+      notifications: notificationResult
     });
 
   } catch (error) {

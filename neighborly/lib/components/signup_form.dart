@@ -1045,8 +1045,8 @@ class _SignupFormState extends ConsumerState<SignupForm> {
   Widget build(BuildContext context) {
     final asyncAuthUser = ref.watch(authUserProvider);
     return asyncAuthUser.when(
-      data: (isAuthenticated) {
-        if (!isAuthenticated) {
+      data: (user) {
+        if (user == null) {
           return buildSignUpForm(context);
         } else {
           return SizedBox.shrink();

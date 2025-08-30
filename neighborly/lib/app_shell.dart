@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:neighborly/pages/home.dart';
 import 'package:neighborly/pages/mapHomePage.dart';
 import 'package:neighborly/pages/notification.dart';
 import 'package:neighborly/pages/help_list.dart';
 import 'package:neighborly/pages/forum.dart';
+import 'package:neighborly/providers/notification_provider.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -29,6 +32,20 @@ class _AppShellState extends State<AppShell> {
     Icons.groups,
     Icons.notifications_none,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeNotifications();
+  }
+
+  Future<void> _initializeNotifications() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final notificationProvider = context.read<NotificationProvider>();
+      await notificationProvider.initializeNotifications();
+    }
+  }
 
   void _onTap(int index) {
     setState(() {

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 import '../pages/notification.dart';
+import '../services/user_notification_service.dart';
 
 class NotificationProvider extends ChangeNotifier {
-  List<NotificationData> _notifications = [
+  // Legacy notifications for backward compatibility
+  List<NotificationData> _legacyNotifications = [
     NotificationData(
       id: '1',
       name: 'Jack Conniler',
@@ -51,79 +56,224 @@ class NotificationProvider extends ChangeNotifier {
         'helpType': 'Grocery',
       },
     ),
-    NotificationData(
-      id: '4',
-      name: 'Alice Johnson',
-      message:
-          'Traffic jam reported on main road. Alternative routes suggested.',
-      image: 'assets/images/Image1.jpg',
-      urgency: 'normal',
-      type: 'traffic_update',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      location: 'Dhanmondi 27, Dhaka',
-      extraData: {
-        'coordinates': {'lat': 23.7461, 'lng': 90.3742},
-        'phone': '+880 1444-555666',
-        'helpType': 'Traffic Update',
-      },
-    ),
-    NotificationData(
-      id: '5',
-      name: 'Bob Smith',
-      message:
-          'Lost pet cat named Sania. Last seen near the park. Please help find her.',
-      image: 'assets/images/Image2.jpg',
-      urgency: 'urgent',
-      type: 'lost_pet',
-      timestamp: DateTime.now().subtract(const Duration(hours: 3)),
-      location: 'Wari, Dhaka',
-      extraData: {
-        'coordinates': {'lat': 23.7183, 'lng': 90.4206},
-        'phone': '+880 1333-444555',
-        'helpType': 'Lost Item/Pet',
-      },
-    ),
-    NotificationData(
-      id: '6',
-      name: 'Charlie Davis',
-      message:
-          'Community meeting scheduled for tomorrow evening. All neighbors welcome.',
-      image: 'assets/images/Image3.jpg',
-      urgency: 'normal',
-      type: 'community',
-      timestamp: DateTime.now().subtract(const Duration(hours: 5)),
-      location: 'Community Center, Dhanmondi',
-      extraData: {
-        'coordinates': {'lat': 23.7461, 'lng': 90.3742},
-        'phone': '+880 1222-333444',
-        'helpType': 'General',
-      },
-    ),
-    NotificationData(
-      id: '7',
-      name: 'Dana White',
-      message:
-          'Need help moving furniture to 4th floor. Willing to provide refreshments.',
-      image: 'assets/images/Image1.jpg',
-      urgency: 'normal',
-      type: 'help_request',
-      timestamp: DateTime.now().subtract(const Duration(days: 1)),
-      location: 'Mirpur 10, Dhaka',
-      extraData: {
-        'coordinates': {'lat': 23.8223, 'lng': 90.3654},
-        'phone': '+880 1111-222333',
-        'helpType': 'Shifting Furniture',
-      },
-    ),
   ];
 
-  List<NotificationData> get notifications => List.unmodifiable(_notifications);
+  // New backend-integrated notifications
+  List<UserNotification> _userNotifications = [];
+  bool _isLoading = false;
+  String? _error;
 
-  void addNotification(NotificationData notification) {
-    _notifications.insert(0, notification); // Add to the beginning
+  StreamSubscription<QuerySnapshot>? _notificationStream;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Getters
+  List<NotificationData> get legacyNotifications =>
+      List.unmodifiable(_legacyNotifications);
+  List<UserNotification> get userNotifications =>
+      List.unmodifiable(_userNotifications);
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+
+  // Combined notifications getter for UI compatibility
+  List<NotificationData> get notifications {
+    // Convert UserNotifications to NotificationData for UI compatibility
+    final convertedNotifications =
+        _userNotifications.map((userNotif) {
+          return NotificationData(
+            id: userNotif.id,
+            name: userNotif.helpRequestData?.requesterName ?? 'Unknown User',
+            message: userNotif.message,
+            image: 'assets/images/dummy.png', // Default image
+            urgency: _mapTypeToUrgency(
+              userNotif.type,
+              userNotif.helpRequestData?.urgency,
+            ),
+            type: _mapNotificationType(userNotif.type),
+            timestamp: userNotif.createdAt,
+            location: userNotif.helpRequestData?.location ?? 'Unknown location',
+            isRead: userNotif.isRead,
+            extraData: {
+              'helpRequestId': userNotif.helpRequestId,
+              'requesterUserId': userNotif.helpRequestData?.requesterUserId,
+              'notificationType': userNotif.type,
+              'communityId': userNotif.communityId,
+              'communityName': userNotif.communityName,
+            },
+          );
+        }).toList();
+
+    // Combine and sort by timestamp
+    final allNotifications = [
+      ..._legacyNotifications,
+      ...convertedNotifications,
+    ];
+    allNotifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    return allNotifications;
+  }
+
+  int get unreadCount {
+    final legacyUnread = _legacyNotifications.where((n) => !n.isRead).length;
+    final userUnread = _userNotifications.where((n) => !n.isRead).length;
+    return legacyUnread + userUnread;
+  }
+
+  // Initialize real-time listener
+  Future<void> initializeNotifications() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Load initial notifications from backend
+      await loadNotifications();
+
+      // Set up real-time listener
+      _setupRealtimeListener(user.uid);
+    } catch (e) {
+      _error = 'Failed to initialize notifications: $e';
+      debugPrint('Error initializing notifications: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Set up real-time Firestore listener
+  void _setupRealtimeListener(String userId) {
+    _notificationStream?.cancel();
+
+    _notificationStream = _firestore
+        .collection('user_notifications')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            _handleRealtimeUpdate(snapshot);
+          },
+          onError: (error) {
+            _error = 'Real-time listener error: $error';
+            debugPrint('Firestore listener error: $error');
+            notifyListeners();
+          },
+        );
+  }
+
+  // Handle real-time updates from Firestore
+  void _handleRealtimeUpdate(QuerySnapshot snapshot) {
+    try {
+      final notifications =
+          snapshot.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return UserNotification.fromJson({...data, 'id': doc.id});
+          }).toList();
+
+      _userNotifications = notifications;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error handling real-time update: $e');
+    }
+  }
+
+  // Load notifications from backend
+  Future<void> loadNotifications() async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      _userNotifications =
+          await UserNotificationService.fetchUserNotifications();
+    } catch (e) {
+      _error = 'Failed to load notifications: $e';
+      debugPrint('Error loading notifications: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Mark notification as read
+  Future<void> markAsRead(String notificationId) async {
+    try {
+      // Check if it's a legacy notification
+      final legacyIndex = _legacyNotifications.indexWhere(
+        (n) => n.id == notificationId,
+      );
+      if (legacyIndex != -1) {
+        _legacyNotifications[legacyIndex] = _legacyNotifications[legacyIndex]
+            .copyWith(isRead: true);
+        notifyListeners();
+        return;
+      }
+
+      // Handle user notification
+      final userIndex = _userNotifications.indexWhere(
+        (n) => n.id == notificationId,
+      );
+      if (userIndex != -1 && !_userNotifications[userIndex].isRead) {
+        // Optimistically update UI
+        _userNotifications[userIndex] = _userNotifications[userIndex].copyWith(
+          isRead: true,
+        );
+        notifyListeners();
+
+        // Update backend
+        await UserNotificationService.markNotificationAsRead(notificationId);
+      }
+    } catch (e) {
+      debugPrint('Error marking notification as read: $e');
+      // Revert optimistic update on error
+      await loadNotifications();
+    }
+  }
+
+  // Mark all notifications as read
+  Future<void> markAllAsRead() async {
+    try {
+      // Mark legacy notifications as read
+      _legacyNotifications =
+          _legacyNotifications
+              .map((notification) => notification.copyWith(isRead: true))
+              .toList();
+
+      // Optimistically update user notifications
+      _userNotifications =
+          _userNotifications
+              .map((notification) => notification.copyWith(isRead: true))
+              .toList();
+
+      notifyListeners();
+
+      // Update backend for user notifications
+      await UserNotificationService.markAllNotificationsAsRead();
+    } catch (e) {
+      debugPrint('Error marking all notifications as read: $e');
+      // Revert optimistic update on error
+      await loadNotifications();
+    }
+  }
+
+  // Undo mark all as read (legacy functionality)
+  void undoMarkAllAsRead() {
+    _legacyNotifications =
+        _legacyNotifications
+            .map((notification) => notification.copyWith(isRead: false))
+            .toList();
     notifyListeners();
   }
 
+  // Add legacy notification (for backward compatibility)
+  void addNotification(NotificationData notification) {
+    _legacyNotifications.insert(0, notification);
+    notifyListeners();
+  }
+
+  // Add help request notification (legacy method)
   void addHelpRequestNotification({
     required String name,
     required String message,
@@ -156,36 +306,62 @@ class NotificationProvider extends ChangeNotifier {
     addNotification(notification);
   }
 
-  void markAsRead(String notificationId) {
-    final index = _notifications.indexWhere((n) => n.id == notificationId);
-    if (index != -1) {
-      _notifications[index] = _notifications[index].copyWith(isRead: true);
-      notifyListeners();
+  // Get filtered notifications
+  List<NotificationData> getFilteredNotifications(String filter) {
+    final allNotifications = notifications;
+    if (filter == 'All') return allNotifications;
+    return allNotifications.where((notification) {
+      return notification.urgency.toLowerCase() == filter.toLowerCase();
+    }).toList();
+  }
+
+  // Helper method to map type and urgency to UI urgency
+  String _mapTypeToUrgency(String type, String? helpUrgency) {
+    // For help request notifications, use the help request urgency
+    if (type == 'help_request' && helpUrgency != null) {
+      switch (helpUrgency.toLowerCase()) {
+        case 'emergency':
+          return 'emergency';
+        case 'urgent':
+          return 'urgent';
+        case 'general':
+        default:
+          return 'normal';
+      }
+    }
+
+    // For other notification types, map based on type
+    switch (type) {
+      case 'help_response':
+        return 'urgent';
+      case 'help_status_update':
+        return 'normal';
+      default:
+        return 'normal';
     }
   }
 
-  void markAllAsRead() {
-    _notifications =
-        _notifications
-            .map((notification) => notification.copyWith(isRead: true))
-            .toList();
-    notifyListeners();
+  // Helper method to map notification type
+  String _mapNotificationType(String type) {
+    switch (type) {
+      case 'help_request_created':
+      case 'help_request_response':
+      case 'help_request_status':
+        return 'help_request';
+      default:
+        return 'general';
+    }
   }
 
-  void undoMarkAllAsRead() {
-    _notifications =
-        _notifications
-            .map((notification) => notification.copyWith(isRead: false))
-            .toList();
-    notifyListeners();
+  // Refresh notifications
+  Future<void> refresh() async {
+    await loadNotifications();
   }
 
-  int get unreadCount => _notifications.where((n) => !n.isRead).length;
-
-  List<NotificationData> getFilteredNotifications(String filter) {
-    if (filter == 'All') return _notifications;
-    return _notifications.where((notification) {
-      return notification.urgency.toLowerCase() == filter.toLowerCase();
-    }).toList();
+  // Dispose method to clean up streams
+  @override
+  void dispose() {
+    _notificationStream?.cancel();
+    super.dispose();
   }
 }

@@ -7,6 +7,8 @@ import statRouter from './routes/statRoute';
 import activTRouter from './routes/activTRoute';
 import communityRouter from './routes/communityRoutes';
 import blockRoutes from './routes/blockRoutes';
+import notificationRouter from './routes/notificationRoute';
+import { fcmRouter } from './routes/fcmRoute';
 import { initializeApp, cert} from 'firebase-admin/app';
 import { readFileSync } from 'fs'
 import { join } from 'path';
@@ -30,6 +32,8 @@ app.route('/api/stats', statRouter);
 app.route('/api/activeT', activTRouter);
 app.route('/api/communities', communityRouter);
 app.route('/api', blockRoutes);
+app.route('/api', notificationRouter);
+app.route('/api/fcm', fcmRouter);
 Bun.serve({
   fetch: app.fetch,
   port: 4000,

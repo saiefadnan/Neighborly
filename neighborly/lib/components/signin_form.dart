@@ -370,8 +370,8 @@ class _SigninFormState extends ConsumerState<SigninForm> {
   Widget build(BuildContext context) {
     final asyncAuthUser = ref.watch(authUserProvider);
     return asyncAuthUser.when(
-      data: (isAuthenticated) {
-        if (!isAuthenticated) {
+      data: (user) {
+        if (user == null) {
           return buildSignInForm(context);
         } else {
           return SizedBox.shrink();
