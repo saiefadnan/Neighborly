@@ -157,30 +157,38 @@ class NotificationProvider extends ChangeNotifier {
     print('🔔 Initializing notifications for user: ${user.uid}');
     print('🔔 User email: ${user.email}');
 
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      // Load notifications from backend API (which handles community-based filtering)
-      print('📡 Loading notifications from backend...');
-      await loadNotifications();
-      print('✅ Notifications initialized successfully');
-    } catch (e) {
-      _error = 'Failed to initialize notifications: $e';
-      print('❌ Error initializing notifications: $e');
-    } finally {
-      _isLoading = false;
+    // Defer state changes to after build
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _isLoading = true;
+      _error = null;
       notifyListeners();
-    }
+
+      try {
+        // Load notifications from backend API (which handles community-based filtering)
+        print('📡 Loading notifications from backend...');
+        await loadNotifications();
+        print('✅ Notifications initialized successfully');
+      } catch (e) {
+        _error = 'Failed to initialize notifications: $e';
+        print('❌ Error initializing notifications: $e');
+      } finally {
+        _isLoading = false;
+        notifyListeners();
+      }
+    });
   }
 
   // Load notifications from backend
   Future<void> loadNotifications() async {
     try {
+      // Don't call notifyListeners during synchronous operations
       _isLoading = true;
       _error = null;
-      notifyListeners();
+
+      // Defer UI update to after current build cycle
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
 
       print('📡 Fetching notifications from backend API...');
       _userNotifications =
@@ -197,7 +205,10 @@ class NotificationProvider extends ChangeNotifier {
       print('❌ Error loading notifications from backend: $e');
     } finally {
       _isLoading = false;
-      notifyListeners();
+      // Defer final UI update
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
     }
   }
 
@@ -211,7 +222,10 @@ class NotificationProvider extends ChangeNotifier {
       if (legacyIndex != -1) {
         _legacyNotifications[legacyIndex] = _legacyNotifications[legacyIndex]
             .copyWith(isRead: true);
-        notifyListeners();
+        // Defer UI update
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          notifyListeners();
+        });
         return;
       }
 
@@ -224,7 +238,10 @@ class NotificationProvider extends ChangeNotifier {
         _userNotifications[userIndex] = _userNotifications[userIndex].copyWith(
           isRead: true,
         );
-        notifyListeners();
+        // Defer UI update
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          notifyListeners();
+        });
 
         // Update backend
         await UserNotificationService.markNotificationAsRead(notificationId);
@@ -251,7 +268,10 @@ class NotificationProvider extends ChangeNotifier {
               .map((notification) => notification.copyWith(isRead: true))
               .toList();
 
-      notifyListeners();
+      // Defer UI update
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
 
       // Update backend for user notifications
       await UserNotificationService.markAllNotificationsAsRead();
@@ -268,13 +288,19 @@ class NotificationProvider extends ChangeNotifier {
         _legacyNotifications
             .map((notification) => notification.copyWith(isRead: false))
             .toList();
-    notifyListeners();
+    // Defer UI update
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notifyListeners();
+    });
   }
 
   // Add legacy notification (for backward compatibility)
   void addNotification(NotificationData notification) {
     _legacyNotifications.insert(0, notification);
-    notifyListeners();
+    // Defer UI update
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notifyListeners();
+    });
   }
 
   // Add help request notification (legacy method)
