@@ -75,20 +75,24 @@ class NotificationProvider extends ChangeNotifier {
   // Combined notifications getter for UI compatibility
   List<NotificationData> get notifications {
     final currentUser = FirebaseAuth.instance.currentUser;
-    final currentUserEmail = currentUser?.email;
+    final currentUserUid = currentUser?.uid;
 
     // Convert UserNotifications to NotificationData for UI compatibility
     final convertedNotifications =
         _userNotifications
             .where((userNotif) {
-              // Simple filter: if current user email matches recipient email, filter it out
-              if (currentUserEmail != null) {
-                final recipientEmail = userNotif.recipientEmail;
+              // Filter out notifications where current user is the requester
+              if (currentUserUid != null) {
+                final requesterUserId =
+                    userNotif.helpRequestData?.requesterUserId;
 
-                // If current user is recipient, it might be their own notification
-                if (recipientEmail == currentUserEmail) {
+                // If current user is the requester, filter it out
+                if (requesterUserId == currentUserUid) {
                   print(
-                    '🚫 Filtering out notification for current user: ${userNotif.title}',
+                    '🚫 Filtering out own help request notification: ${userNotif.title}',
+                  );
+                  print(
+                    '🚫 Current user UID: $currentUserUid, Requester UID: $requesterUserId',
                   );
                   return false;
                 }
