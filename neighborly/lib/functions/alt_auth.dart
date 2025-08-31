@@ -5,6 +5,8 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:neighborly/components/snackbar.dart';
 
+bool socialAuthUsed = false;
+
 Future<void> postUserToFirestore({
   required String username,
   required String email,
@@ -68,6 +70,7 @@ Future<UserCredential?> signInWithCredential(
         preferredCommunity: [],
       );
     }
+    socialAuthUsed = true;
     return userCred;
   } on FirebaseAuthException catch (e) {
     if (e.code == 'account-exists-with-different-credential') {
@@ -76,7 +79,7 @@ Future<UserCredential?> signInWithCredential(
       final googleUserCredential = await signInWithGoogle(context);
 
       await googleUserCredential!.user!.linkWithCredential(pendingCredential);
-
+      socialAuthUsed = true;
       return googleUserCredential;
     }
     if (context.mounted) {
