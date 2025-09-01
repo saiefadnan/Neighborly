@@ -24,7 +24,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   late Animation<Offset> _headerSlideAnimation;
 
   // Mock notification count - in real app this would come from Firebase
-  int _notificationCount = 3;
+  final int _notificationCount = 3;
 
   @override
   void initState() {

@@ -63,7 +63,7 @@ Future<Map<String, dynamic>> getUploadSignature() async {
     final url = Uri.parse(
       '${dotenv.env['BASE_URL']}/api/forum/upload/signature',
     );
-    final res = await http.get(url);
+    final res = await http.get(url).timeout(Duration(seconds: 8));
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       return data;

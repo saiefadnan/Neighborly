@@ -143,8 +143,9 @@ class _SchedulePageState extends State<SchedulePage> {
                         final title = titleController.text.trim();
                         if (title.isEmpty ||
                             selectedTime == null ||
-                            selectedDate == null)
+                            selectedDate == null) {
                           return;
+                        }
                         final dateStr = DateFormat(
                           'yyyy-MM-dd',
                         ).format(selectedDate!);

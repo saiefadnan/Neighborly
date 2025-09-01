@@ -13,7 +13,7 @@ class _TeamPageState extends State<TeamPage> with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+  final String _searchQuery = '';
 
   // Community data - same as AdminCommunityManagementPage
   final List<CommunityAdminData> _communities = [

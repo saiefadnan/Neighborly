@@ -26,6 +26,7 @@ class _PostCardState extends ConsumerState<PostCard> {
   VideoPlayerController? _videoController;
   Future<void>? _initializeVideoPlayerFuture;
   bool liked = false;
+  String userPicUrl = '';
   Future<void> likedByme() async {
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -41,6 +42,20 @@ class _PostCardState extends ConsumerState<PostCard> {
         liked = likeDoc.exists;
       });
     } catch (e) {}
+  }
+
+  Future<void> fetchUserInfo() async {
+    try {
+      final uid = widget.post['authorID'];
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (!mounted) return;
+      setState(() {
+        userPicUrl = userDoc['profilepicurl'] ?? '';
+      });
+    } catch (e) {
+      print("Error fetching user info: $e");
+    }
   }
 
   String _getFormattedTime(String timestamp) {
@@ -119,6 +134,7 @@ class _PostCardState extends ConsumerState<PostCard> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await fetchUserInfo();
       await likedByme();
     });
     if (widget.post['type'] == 'video' && widget.post['mediaUrl'] != null) {
@@ -198,12 +214,65 @@ class _PostCardState extends ConsumerState<PostCard> {
                       ),
                     ),
                     child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/dummy.png',
-                        width: 44,
-                        height: 44,
-                        fit: BoxFit.cover,
-                      ),
+                      child:
+                          userPicUrl.isEmpty
+                              ? Image.asset(
+                                'assets/images/anonymous.jpg',
+                                width: 44,
+                                height: 44,
+                                fit: BoxFit.cover,
+                              )
+                              : Image.network(
+                                userPicUrl,
+                                width: 44,
+                                height: 44,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (
+                                  context,
+                                  child,
+                                  loadingProgress,
+                                ) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        color: const Color(0xFF71BB7B),
+                                        value:
+                                            loadingProgress
+                                                        .expectedTotalBytes !=
+                                                    null
+                                                ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                                : null,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.error,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                     ),
                   ),
                   const SizedBox(width: 16),

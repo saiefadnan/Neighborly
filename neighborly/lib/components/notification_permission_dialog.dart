@@ -3,7 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../services/push_notification_service.dart';
 
 class NotificationPermissionDialog extends StatefulWidget {
-  const NotificationPermissionDialog({Key? key}) : super(key: key);
+  const NotificationPermissionDialog({super.key});
 
   @override
   State<NotificationPermissionDialog> createState() =>

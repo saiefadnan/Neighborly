@@ -337,26 +337,6 @@ class _ForumPageState extends ConsumerState<ForumPage>
                             itemBuilder:
                                 (_, i) => Container(
                                   margin: const EdgeInsets.only(bottom: 8),
-                                  // decoration: BoxDecoration(
-                                  //   color: const Color(
-                                  //     0xFFFAF8F5,
-                                  //   ), // Light cream instead of white
-                                  //   borderRadius: BorderRadius.circular(16),
-                                  //   boxShadow: [
-                                  //     BoxShadow(
-                                  //       color: Colors.black.withOpacity(0.03),
-                                  //       blurRadius: 6,
-                                  //       spreadRadius: 0,
-                                  //       offset: const Offset(0, 1),
-                                  //     ),
-                                  //     BoxShadow(
-                                  //       color: Colors.black.withOpacity(0.02),
-                                  //       blurRadius: 12,
-                                  //       spreadRadius: 0,
-                                  //       offset: const Offset(0, 4),
-                                  //     ),
-                                  //   ],
-                                  // ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(16),
                                     child: PostCard(post: filtered[i]),

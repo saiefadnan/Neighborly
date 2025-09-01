@@ -267,8 +267,9 @@ class _EventPlanState extends ConsumerState<EventPlan>
                                             child,
                                             loadingProgress,
                                           ) {
-                                            if (loadingProgress == null)
+                                            if (loadingProgress == null) {
                                               return child;
+                                            }
                                             return Container(
                                               color: const Color(0xFFFAF8F5),
                                               child: const Center(
