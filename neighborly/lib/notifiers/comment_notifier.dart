@@ -84,11 +84,13 @@ class CommentsNotifier
     final url = Uri.parse('$baseUrl/api/forum/store/comments');
     print(commentData);
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(commentData),
-      );
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(commentData),
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -98,6 +100,7 @@ class CommentsNotifier
         return false;
       }
     } catch (e) {
+      print('Error storing comment: $e');
       await backUpStoreComment(commentData);
       return false;
     }
