@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:io';
 import 'dart:async';
@@ -22,6 +24,10 @@ class AddPostPage extends ConsumerStatefulWidget {
 }
 
 class _AddPostPageState extends ConsumerState<AddPostPage> {
+  bool _shareLocation = false;
+  bool _loadingLocation = false;
+  String? _locationName = '';
+  Position? _currentPosition;
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
   final _linkController = TextEditingController();
@@ -50,6 +56,103 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
         setState(() {}); // triggers LinkPreview update
       }
     });
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _loadingLocation = true;
+    });
+
+    try {
+      bool servicesEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!servicesEnabled) {
+        showSnackBarError(context, "Location services are disabled");
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          showSnackBarError(context, "Location permissions are denied");
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception(
+          'Location permissions are permanently denied, we cannot request permissions.',
+        );
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      ).timeout(const Duration(seconds: 15));
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      ).timeout(const Duration(seconds: 15));
+
+      String locationName = 'Unknown location';
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+
+        String area = '';
+        String city = '';
+
+        // Get the most specific area (neighborhood/district)
+        if (place.subLocality != null && place.subLocality!.isNotEmpty) {
+          area = place.subLocality!;
+        } else if (place.thoroughfare != null &&
+            place.thoroughfare!.isNotEmpty) {
+          area = place.thoroughfare!;
+        } else if (place.subAdministrativeArea != null &&
+            place.subAdministrativeArea!.isNotEmpty) {
+          area = place.subAdministrativeArea!;
+        }
+
+        // Get the city
+        if (place.locality != null && place.locality!.isNotEmpty) {
+          city = place.locality!;
+        } else if (place.administrativeArea != null &&
+            place.administrativeArea!.isNotEmpty) {
+          city = place.administrativeArea!;
+        }
+
+        // Create simple format: "Area, City"
+        if (area.isNotEmpty && city.isNotEmpty) {
+          locationName = '$area, $city';
+        } else if (city.isNotEmpty) {
+          locationName = city;
+        } else if (area.isNotEmpty) {
+          locationName = area;
+        }
+
+        print('Location: $locationName'); // Simple debug log
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _currentPosition = position;
+        _locationName = locationName;
+        _shareLocation =
+            true; // Ensure switch stays on when location is successfully fetched
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _shareLocation = false;
+        });
+        showSnackBarError(context, "Failed to get location: $e");
+      }
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _loadingLocation = false;
+      });
+    }
   }
 
   Future<void> _pickImage() async {
@@ -180,7 +283,20 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
         'timestamp': FieldValue.serverTimestamp(),
         'authorID': FirebaseAuth.instance.currentUser!.uid,
         'author': FirebaseAuth.instance.currentUser!.displayName.toString(),
-        'location': {'latitude': 23.34, 'longitude': 34.56},
+        'location':
+            _shareLocation && _currentPosition != null
+                ? {
+                  'latitude': _currentPosition!.latitude,
+                  'longitude': _currentPosition!.longitude,
+                  'name': _locationName ?? 'Unknown location',
+                  'shared': true,
+                }
+                : {
+                  'latitude': 0.0,
+                  'longitude': 0.0,
+                  'name': null,
+                  'shared': false,
+                },
         'title': title,
         'content': body,
         'type': type,
@@ -1053,6 +1169,233 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
                                       color: Color(0xFF9CA3AF),
                                     ),
                                   ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF71BB7B,
+                                    ).withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.04),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withOpacity(0.1),
+                                      ),
+                                      child: Icon(
+                                        Icons.location_on_rounded,
+                                        color: Colors.blue[600],
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Expanded(
+                                      child: Text(
+                                        "Share Location",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF2C3E50),
+                                        ),
+                                      ),
+                                    ),
+                                    Switch(
+                                      value: _shareLocation,
+                                      onChanged:
+                                          _loadingLocation
+                                              ? null
+                                              : (value) async {
+                                                if (value) {
+                                                  await _getCurrentLocation();
+                                                } else {
+                                                  setState(() {
+                                                    _shareLocation = false;
+                                                    _currentPosition = null;
+                                                    _locationName = null;
+                                                  });
+                                                }
+                                              },
+                                      activeColor: const Color(0xFF71BB7B),
+                                      activeTrackColor: const Color(
+                                        0xFF71BB7B,
+                                      ).withOpacity(0.3),
+                                      inactiveThumbColor: Colors.grey[400],
+                                      inactiveTrackColor: Colors.grey[300],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (_loadingLocation) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFAF8F5),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: const Color(
+                                        0xFF71BB7B,
+                                      ).withOpacity(0.1),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.blue[600]!,
+                                              ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        "Getting your location...",
+                                        style: TextStyle(
+                                          color: Color(0xFF5F6368),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              if (_shareLocation &&
+                                  _currentPosition != null &&
+                                  !_loadingLocation) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.blue.withOpacity(0.2),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        color: Colors.blue[600],
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              "Location will be shared",
+                                              style: TextStyle(
+                                                color: Color(0xFF2C3E50),
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              _locationName ??
+                                                  'Current location',
+                                              style: TextStyle(
+                                                color: Colors.blue[700],
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () async {
+                                          await _getCurrentLocation();
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.refresh_rounded,
+                                            color: Colors.blue[600],
+                                            size: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              if (_shareLocation &&
+                                  _currentPosition == null &&
+                                  !_loadingLocation) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.orange.withOpacity(0.2),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.warning_rounded,
+                                        color: Colors.orange[600],
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Expanded(
+                                        child: Text(
+                                          "Location not available. Please try again.",
+                                          style: TextStyle(
+                                            color: Color(0xFF2C3E50),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 8),
+                              Text(
+                                _shareLocation
+                                    ? "Your posts will be visible to the members from your community."
+                                    : "Enable to share your post only with your community.",
+                                style: const TextStyle(
+                                  color: Color(0xFF5F6368),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
                                 ),
                               ),
                             ],

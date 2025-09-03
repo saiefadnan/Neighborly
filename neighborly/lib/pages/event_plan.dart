@@ -19,23 +19,6 @@ class _EventPlanState extends ConsumerState<EventPlan>
   late Animation<double> _headerSlideAnimation;
   final Set<int> _selectedIndexes = {};
 
-  // Future<void> fetchEvents() async {
-  //   try {
-  //     await FirebaseFirestore.instance.collection('events').get().then((
-  //       QuerySnapshot querySnapshot,
-  //     ) {
-  //       setState(() {
-  //         events =
-  //             querySnapshot.docs
-  //                 .map((doc) => doc.data() as Map<String, dynamic>)
-  //                 .toList();
-  //       });
-  //     });
-  //   } catch (e) {
-  //     print('Error fetching events: $e');
-  //   }
-  // }
-
   @override
   void initState() {
     super.initState();
@@ -114,6 +97,9 @@ class _EventPlanState extends ConsumerState<EventPlan>
               child:
                   events.isEmpty
                       ? ListView(
+                        addAutomaticKeepAlives: false,
+                        addRepaintBoundaries: false,
+                        cacheExtent: 200,
                         physics: const AlwaysScrollableScrollPhysics(),
                         children: [
                           const SizedBox(height: 100),

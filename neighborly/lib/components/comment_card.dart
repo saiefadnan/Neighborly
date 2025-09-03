@@ -1,5 +1,5 @@
 import 'dart:math';
-
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -31,36 +31,47 @@ class _CommentCardState extends ConsumerState<CommentCard> {
   Future<void> likedByme() async {
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
-      final likeDoc =
-          await FirebaseFirestore.instance
-              .collection('posts')
-              .doc(widget.comment['postID'])
-              .collection('comments')
-              .doc(widget.comment['commentID'])
-              .collection('likes')
-              .doc(uid)
-              .get();
-      if (!mounted) return;
+      final likeDoc = await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(widget.comment['postID'])
+          .collection('comments')
+          .doc(widget.comment['commentID'])
+          .collection('likes')
+          .doc(uid)
+          .get()
+          .timeout(Duration(seconds: 10)); // Add timeout
+
+      if (!mounted) return; // Check mounted after async operation
       setState(() {
         liked = likeDoc.exists;
       });
-    } catch (e) {}
+    } catch (e) {
+      print('Error checking like status: $e');
+      // Don't update state if there's an error
+    }
   }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final context = widget.ckey.currentContext;
-      if (context != null) {
-        final box = context.findRenderObject() as RenderBox?;
-        final height = box?.size.height ?? 0;
-        ref.read(boxHeightProvider.notifier).update((state) {
-          return {...state, widget.comment['commentID']: height};
-        });
-        //print('Height for comment ${widget.comment['commentID']}: $height');
+      if (!mounted) return; // Check mounted first
+
+      try {
+        final context = widget.ckey.currentContext;
+        if (context != null && mounted) {
+          final box = context.findRenderObject() as RenderBox?;
+          final height = box?.size.height ?? 0;
+          ref.read(boxHeightProvider.notifier).update((state) {
+            return {...state, widget.comment['commentID']: height};
+          });
+        }
+
+        if (!mounted) return; // Check again before async operation
+        await likedByme();
+      } catch (e) {
+        print('Error in initState callback: $e');
       }
-      await likedByme();
     });
   }
 
@@ -101,11 +112,35 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                     ),
                   ),
                   child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/dummy.png',
+                    child: Image.network(
+                      userUrlCache[widget.comment['authorID']] ??
+                          'assets/images/anonymous.jpg',
                       width: 32,
                       height: 32,
                       fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) {
+                          return child;
+                        }
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value:
+                                loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        (loadingProgress.expectedTotalBytes ??
+                                            1)
+                                    : null,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          'assets/images/anonymous.jpg',
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -227,6 +262,8 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                         );
                       },
                       onTap: (isLiked) async {
+                        if (!mounted) return isLiked; // Check mounted first
+
                         try {
                           final commentRef = FirebaseFirestore.instance
                               .collection('posts')
@@ -235,27 +272,54 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                               .doc(widget.comment['commentID']);
                           final likesRef = commentRef.collection('likes');
                           final uid = FirebaseAuth.instance.currentUser!.uid;
+
                           if (isLiked) {
+                            // Unlike the comment
+                            await Future.wait([
+                              likesRef.doc(uid).delete(),
+                              commentRef.update({
+                                'reacts': FieldValue.increment(-1),
+                              }),
+                            ]).timeout(Duration(seconds: 10)); // Add timeout
+
+                            if (!mounted)
+                              return isLiked; // Check mounted after async operation
                             widget.comment['reacts'] = max(
                               widget.comment['reacts'] - 1,
                               0,
                             );
-                            likesRef.doc(uid).delete();
-                            commentRef.update({
-                              'reacts': FieldValue.increment(-1),
-                            });
                           } else {
+                            // Like the comment
+                            await Future.wait([
+                              likesRef.doc(uid).set({
+                                'likedAt': FieldValue.serverTimestamp(),
+                              }),
+                              commentRef.update({
+                                'reacts': FieldValue.increment(1),
+                              }),
+                            ]).timeout(Duration(seconds: 10)); // Add timeout
+
+                            if (!mounted)
+                              return isLiked; // Check mounted after async operation
                             widget.comment['reacts'] =
                                 widget.comment['reacts'] + 1;
-                            likesRef.doc(uid).set({
-                              'likedAt': FieldValue.serverTimestamp(),
-                            });
-                            commentRef.update({
-                              'reacts': FieldValue.increment(1),
-                            });
                           }
+
                           return !isLiked;
                         } catch (e) {
+                          print('Error toggling like: $e');
+                          if (!mounted) return isLiked;
+
+                          // Show user-friendly error message
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Failed to update like. Please try again.',
+                              ),
+                              backgroundColor: Colors.red[400],
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
                           return isLiked;
                         }
                       },

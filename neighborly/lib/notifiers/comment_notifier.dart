@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:neighborly/notifiers/post_notifier.dart';
+import 'package:neighborly/components/comment_sheet.dart';
 
 final commentsProvider = StateNotifierProvider.family<
   CommentsNotifier,
@@ -24,6 +25,28 @@ class CommentsNotifier
     state = AsyncData(newComments);
   }
 
+  Future<void> fetchUserUrl(List<Map<String, dynamic>> comments) async {
+    try {
+      final authorIds =
+          comments
+              .map((cmnt) => cmnt['authorID'] as String)
+              .where((id) => !userUrlCache.containsKey(id))
+              .toSet();
+      for (var uid in authorIds) {
+        final userDoc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        //if (userDoc.exists) {
+        final userData = userDoc.data();
+        final photoUrl =
+            userData?['profilepicurl'] ?? 'assets/images/anonymous.jpg';
+        userUrlCache[uid] = photoUrl;
+      }
+      //}
+    } catch (e) {
+      print('Error fetching user URL: $e');
+    }
+  }
+
   Future<void> loadComments() async {
     try {
       final querySnapshot =
@@ -35,6 +58,7 @@ class CommentsNotifier
               .get();
       final comments =
           querySnapshot.docs.map((doc) => {...doc.data()}).toList();
+      await fetchUserUrl(comments);
       state = AsyncData(comments);
     } catch (e, st) {
       state = AsyncError(e, st);

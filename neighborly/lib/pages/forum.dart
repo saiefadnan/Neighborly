@@ -331,6 +331,9 @@ class _ForumPageState extends ConsumerState<ForumPage>
                   child:
                       filtered.isNotEmpty
                           ? ListView.builder(
+                            addAutomaticKeepAlives: false,
+                            addRepaintBoundaries: false,
+                            cacheExtent: 200,
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.all(8),
                             itemCount: filtered.length,

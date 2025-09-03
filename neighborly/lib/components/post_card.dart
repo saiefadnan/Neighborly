@@ -1,5 +1,5 @@
 import 'dart:math';
-
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -27,34 +27,52 @@ class _PostCardState extends ConsumerState<PostCard> {
   Future<void>? _initializeVideoPlayerFuture;
   bool liked = false;
   String userPicUrl = '';
+  bool _disposed = false;
+
+  // Keep the widget alive during scrolling
   Future<void> likedByme() async {
+    if (_disposed) return; // Early exit if disposed
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
-      final likeDoc =
-          await FirebaseFirestore.instance
-              .collection('posts')
-              .doc(widget.post['postID'])
-              .collection('likes')
-              .doc(uid)
-              .get();
-      if (!mounted) return;
+      final likeDoc = await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(widget.post['postID'])
+          .collection('likes')
+          .doc(uid)
+          .get()
+          .timeout(Duration(seconds: 10)); // Add timeout
+
+      if (_disposed || !mounted) return; // Check both disposed and mounted
       setState(() {
         liked = likeDoc.exists;
       });
-    } catch (e) {}
+    } catch (e) {
+      print("Error checking like status: $e");
+      // Don't update state if there's an error
+    }
   }
 
   Future<void> fetchUserInfo() async {
+    if (_disposed) return; // Early exit if disposed
     try {
       final uid = widget.post['authorID'];
-      final userDoc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (!mounted) return;
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get()
+          .timeout(Duration(seconds: 10)); // Add timeout
+
+      if (_disposed || !mounted) return; // Check both disposed and mounted
       setState(() {
         userPicUrl = userDoc['profilepicurl'] ?? '';
       });
     } catch (e) {
       print("Error fetching user info: $e");
+      if (_disposed || !mounted) return; // Check both disposed and mounted
+      // Set fallback value instead of leaving empty
+      setState(() {
+        userPicUrl = '';
+      });
     }
   }
 
@@ -132,24 +150,47 @@ class _PostCardState extends ConsumerState<PostCard> {
   @override
   void initState() {
     super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await fetchUserInfo();
-      await likedByme();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializePostData();
     });
+
     if (widget.post['type'] == 'video' && widget.post['mediaUrl'] != null) {
       _videoController = VideoPlayerController.networkUrl(
         Uri.parse(widget.post['mediaUrl']),
       );
-      _initializeVideoPlayerFuture = _videoController!.initialize();
-      _videoController!.setLooping(true);
+      _initializeVideoPlayerFuture = _videoController!
+          .initialize()
+          .timeout(Duration(seconds: 15))
+          .then((_) {
+            if (!_disposed && mounted) {
+              _videoController!.setLooping(true);
+            }
+          })
+          .catchError((error) {
+            print('Video initialization failed: $error');
+            return null;
+          });
+    }
+  }
+
+  Future<void> _initializePostData() async {
+    if (_disposed || !mounted) return;
+
+    try {
+      await Future.wait([
+        fetchUserInfo(),
+        likedByme(),
+      ]).timeout(Duration(seconds: 10));
+    } catch (e) {
+      print("Error initializing post data: $e");
     }
   }
 
   @override
   void dispose() {
-    super.dispose();
+    _disposed = true;
     _videoController?.dispose();
+    super.dispose();
   }
 
   @override
@@ -187,13 +228,13 @@ class _PostCardState extends ConsumerState<PostCard> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Author Info Row
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.7),
                 borderRadius: BorderRadius.circular(16),
@@ -275,7 +316,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                               ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,6 +355,39 @@ class _PostCardState extends ConsumerState<PostCard> {
                             ),
                           ],
                         ),
+
+                        // Location Display (if location is shared)
+                        if (widget.post['location'] != null &&
+                            widget.post['location'] is Map &&
+                            widget.post['location']['shared'] == true &&
+                            widget.post['location']['name'] != null &&
+                            widget.post['location']['name']
+                                .toString()
+                                .isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on_rounded,
+                                size: 14,
+                                color: Colors.blue[600],
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  widget.post['location']['name'],
+                                  style: TextStyle(
+                                    color: Colors.blue[700],
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -366,7 +440,7 @@ class _PostCardState extends ConsumerState<PostCard> {
             // Title
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
                 widget.post['title'],
                 style: const TextStyle(
@@ -382,7 +456,7 @@ class _PostCardState extends ConsumerState<PostCard> {
 
             // Content with ReadMore
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: ReadMoreText(
                 widget.post['content'],
                 trimLines: 3,
@@ -409,88 +483,128 @@ class _PostCardState extends ConsumerState<PostCard> {
             // Image if exists
             if (widget.post['type'] == 'image') ...[
               const SizedBox(height: 20),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    widget.post['mediaUrl'],
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(
-                                color: const Color(0xFF71BB7B),
-                                value:
-                                    loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress
-                                                .cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
-                              ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Loading image...',
-                                style: TextStyle(
-                                  color: Color(0xFF5F6368),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder:
+                          (context) => _FullScreenImageViewer(
+                            imageUrl: widget.post['mediaUrl'],
+                            heroTag: 'image_${widget.post['postID']}',
                           ),
+                    ),
+                  );
+                },
+                child: Hero(
+                  tag: 'image_${widget.post['postID']}',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
-                      );
-                    },
-                    errorBuilder:
-                        (context, error, stackTrace) => Container(
-                          width: double.infinity,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.grey[300]!,
-                              width: 1,
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        children: [
+                          Image.network(
+                            widget.post['mediaUrl'],
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      CircularProgressIndicator(
+                                        color: const Color(0xFF71BB7B),
+                                        value:
+                                            loadingProgress
+                                                        .expectedTotalBytes !=
+                                                    null
+                                                ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                                : null,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'Loading image...',
+                                        style: TextStyle(
+                                          color: Color(0xFF5F6368),
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder:
+                                (context, error, stackTrace) => Container(
+                                  width: double.infinity,
+                                  height: 200,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.grey[300]!,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.broken_image_rounded,
+                                        size: 48,
+                                        color: Colors.grey[400],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'Failed to load image',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                          ),
+                          // Full-screen indicator
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.fullscreen,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.broken_image_rounded,
-                                size: 48,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Failed to load image',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -730,48 +844,100 @@ class _PostCardState extends ConsumerState<PostCard> {
                     future: _initializeVideoPlayerFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.done) {
-                        return AspectRatio(
-                          aspectRatio: _videoController!.value.aspectRatio,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _videoController!.value.isPlaying
-                                        ? _videoController!.pause()
-                                        : null;
-                                  });
-                                },
-                                child: VideoPlayer(_videoController!),
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => _FullScreenVideoViewer(
+                                      videoUrl: widget.post['mediaUrl'],
+                                      heroTag: 'video_${widget.post['postID']}',
+                                    ),
                               ),
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _videoController!.value.isPlaying
-                                        ? _videoController!.pause()
-                                        : _videoController!.play();
-                                  });
-                                },
-                                child:
-                                    !_videoController!.value.isPlaying
-                                        ? Icon(
-                                          Icons.play_circle,
-                                          size: 64,
-                                          color: Colors.white,
-                                        )
-                                        : null,
+                            );
+                          },
+                          child: Hero(
+                            tag: 'video_${widget.post['postID']}',
+                            child: AspectRatio(
+                              aspectRatio: _videoController!.value.aspectRatio,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  VideoPlayer(_videoController!),
+
+                                  // Play/Pause overlay
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (_disposed || !mounted) return;
+                                      setState(() {
+                                        _videoController!.value.isPlaying
+                                            ? _videoController!.pause()
+                                            : _videoController!.play();
+                                      });
+                                    },
+                                    child: Container(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      color: Colors.transparent,
+                                      child: Center(
+                                        child:
+                                            !_videoController!.value.isPlaying
+                                                ? Container(
+                                                  padding: const EdgeInsets.all(
+                                                    12,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black
+                                                        .withOpacity(0.6),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.play_arrow,
+                                                    size: 48,
+                                                    color: Colors.white,
+                                                  ),
+                                                )
+                                                : null,
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Full-screen indicator
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.6),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.fullscreen,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Progress indicator at bottom
+                                  Positioned(
+                                    bottom: 0,
+                                    left: 0,
+                                    right: 0,
+                                    child: VideoProgressIndicator(
+                                      _videoController!,
+                                      allowScrubbing: true,
+                                      colors: const VideoProgressColors(
+                                        playedColor: Color(0xFF71BB7B),
+                                        bufferedColor: Colors.grey,
+                                        backgroundColor: Colors.white30,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Positioned(
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                child: VideoProgressIndicator(
-                                  _videoController!,
-                                  allowScrubbing: true,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         );
                       } else {
@@ -781,10 +947,10 @@ class _PostCardState extends ConsumerState<PostCard> {
                   )
                   : const Text('No video url'),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             // Actions row
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(16),
@@ -845,6 +1011,8 @@ class _PostCardState extends ConsumerState<PostCard> {
                             );
                           },
                           onTap: (isLiked) async {
+                            if (!mounted) return isLiked; // Check mounted first
+
                             try {
                               final postRef = FirebaseFirestore.instance
                                   .collection('posts')
@@ -852,27 +1020,58 @@ class _PostCardState extends ConsumerState<PostCard> {
                               final likesRef = postRef.collection('likes');
                               final uid =
                                   FirebaseAuth.instance.currentUser!.uid;
+
                               if (isLiked) {
+                                // Unlike the post
+                                await Future.wait(
+                                  [
+                                    likesRef.doc(uid).delete(),
+                                    postRef.update({
+                                      'reacts': FieldValue.increment(-1),
+                                    }),
+                                  ],
+                                ).timeout(Duration(seconds: 10)); // Add timeout
+
+                                if (!mounted)
+                                  return isLiked; // Check mounted after async operation
                                 widget.post['reacts'] = max(
                                   widget.post['reacts'] - 1,
                                   0,
                                 );
-                                likesRef.doc(uid).delete();
-                                postRef.update({
-                                  'reacts': FieldValue.increment(-1),
-                                });
                               } else {
+                                // Like the post
+                                await Future.wait(
+                                  [
+                                    likesRef.doc(uid).set({
+                                      'likedAt': FieldValue.serverTimestamp(),
+                                    }),
+                                    postRef.update({
+                                      'reacts': FieldValue.increment(1),
+                                    }),
+                                  ],
+                                ).timeout(Duration(seconds: 10)); // Add timeout
+
+                                if (!mounted)
+                                  return isLiked; // Check mounted after async operation
                                 widget.post['reacts'] =
                                     widget.post['reacts'] + 1;
-                                likesRef.doc(uid).set({
-                                  'likedAt': FieldValue.serverTimestamp(),
-                                });
-                                postRef.update({
-                                  'reacts': FieldValue.increment(1),
-                                });
                               }
+
                               return !isLiked;
                             } catch (e) {
+                              print('Error toggling like: $e');
+                              if (!mounted) return isLiked;
+
+                              // Show user-friendly error message
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Failed to update like. Please try again.',
+                                  ),
+                                  backgroundColor: Colors.red[400],
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
                               return isLiked;
                             }
                           },
@@ -981,6 +1180,306 @@ class _PostCardState extends ConsumerState<PostCard> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Full-screen Image Viewer
+class _FullScreenImageViewer extends StatelessWidget {
+  final String imageUrl;
+  final String heroTag;
+
+  const _FullScreenImageViewer({required this.imageUrl, required this.heroTag});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded, color: Colors.white),
+            onPressed: () {
+              // TODO: Implement download functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Download feature coming soon!'),
+                  backgroundColor: Color(0xFF71BB7B),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: Hero(
+          tag: heroTag,
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 5.0,
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: const Color(0xFF71BB7B),
+                    value:
+                        loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                  ),
+                );
+              },
+              errorBuilder:
+                  (context, error, stackTrace) => const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.broken_image_rounded,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Failed to load image',
+                          style: TextStyle(color: Colors.grey, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Full-screen Video Viewer
+class _FullScreenVideoViewer extends StatefulWidget {
+  final String videoUrl;
+  final String heroTag;
+
+  const _FullScreenVideoViewer({required this.videoUrl, required this.heroTag});
+
+  @override
+  State<_FullScreenVideoViewer> createState() => _FullScreenVideoViewerState();
+}
+
+class _FullScreenVideoViewerState extends State<_FullScreenVideoViewer> {
+  VideoPlayerController? _videoController;
+  Future<void>? _initializeVideoPlayerFuture;
+  bool _showControls = true;
+  Timer? _hideControlsTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideo();
+  }
+
+  void _initializeVideo() {
+    _videoController = VideoPlayerController.networkUrl(
+      Uri.parse(widget.videoUrl),
+    );
+    _initializeVideoPlayerFuture = _videoController!.initialize().then((_) {
+      if (mounted) {
+        _videoController!.setLooping(true);
+        _videoController!.play();
+        setState(() {});
+      }
+    });
+  }
+
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+    });
+
+    if (_showControls) {
+      _startHideControlsTimer();
+    } else {
+      _hideControlsTimer?.cancel();
+    }
+  }
+
+  void _startHideControlsTimer() {
+    _hideControlsTimer?.cancel();
+    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _hideControlsTimer?.cancel();
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: _toggleControls,
+        child: Stack(
+          children: [
+            Center(
+              child:
+                  _videoController != null
+                      ? FutureBuilder(
+                        future: _initializeVideoPlayerFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.done) {
+                            return Hero(
+                              tag: widget.heroTag,
+                              child: AspectRatio(
+                                aspectRatio:
+                                    _videoController!.value.aspectRatio,
+                                child: VideoPlayer(_videoController!),
+                              ),
+                            );
+                          } else {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF71BB7B),
+                              ),
+                            );
+                          }
+                        },
+                      )
+                      : const Center(
+                        child: Text(
+                          'No video available',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+            ),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _videoController!.value.isPlaying
+                      ? _videoController!.pause()
+                      : _videoController!.play();
+                });
+              },
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: Colors.transparent,
+                child: Center(
+                  child:
+                      !_videoController!.value.isPlaying
+                          ? Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow,
+                              size: 48,
+                              color: Colors.white,
+                            ),
+                          )
+                          : null,
+                ),
+              ),
+            ),
+            // Controls overlay
+            if (_showControls)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.7),
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.7),
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Top controls
+                      SafeArea(
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                              ),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.download_rounded,
+                                color: Colors.white,
+                              ),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Download feature coming soon!',
+                                    ),
+                                    backgroundColor: Color(0xFF71BB7B),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+
+                      // Bottom controls
+                      if (_videoController != null)
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              // Play/Pause button
+                              // Progress indicator
+                              VideoProgressIndicator(
+                                _videoController!,
+                                allowScrubbing: true,
+                                colors: const VideoProgressColors(
+                                  playedColor: Color(0xFF71BB7B),
+                                  bufferedColor: Colors.grey,
+                                  backgroundColor: Colors.white30,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
