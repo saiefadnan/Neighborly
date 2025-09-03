@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dart_geohash/dart_geohash.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
@@ -24,6 +25,7 @@ class AddPostPage extends ConsumerStatefulWidget {
 }
 
 class _AddPostPageState extends ConsumerState<AddPostPage> {
+  final geohasher = GeoHasher();
   bool _shareLocation = false;
   bool _loadingLocation = false;
   String? _locationName = '';
@@ -286,17 +288,21 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
         'location':
             _shareLocation && _currentPosition != null
                 ? {
-                  'latitude': _currentPosition!.latitude,
-                  'longitude': _currentPosition!.longitude,
-                  'name': _locationName ?? 'Unknown location',
+                  'geopoint': GeoPoint(
+                    _currentPosition!.latitude,
+                    _currentPosition!.longitude,
+                  ),
+                  'geohash': geohasher.encode(
+                    _currentPosition!.longitude,
+                    _currentPosition!.latitude,
+                  ),
+                  'name':
+                      _locationName!.isEmpty
+                          ? 'Unknown location'
+                          : _locationName,
                   'shared': true,
                 }
-                : {
-                  'latitude': 0.0,
-                  'longitude': 0.0,
-                  'name': null,
-                  'shared': false,
-                },
+                : {'shared': false},
         'title': title,
         'content': body,
         'type': type,
