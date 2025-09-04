@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui' as ui;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
+import 'package:neighborly/components/responses_drawer.dart';
 import 'package:neighborly/components/route_sharing_bottom_sheet.dart';
 import 'package:neighborly/services/map_service.dart';
+import 'package:neighborly/providers/help_request_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -232,6 +236,9 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       Map<String, dynamic> req = helpRequests[idx];
       print(
         'Creating marker for request $idx: ${req['id']} at ${req['location']}',
+      );
+      print(
+        "Request type: ${req['type']}, status: ${req['status']}, title: ${req['title']}, userId: ${req['userId']}",
       );
 
       BitmapDescriptor customIcon = await _createCustomMarker(req);
@@ -627,33 +634,163 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   Future<BitmapDescriptor> _createCustomMarker(
     Map<String, dynamic> request,
   ) async {
-    String type = request['type'];
+    String type = request['title'];
     String status = request['status'] ?? 'open';
+    String urgency = request['urgency'] ?? request['priority'] ?? 'general';
     bool isMyRequest = request['userId'] == currentUserId;
 
-    double hue;
-
-    // If it's in progress (accepted responder), use different color
-    if (status == 'in_progress') {
-      hue = BitmapDescriptor.hueBlue; // Blue for in-progress
-    } else if (isMyRequest) {
-      hue = BitmapDescriptor.hueViolet; // Purple for my requests
+    // Determine background color based on urgency
+    Color backgroundColor;
+    if (isMyRequest) {
+      backgroundColor = Colors.purple; // Purple for my requests
+    } else if (status == 'in_progress') {
+      backgroundColor = Colors.blue; // Blue for in-progress
     } else {
-      // Original logic for other requests
-      switch (type) {
-        case "Emergency":
-          hue = BitmapDescriptor.hueRed;
+      // Use urgency-based colors
+      switch (urgency.toLowerCase()) {
+        case 'emergency':
+        case 'high':
+          backgroundColor = Colors.red;
           break;
-        case "Urgent":
-          hue = BitmapDescriptor.hueOrange;
+        case 'urgent':
+        case 'medium':
+          backgroundColor = Colors.orange;
           break;
+        case 'general':
+        case 'low':
         default:
-          hue = BitmapDescriptor.hueGreen;
+          backgroundColor = Colors.green;
           break;
       }
     }
 
-    return BitmapDescriptor.defaultMarkerWithHue(hue);
+    // Get icon based on help type
+    IconData iconData = _getHelpTypeIcon(type);
+
+    // Create custom marker
+    return await _createCustomMarkerFromIcon(
+      iconData: iconData,
+      backgroundColor: backgroundColor,
+      size: 120.0, // Increased from 80.0 to 120.0 for larger markers
+    );
+  }
+
+  // Helper method to get help type icons (exactly matching help_request_drawer.dart)
+  IconData _getHelpTypeIcon(String helpType) {
+    switch (helpType) {
+      case 'Medical':
+        return Icons.medical_services;
+      case 'Fire':
+        return Icons.local_fire_department;
+      case 'Shifting House':
+        return Icons.house;
+      case 'Grocery':
+        return Icons.shopping_cart;
+      case 'Traffic Update':
+        return Icons.traffic;
+      case 'Route':
+        return Icons.directions;
+      case 'Shifting Furniture':
+        return Icons.chair;
+      case 'Lost Person':
+        return Icons.person_search;
+      case 'Lost Item/Pet':
+        return Icons.pets;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  // Create custom marker with icon and background color
+  Future<BitmapDescriptor> _createCustomMarkerFromIcon({
+    required IconData iconData,
+    required Color backgroundColor,
+    required double size,
+  }) async {
+    final recorder = ui.PictureRecorder();
+
+    // Calculate canvas size to accommodate the more reasonable aura
+    final canvasSize = size * 2.0; // Reduced canvas size
+    final center = canvasSize / 2; // Perfect center point
+
+    final canvas = Canvas(recorder);
+
+    // Create enhanced pulsing aura effect with more reasonable size
+    final maxAuraRadius = size * 0.6; // Reduced aura radius (was 1.0, now 0.6)
+
+    // Draw multiple aura rings with varying opacity to simulate pulsing
+    for (int i = 6; i >= 1; i--) {
+      final ringRadius =
+          maxAuraRadius * (0.3 + (i * 0.12)); // More gradual ring progression
+      final baseOpacity =
+          0.15 - (i * 0.02); // Decreasing opacity for outer rings
+
+      // Create pulsing effect by varying opacity in a wave pattern
+      final pulseOpacity =
+          baseOpacity +
+          (0.05 * (i % 2 == 0 ? 1 : 0.5)); // Alternating intensity
+
+      final auraPaint =
+          Paint()
+            ..color = backgroundColor.withOpacity(pulseOpacity)
+            ..style = PaintingStyle.fill;
+
+      canvas.drawCircle(Offset(center, center), ringRadius, auraPaint);
+    }
+
+    // Add inner glow rings for more depth
+    for (int i = 3; i >= 1; i--) {
+      final innerRadius = size * 0.2 * (1 + i * 0.3);
+      final glowOpacity = 0.3 - (i * 0.08);
+
+      final glowPaint =
+          Paint()
+            ..color = backgroundColor.withOpacity(glowOpacity)
+            ..style = PaintingStyle.fill;
+
+      canvas.drawCircle(Offset(center, center), innerRadius, glowPaint);
+    }
+
+    // Draw main circular background - larger size
+    final mainRadius = size * 0.4; // Increased main marker radius
+    final paint = Paint()..color = backgroundColor;
+    canvas.drawCircle(Offset(center, center), mainRadius, paint);
+
+    // Draw white border for the main marker
+    final borderPaint =
+        Paint()
+          ..color = Colors.white
+          ..strokeWidth =
+              3.5 // Thicker border for larger marker
+          ..style = PaintingStyle.stroke;
+    canvas.drawCircle(Offset(center, center), mainRadius - 1.75, borderPaint);
+
+    // Draw icon - larger size
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: size * 0.35, // Increased from 0.3 to 0.35 (bigger icons)
+        fontFamily: iconData.fontFamily,
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    textPainter.layout();
+
+    // Center the icon perfectly
+    final iconOffset = Offset(
+      center - (textPainter.width / 2),
+      center - (textPainter.height / 2),
+    );
+    textPainter.paint(canvas, iconOffset);
+
+    // Convert to image with proper dimensions
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(canvasSize.toInt(), canvasSize.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
   }
 
   void _showHelpRequestBottomSheet(Map<String, dynamic> helpData) {
@@ -808,7 +945,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _getHelpTypeIcon(helpData['type']),
+                        _getHelpTypeIcon(helpData['title']),
                         size: 18,
                         color: const Color(0xFF71BB7B),
                       ),
@@ -877,15 +1014,17 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   }
 
   Color _getUrgencyColor(String urgency) {
-    switch (urgency) {
-      case 'Emergency':
+    switch (urgency.toLowerCase()) {
+      case 'emergency':
+      case 'high':
         return Colors.red;
-      case 'Urgent':
+      case 'urgent':
+      case 'medium':
         return Colors.orange;
-      case 'General':
-        return Colors.green;
+      case 'general':
+      case 'low':
       default:
-        return Colors.grey;
+        return Colors.green;
     }
   }
 
@@ -1145,36 +1284,75 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
         const SizedBox(height: 20),
 
         // Response status
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color:
-                canRespond
-                    ? Colors.blue.withOpacity(0.1)
-                    : Colors.grey.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                canRespond ? Icons.people : Icons.schedule,
-                color: canRespond ? Colors.blue : Colors.grey,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
+        InkWell(
+          onTap: () {
+            if (canRespond && (helpData['responders'] as List).isNotEmpty) {
+              // Convert helpData to HelpRequestData format for ResponsesDrawer
+              final helpRequestData = HelpRequestData(
+                id: helpData['id'] ?? '',
+                title: helpData['title'] ?? helpData['type'] ?? '',
+                description: helpData['description'] ?? '',
+                helpType: helpData['type'] ?? '',
+                urgency:
+                    helpData['urgency'] ?? helpData['priority'] ?? 'general',
+                location: helpData['address'] ?? '',
+                distance: '0.5 km',
+                timePosted: helpData['time'] ?? 'Just now',
+                requesterName: helpData['requesterName'] ?? 'Anonymous',
+                requesterImage: 'assets/images/dummy.png',
+                contactNumber: helpData['phone'] ?? '',
+                responderCount: (helpData['responders'] as List).length,
+                isResponded: false,
+                userId: helpData['userId'] ?? '',
+              );
+
+              Navigator.of(context).pop(); // Close current bottom sheet
+              ResponsesDrawer.show(context, helpRequestData);
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color:
                   canRespond
-                      ? '${(helpData['responders'] as List).length} people are responding to this request'
-                      : status == 'in_progress'
-                      ? 'This request is currently being handled'
-                      : 'This request is no longer accepting responses',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: canRespond ? Colors.blue : Colors.grey,
+                      ? Colors.blue.withOpacity(0.1)
+                      : Colors.grey.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border:
+                  canRespond && (helpData['responders'] as List).isNotEmpty
+                      ? Border.all(color: Colors.blue.withOpacity(0.3))
+                      : null,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  canRespond ? Icons.people : Icons.schedule,
+                  color: canRespond ? Colors.blue : Colors.grey,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    canRespond
+                        ? '${(helpData['responders'] as List).length} people are responding to this request'
+                        : status == 'in_progress'
+                        ? 'This request is currently being handled'
+                        : 'This request is no longer accepting responses',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: canRespond ? Colors.blue : Colors.grey,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                if (canRespond &&
+                    (helpData['responders'] as List).isNotEmpty) ...[
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.blue,
+                    size: 16,
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 20),
@@ -1182,57 +1360,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
         // Action button
         SizedBox(
           width: double.infinity,
-          child:
-              canRespond
-                  ? (helpData['title'] == 'Route' || helpData['type'] == 'Route'
-                      ? ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          _showRouteHelper(helpData);
-                        },
-                        icon: const Icon(Icons.route),
-                        label: const Text('Help with Route'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      )
-                      : ElevatedButton.icon(
-                        onPressed: () => _respondToRequest(helpData),
-                        icon: const Icon(Icons.reply),
-                        label: const Text('Respond to Help Request'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF71BB7B),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ))
-                  : Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Text(
-                        status == 'in_progress'
-                            ? 'Request is being handled'
-                            : 'Request is closed',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  ),
+          child: _buildResponseButton(helpData, canRespond),
         ),
       ],
     );
@@ -1246,101 +1374,383 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'People Offering Help (${responders.length})',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF2C3E50),
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...responders.map(
-          (responder) => Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundImage: const AssetImage('assets/images/dummy.png'),
-                  radius: 25,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'People Offering Help (${responders.length})',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2C3E50),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+            ),
+            if (responders.length > 2) ...[
+              InkWell(
+                onTap: () {
+                  // Convert helpData to HelpRequestData format for ResponsesDrawer
+                  final helpRequestData = HelpRequestData(
+                    id: helpData['id'] ?? '',
+                    title: helpData['title'] ?? helpData['type'] ?? '',
+                    description: helpData['description'] ?? '',
+                    helpType: helpData['type'] ?? '',
+                    urgency:
+                        helpData['urgency'] ??
+                        helpData['priority'] ??
+                        'general',
+                    location: helpData['address'] ?? '',
+                    distance: '0.5 km',
+                    timePosted: helpData['time'] ?? 'Just now',
+                    requesterName: helpData['requesterName'] ?? 'Anonymous',
+                    requesterImage: 'assets/images/dummy.png',
+                    contactNumber: helpData['phone'] ?? '',
+                    responderCount: (helpData['responders'] as List).length,
+                    isResponded: false,
+                    userId: helpData['userId'] ?? '',
+                  );
+
+                  Navigator.of(context).pop(); // Close current bottom sheet
+                  ResponsesDrawer.show(context, helpRequestData);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        responder['username'] ?? 'Anonymous',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        'View All',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue,
                         ),
                       ),
-                      Text(
-                        'Responded ${responder['responseTime'] ?? 'recently'}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                      Text(
-                        responder['phone'] ?? 'No phone provided',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.blue,
+                        size: 12,
                       ),
                     ],
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: () => _acceptResponder(helpData, responder),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF71BB7B),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Show only first 2 responders, with option to view all
+        ...responders
+            .take(2)
+            .map(
+              (responder) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundImage: const AssetImage(
+                        'assets/images/dummy.png',
+                      ),
+                      radius: 25,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            responder['username'] ?? 'Anonymous',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Responded ${responder['responseTime'] ?? 'recently'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          Text(
+                            responder['phone'] ?? 'No phone provided',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _acceptResponder(helpData, responder),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF71BB7B),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('Accept'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        // Show "view all" option if there are more than 2 responders
+        if (responders.length > 2) ...[
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () {
+              // Convert helpData to HelpRequestData format for ResponsesDrawer
+              final helpRequestData = HelpRequestData(
+                id: helpData['id'] ?? '',
+                title: helpData['title'] ?? helpData['type'] ?? '',
+                description: helpData['description'] ?? '',
+                helpType: helpData['type'] ?? '',
+                urgency:
+                    helpData['urgency'] ?? helpData['priority'] ?? 'general',
+                location: helpData['address'] ?? '',
+                distance: '0.5 km',
+                timePosted: helpData['time'] ?? 'Just now',
+                requesterName: helpData['requesterName'] ?? 'Anonymous',
+                requesterImage: 'assets/images/dummy.png',
+                contactNumber: helpData['phone'] ?? '',
+                responderCount: (helpData['responders'] as List).length,
+                isResponded: false,
+                userId: helpData['userId'] ?? '',
+              );
+
+              Navigator.of(context).pop(); // Close current bottom sheet
+              ResponsesDrawer.show(context, helpRequestData);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.people, color: Colors.blue, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'View All ${responders.length} Responses',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue,
                     ),
                   ),
-                  child: const Text('Accept'),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.blue,
+                    size: 14,
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
 
-  IconData _getHelpTypeIcon(String helpType) {
-    switch (helpType) {
-      case 'Medical':
-        return Icons.local_hospital;
-      case 'Fire':
-        return Icons.local_fire_department;
-      case 'Grocery':
-        return Icons.shopping_cart;
-      case 'Shifting House':
-        return Icons.home;
-      case 'Shifting Furniture':
-        return Icons.chair;
-      case 'Traffic Update':
-        return Icons.traffic;
-      case 'Route':
-        return Icons.directions;
-      case 'Lost Person':
-        return Icons.person_search;
-      case 'Lost Item/Pet':
-        return Icons.pets;
-      case 'Emergency':
-        return Icons.emergency;
-      case 'Urgent':
-        return Icons.priority_high;
-      case 'General':
-        return Icons.help;
-      default:
-        return Icons.help_outline;
+  // Check if current user has already responded to a help request
+  Future<Map<String, dynamic>?> _checkUserResponse(String requestId) async {
+    if (currentUserId == null) return null;
+
+    try {
+      final querySnapshot =
+          await FirebaseFirestore.instance
+              .collection('helpRequests')
+              .doc(requestId)
+              .collection('responses')
+              .where('userId', isEqualTo: currentUserId)
+              .limit(1)
+              .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        return {
+          'id': querySnapshot.docs.first.id,
+          ...querySnapshot.docs.first.data(),
+        };
+      }
+      return null;
+    } catch (e) {
+      print('Error checking user response: $e');
+      return null;
     }
+  }
+
+  // Build response button with status checking
+  Widget _buildResponseButton(Map<String, dynamic> helpData, bool canRespond) {
+    if (!canRespond) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            helpData['status'] == 'in_progress'
+                ? 'Request is being handled'
+                : 'Request is closed',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[600],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _checkUserResponse(helpData['id']),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return ElevatedButton.icon(
+            onPressed: null,
+            icon: const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            label: const Text('Checking...'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+
+        final existingResponse = snapshot.data;
+        if (existingResponse != null) {
+          String status = existingResponse['status'] ?? 'pending';
+          switch (status) {
+            case 'accepted':
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.green),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Response Accepted',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            case 'rejected':
+              return ElevatedButton.icon(
+                onPressed: () => _respondToRequest(helpData),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Respond Again'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              );
+            case 'pending':
+            default:
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.pending, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Response Pending',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+          }
+        }
+
+        // No existing response - show normal respond button
+        if (helpData['title'] == 'Route' || helpData['type'] == 'Route') {
+          return ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _showRouteHelper(helpData);
+            },
+            icon: const Icon(Icons.route),
+            label: const Text('Help with Route'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        } else {
+          return ElevatedButton.icon(
+            onPressed: () => _respondToRequest(helpData),
+            icon: const Icon(Icons.reply),
+            label: const Text('Respond to Help Request'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF71BB7B),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+      },
+    );
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
@@ -1756,128 +2166,536 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     );
   }
 
-  // Respond to someone else's request
-  void _respondToRequest(Map<String, dynamic> helpData) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
+  // Respond to someone else's request (Enhanced version like help_list.dart)
+  void _respondToRequest(Map<String, dynamic> helpData) async {
+    // Check if user has already responded
+    final existingResponse = await _checkUserResponse(helpData['id']);
+
+    if (existingResponse != null) {
+      String status = existingResponse['status'] ?? 'pending';
+      String message;
+      Color backgroundColor;
+      IconData icon;
+
+      switch (status) {
+        case 'accepted':
+          message =
+              'Your response was accepted! You are helping with this request.';
+          backgroundColor = Colors.green;
+          icon = Icons.check_circle;
+          break;
+        case 'rejected':
+          message =
+              'Your previous response was declined. You can respond again if you wish.';
+          backgroundColor = Colors.orange;
+          icon = Icons.info;
+          break;
+        case 'pending':
+        default:
+          message =
+              'You have already responded to this request. Please wait for the requester to review your response.';
+          backgroundColor = Colors.blue;
+          icon = Icons.pending;
+          break;
+      }
+
+      Navigator.of(context).pop(); // Close current bottom sheet
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: backgroundColor,
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(12),
           ),
-          title: const Text('Offer Help'),
-          content: Text(
-            'Do you want to offer help for "${helpData['title']}"? The requester will see your response and can choose to accept your help.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop(); // Close the bottom sheet too
+          action:
+              status == 'rejected'
+                  ? SnackBarAction(
+                    label: 'Respond Again',
+                    textColor: Colors.white,
+                    onPressed: () => _showResponseModal(helpData),
+                  )
+                  : null,
+        ),
+      );
 
-                if (currentUserId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please sign in to respond to requests'),
-                      backgroundColor: Colors.red,
+      if (status != 'rejected') return; // Don't show modal unless rejected
+    }
+
+    _showResponseModal(helpData);
+  }
+
+  void _showResponseModal(Map<String, dynamic> helpData) {
+    Navigator.of(context).pop(); // Close current bottom sheet first
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        final TextEditingController responseController =
+            TextEditingController();
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  );
-                  return;
-                }
+                  ),
 
-                // Show loading
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Row(
+                  // Scrollable content
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                       children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
+                        const SizedBox(height: 12),
+
+                        // Header with icon
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF71BB7B).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(
+                                Icons.volunteer_activism,
+                                color: Color(0xFF71BB7B),
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Respond to Help Request',
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF2C3E50),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Helping ${helpData['requesterName'] ?? 'someone'}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Help request summary card
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF71BB7B).withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFF71BB7B).withOpacity(0.2),
                             ),
                           ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF71BB7B,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  _getHelpTypeIcon(helpData['type'] ?? ''),
+                                  color: const Color(0xFF71BB7B),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      helpData['title'] ??
+                                          helpData['type'] ??
+                                          '',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF2C3E50),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      helpData['type'] ?? '',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getUrgencyColor(
+                                    helpData['urgency'] ??
+                                        helpData['priority'] ??
+                                        'general',
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  helpData['type'] ??
+                                      helpData['priority'] ??
+                                      'General',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: _getUrgencyColor(
+                                      helpData['urgency'] ??
+                                          helpData['priority'] ??
+                                          'general',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        SizedBox(width: 16),
-                        Text('Sending response...'),
+                        const SizedBox(height: 24),
+
+                        // Response input section
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.message_outlined,
+                                  color: Color(0xFF71BB7B),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Your Response',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2C3E50),
+                                  ),
+                                ),
+                                const Text(
+                                  ' *',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.grey[300]!,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: TextField(
+                                controller: responseController,
+                                decoration: InputDecoration(
+                                  hintText: 'Let them know how you can help...',
+                                  hintStyle: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: 14,
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.all(16),
+                                ),
+                                maxLines: 4,
+                                textAlignVertical: TextAlignVertical.top,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Action buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  side: const BorderSide(
+                                    color: Color(0xFF71BB7B),
+                                    width: 2,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Color(0xFF71BB7B),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  if (responseController.text.trim().isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text(
+                                          'Please enter your response',
+                                        ),
+                                        backgroundColor: Colors.orange,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  if (currentUserId == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Please sign in to respond to requests',
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  Navigator.of(
+                                    context,
+                                  ).pop(); // Close the response modal
+
+                                  // Show loading
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Row(
+                                        children: [
+                                          SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    Colors.white,
+                                                  ),
+                                            ),
+                                          ),
+                                          SizedBox(width: 16),
+                                          Text('Sending response...'),
+                                        ],
+                                      ),
+                                      backgroundColor: Color(0xFF71BB7B),
+                                      duration: Duration(seconds: 30),
+                                    ),
+                                  );
+
+                                  try {
+                                    final user =
+                                        FirebaseAuth.instance.currentUser;
+                                    final result =
+                                        await MapService.respondToHelpRequest(
+                                          requestId: helpData['id'],
+                                          message:
+                                              responseController.text.trim(),
+                                          phone: user?.phoneNumber ?? '',
+                                          username:
+                                              user?.displayName ??
+                                              'Anonymous Helper',
+                                        );
+
+                                    // Hide loading
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).hideCurrentSnackBar();
+
+                                    if (result['success']) {
+                                      // Refresh the help requests to get updated data
+                                      await _loadHelpRequests();
+
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.check_circle,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Text(
+                                                'Response sent to ${helpData['requesterName'] ?? 'requester'}!',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: const Color(
+                                            0xFF71BB7B,
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          margin: const EdgeInsets.all(16),
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            result['message'] ??
+                                                'Failed to send response',
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    // Hide loading
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).hideCurrentSnackBar();
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Error sending response: ${e.toString()}',
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF71BB7B),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 2,
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.send_rounded, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Send Response',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(
+                          height: MediaQuery.of(context).viewInsets.bottom + 20,
+                        ),
                       ],
                     ),
-                    backgroundColor: Color(0xFF71BB7B),
-                    duration: Duration(seconds: 30),
                   ),
-                );
-
-                try {
-                  final user = FirebaseAuth.instance.currentUser;
-                  final result = await MapService.respondToHelpRequest(
-                    requestId: helpData['id'],
-                    message: 'I can help with this request',
-                    phone: user?.phoneNumber ?? '',
-                    username: user?.displayName ?? 'Anonymous Helper',
-                  );
-
-                  // Hide loading
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-                  if (result['success']) {
-                    // Refresh the help requests to get updated data
-                    await _loadHelpRequests();
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text(
-                          'Your response has been sent! The requester will be notified.',
-                        ),
-                        backgroundColor: const Color(0xFF71BB7B),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          result['message'] ?? 'Failed to send response',
-                        ),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  // Hide loading
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error sending response: ${e.toString()}'),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF71BB7B),
-                foregroundColor: Colors.white,
+                ],
               ),
-              child: const Text('Send Response'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
