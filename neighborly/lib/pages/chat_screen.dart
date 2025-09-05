@@ -102,7 +102,7 @@ class _ChatScreenState extends State<ChatScreen> {
               onTap: () {
                 setState(() {
                   _controller.text = "How can I help you?";
-                });//How can I help u added
+                });//How can I help u added.
               },
               child: Container(
                 width: double.infinity,
