@@ -282,7 +282,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
                   Icons.notifications,
                   color: Colors.white,
                   size: 24,
-                ),
+                ),//Notifications updated and connected to database
               ),
               const SizedBox(width: 12),
               const Expanded(
