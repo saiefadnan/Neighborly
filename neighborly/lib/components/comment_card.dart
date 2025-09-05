@@ -282,8 +282,9 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                               }),
                             ]).timeout(Duration(seconds: 10)); // Add timeout
 
-                            if (!mounted)
+                            if (!mounted) {
                               return isLiked; // Check mounted after async operation
+                            }
                             widget.comment['reacts'] = max(
                               widget.comment['reacts'] - 1,
                               0,
@@ -299,8 +300,9 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                               }),
                             ]).timeout(Duration(seconds: 10)); // Add timeout
 
-                            if (!mounted)
+                            if (!mounted) {
                               return isLiked; // Check mounted after async operation
+                            }
                             widget.comment['reacts'] =
                                 widget.comment['reacts'] + 1;
                           }

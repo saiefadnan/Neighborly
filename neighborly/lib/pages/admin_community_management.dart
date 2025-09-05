@@ -461,7 +461,7 @@ class _AdminCommunityManagementPageState
         .collection('communities')
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
+              final data = doc.data();
               final members = data['members'] is List ? (data['members'] as List) : [];
               final joinRequests = data['joinRequests'] is List ? (data['joinRequests'] as List) : [];
               final posts = data['posts'] is List ? (data['posts'] as List) : [];

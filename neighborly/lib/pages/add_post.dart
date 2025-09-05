@@ -302,7 +302,7 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
                           : _locationName,
                   'shared': true,
                 }
-                : {'shared': false},
+                : {'name': 'Unknown location', 'shared': false},
         'title': title,
         'content': body,
         'type': type,

@@ -1,10 +1,13 @@
-import 'dart:math';
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dart_geohash/dart_geohash.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:neighborly/config/api_config.dart';
+import 'package:http/http.dart' as http;
 
 final postsProvider =
     StateNotifierProvider<PostNotifier, AsyncValue<List<Map<String, dynamic>>>>(
@@ -100,10 +103,38 @@ class PostNotifier
     }
   }
 
-  // Load posts within specified radius from current location
-  Future<void> loadNearByPosts({double radiusKm = 10.0}) async {
+  Future<void> loadNearByPosts() async {
+    String locationName = await _getCurrentLocation();
     try {
-      String locationName = await _getCurrentLocation();
+      final url = Uri.parse(
+        '${dotenv.env['BASE_URL']}${ApiConfig.forumApiPath}/load/nearby/posts',
+      );
+
+      final response = await http
+          .post(
+            url,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"location": locationName}),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final postData = data['postData'] as List<dynamic>;
+        final posts =
+            postData.map((post) => post as Map<String, dynamic>).toList();
+        state = AsyncData(posts);
+      }
+    } catch (e, st) {
+      print('Error loading nearby posts: $e');
+      await backupLoadNearByPosts(locationName);
+      //state = AsyncError(e, st);
+    }
+  }
+
+  // Load posts within specified radius from current location (My Community)
+  Future<void> backupLoadNearByPosts(String locationName) async {
+    try {
+      //String locationName = await _getCurrentLocation();
 
       final querySnapshot =
           await FirebaseFirestore.instance
@@ -115,6 +146,55 @@ class PostNotifier
       state = AsyncData(posts);
     } catch (e, st) {
       print('Error loading nearby posts: $e');
+      state = AsyncError(e, st);
+    }
+  }
+
+  Future<void> loadExplorePosts() async {
+    String locationName = await _getCurrentLocation();
+    try {
+      state = const AsyncLoading();
+      final url = Uri.parse(
+        '${dotenv.env['BASE_URL']}${ApiConfig.forumApiPath}/load/explore/posts',
+      );
+      final response = await http
+          .post(
+            url,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"location": locationName}),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final postData = data['postData'] as List<dynamic>;
+        final posts =
+            postData.map((post) => post as Map<String, dynamic>).toList();
+        state = AsyncData(posts);
+      }
+    } catch (e, st) {
+      print('Error loading explore posts: $e');
+      await backupLoadExplorePosts();
+    }
+  }
+
+  // Load posts from outside the user's community (Explore)
+  Future<void> backupLoadExplorePosts() async {
+    try {
+      String currentLocationName = await _getCurrentLocation();
+
+      final querySnapshot =
+          await FirebaseFirestore.instance
+              .collection('posts')
+              .where('location.name', isNotEqualTo: currentLocationName)
+              .orderBy('timestamp', descending: true)
+              .get();
+
+      // Filter out posts from user's current location
+      final posts = querySnapshot.docs.map((doc) => {...doc.data()}).toList();
+
+      state = AsyncData(posts);
+    } catch (e, st) {
+      print('Error loading explore posts: $e');
       state = AsyncError(e, st);
     }
   }

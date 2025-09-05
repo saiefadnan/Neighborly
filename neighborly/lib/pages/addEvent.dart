@@ -336,14 +336,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Icon(
-                                  Icons.notifications_active_rounded,
+                                  Icons.people_rounded,
                                   color: Color(0xFF71BB7B),
                                   size: 20,
                                 ),
                               ),
                               const SizedBox(width: 12),
                               const Text(
-                                "Notification Range",
+                                "Event Range",
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -354,7 +354,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            "People within ${notifRange.toInt()} km will be notified",
+                            "People within ${notifRange.toInt()} km can join this event",
                             style: const TextStyle(
                               fontSize: 14,
                               color: Color(0xFF5F6368),
@@ -981,6 +981,39 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                                                 descriptionController.text
                                                     .trim(),
                                             imageUrl: imageUrl,
+                                            date: () {
+                                              // Parse the time from the controller
+                                              final timeParts = timeController
+                                                  .text
+                                                  .trim()
+                                                  .split(' ');
+                                              final time = timeParts[0].split(
+                                                ':',
+                                              );
+                                              int hour = int.parse(time[0]);
+                                              int minute = int.parse(time[1]);
+
+                                              // Handle AM/PM
+                                              if (timeParts.length > 1 &&
+                                                  timeParts[1].toUpperCase() ==
+                                                      'PM' &&
+                                                  hour != 12) {
+                                                hour += 12;
+                                              } else if (timeParts.length > 1 &&
+                                                  timeParts[1].toUpperCase() ==
+                                                      'AM' &&
+                                                  hour == 12) {
+                                                hour = 0;
+                                              }
+
+                                              return DateTime(
+                                                selectedDate.year,
+                                                selectedDate.month,
+                                                selectedDate.day,
+                                                hour,
+                                                minute,
+                                              );
+                                            }(),
                                             approved: true,
                                             createdAt: Timestamp.now(),
                                             location:

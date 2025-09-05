@@ -586,22 +586,22 @@ class _PostCardState extends ConsumerState<PostCard> {
                                 ),
                           ),
                           // Full-screen indicator
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.6),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.fullscreen,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
+                          // Positioned(
+                          //   top: 8,
+                          //   right: 8,
+                          //   child: Container(
+                          //     padding: const EdgeInsets.all(6),
+                          //     decoration: BoxDecoration(
+                          //       color: Colors.black.withOpacity(0.6),
+                          //       borderRadius: BorderRadius.circular(8),
+                          //     ),
+                          //     child: const Icon(
+                          //       Icons.fullscreen,
+                          //       color: Colors.white,
+                          //       size: 20,
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
@@ -1032,8 +1032,9 @@ class _PostCardState extends ConsumerState<PostCard> {
                                   ],
                                 ).timeout(Duration(seconds: 10)); // Add timeout
 
-                                if (!mounted)
+                                if (!mounted) {
                                   return isLiked; // Check mounted after async operation
+                                }
                                 widget.post['reacts'] = max(
                                   widget.post['reacts'] - 1,
                                   0,
@@ -1051,8 +1052,9 @@ class _PostCardState extends ConsumerState<PostCard> {
                                   ],
                                 ).timeout(Duration(seconds: 10)); // Add timeout
 
-                                if (!mounted)
+                                if (!mounted) {
                                   return isLiked; // Check mounted after async operation
+                                }
                                 widget.post['reacts'] =
                                     widget.post['reacts'] + 1;
                               }

@@ -55,3 +55,84 @@ export const storeComments = async(c:Context)=>{
         return c.json({ success: false, message: 'Failed to process request' }, 500);
       }
 }
+
+export const storePosts = async(c: Context)=>{
+  try{
+    console.log('storing posts...');
+  }catch (e){
+
+  }
+}
+
+
+
+export const loadComments = async(c: Context)=>{
+try{
+    console.log('loading comments...');
+      const {postID} = await c.req.json();
+      console.log(postID);
+      const snapshot = await getFirestore().collection('posts').doc(postID).collection('comments').orderBy('createdAt', 'desc').get();
+      const comments = snapshot.docs.map((doc)=> doc.data());
+ return c.json({ success: true, commentData: comments }, 200);
+      
+  }catch (e){
+      console.error('Error processing request:', e);
+      return c.json({ success: false, post: [] }, 500);
+  }
+}
+
+
+export const loadPosts = async(c: Context)=>{
+  try{
+    console.log('loading explore posts...');
+      const {location} = await c.req.json();
+      console.log(location);
+      const snapshot = await getFirestore().collection('posts').where('location.name','!=',location).orderBy('timestamp', 'desc').get();
+      const posts = snapshot.docs.map((doc)=> doc.data());
+ return c.json({ success: true, postData: posts }, 200);
+      
+  }catch (e){
+      console.error('Error processing request:', e);
+      return c.json({ success: false, post: [] }, 500);
+  }
+}
+
+
+export const loadNearbyPosts = async(c: Context)=>{
+  try{
+    console.log('loading nearby posts...');
+      const {location} = await c.req.json();
+      console.log(location);
+      const snapshot = await getFirestore().collection('posts').where('location.name','==',location).orderBy('timestamp', 'desc').get();
+      const posts = snapshot.docs.map((doc)=> doc.data());
+ return c.json({ success: true, postData: posts }, 200);
+      
+  }catch (e){
+      console.error('Error processing request:', e);
+      return c.json({ success: false, post: [] }, 500);
+  }
+}
+
+export const likePosts = async(c: Context)=>{
+  try{
+      console.log('like/unlike posts...');
+  }catch(e){
+    
+  }
+}
+
+export const likeComments = async(c: Context)=>{
+  try{
+     console.log('like/unlike comments...');
+  }catch(e){
+    
+  }
+}
+
+export const pollVote = async(c: Context)=>{
+  try{
+       console.log('poll votes...');
+  }catch(e){
+    
+  }
+}
