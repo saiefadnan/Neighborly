@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/app_routes.dart';
 import 'package:neighborly/firebase_options.dart';
@@ -17,7 +17,7 @@ void main() async {
   //dont remove this ever again!!!
   //dont remove this ever again!!!
   //dont remove this ever again!!!
-  await dotenv.load(fileName: ".env");
+ 
   //dont remove this ever again!!!
   //dont remove this ever again!!!
   //dont remove this ever again!!!

@@ -16,133 +16,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
-  final List<AdminNotification> _notifications = [
-    // Community Join Approvals
-    AdminNotification(
-      id: '1',
-      type: NotificationType.memberApproval,
-      title: 'New Member Approved',
-      message: 'John Doe was accepted into Dhanmondi by Admin Sarah',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-      isRead: false,
-      communityName: 'Dhanmondi',
-      actorName: 'Sarah Ahmed',
-      targetName: 'John Doe',
-      icon: Icons.person_add,
-      color: const Color(0xFF10B981),
-    ),
-
-    // Event Management
-    AdminNotification(
-      id: '2',
-      type: NotificationType.eventApproval,
-      title: 'Event Needs Approval',
-      message: 'Community Cleanup Drive requires your approval',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      isRead: false,
-      communityName: 'Gulshan',
-      actorName: 'Fatima Khan',
-      icon: Icons.event,
-      color: const Color(0xFF8B5CF6),
-      eventData: EventModel(
-        id: 'evt_12345',
-        title: 'Community Cleanup Drive',
-        description:
-            'Join us for a neighborhood cleanup to make our community beautiful!',
-        imageUrl: 'assets/images/Image1.jpg',
-        approved: true,
-        createdAt: Timestamp.now(),
-        location: 'Gulshan Park',
-        lng: 90.4125,
-        lat: 23.7808,
-        raduis: 5,
-        tags: ['community', 'environment', 'cleanup'],
-      ),
-    ),
-
-    // Admin Addition
-    AdminNotification(
-      id: '3',
-      type: NotificationType.adminAdded,
-      title: 'New Admin Added',
-      message: 'Maria Khan was added as admin to Bashundhara',
-      timestamp: DateTime.now().subtract(const Duration(hours: 5)),
-      isRead: false,
-      communityName: 'Bashundhara',
-      actorName: 'System Admin',
-      targetName: 'Maria Khan',
-      icon: Icons.admin_panel_settings,
-      color: const Color(0xFFF59E0B),
-    ),
-
-    // Community Milestone
-    AdminNotification(
-      id: '4',
-      type: NotificationType.milestone,
-      title: 'Community Milestone! 🎉',
-      message: 'Dhanmondi community reached 1000 members!',
-      timestamp: DateTime.now().subtract(const Duration(days: 1)),
-      isRead: true,
-      communityName: 'Dhanmondi',
-      icon: Icons.celebration,
-      color: const Color(0xFFFFD700),
-    ),
-
-    // User Block Alert
-    AdminNotification(
-      id: '5',
-      type: NotificationType.userAction,
-      title: 'User Blocked',
-      message: 'Admin John blocked user "AbusiveUser123" from Gulshan',
-      timestamp: DateTime.now().subtract(const Duration(days: 2)),
-      isRead: true,
-      communityName: 'Gulshan',
-      actorName: 'John Admin',
-      targetName: 'AbusiveUser123',
-      icon: Icons.block,
-      color: const Color(0xFFEF4444),
-    ),
-
-    // Security Alert
-    AdminNotification(
-      id: '6',
-      type: NotificationType.security,
-      title: 'Security Alert',
-      message: 'Multiple spam reports received for user "SpamBot456"',
-      timestamp: DateTime.now().subtract(const Duration(days: 3)),
-      isRead: true,
-      communityName: 'Bashundhara',
-      targetName: 'SpamBot456',
-      icon: Icons.security,
-      color: const Color(0xFFFF6B6B),
-    ),
-
-    // System Update
-    AdminNotification(
-      id: '7',
-      type: NotificationType.system,
-      title: 'System Update',
-      message: 'New community guidelines have been published',
-      timestamp: DateTime.now().subtract(const Duration(days: 5)),
-      isRead: true,
-      icon: Icons.update,
-      color: const Color(0xFF06B6D4),
-    ),
-
-    // Anniversary Milestone
-    AdminNotification(
-      id: '8',
-      type: NotificationType.milestone,
-      title: 'Anniversary Milestone! 🎂',
-      message: 'Gulshan community is celebrating its 2nd anniversary',
-      timestamp: DateTime.now().subtract(const Duration(days: 7)),
-      isRead: true,
-      communityName: 'Gulshan',
-      icon: Icons.cake,
-      color: const Color(0xFFFF69B4),
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -163,195 +36,219 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
     super.dispose();
   }
 
-  int get unreadCount => _notifications.where((n) => !n.isRead).length;
-
-  void _markAsRead(String notificationId) {
-    setState(() {
-      final notification = _notifications.firstWhere(
-        (n) => n.id == notificationId,
-      );
-      notification.isRead = true;
-    });
-    HapticFeedback.lightImpact();
-  }
-
-  void _deleteNotification(String notificationId) {
-    setState(() {
-      _notifications.removeWhere((n) => n.id == notificationId);
-    });
-    HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Notification deleted'),
-        duration: Duration(seconds: 2),
-      ),
+  AdminNotification _fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    // Map Firestore fields to your model
+    return AdminNotification(
+      id: doc.id,
+      type: _mapType(data['type']),
+      title: data['title'] ?? '',
+      message: data['message'] ?? '',
+      timestamp: (data['createdAt'] is Timestamp)
+          ? data['createdAt'].toDate()
+          : DateTime.tryParse(data['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      isRead: data['read'] ?? false,
+      communityName: data['communityId'],
+      actorName: data['actorName'],
+      targetName: data['recipientEmail'],
+      icon: _mapIcon(data['type']),
+      color: _mapColor(data['type']),
+      eventData: (data['eventData'] != null)
+          ? EventModel(
+              id: data['eventData']['id'] ?? '',
+              title: data['eventData']['title'] ?? '',
+              description: data['eventData']['description'] ?? '',
+              imageUrl: data['eventData']['imageUrl'] ?? '',
+              approved: data['eventData']['approved'] ?? false,
+              createdAt: data['eventData']['createdAt'] ?? Timestamp.now(),
+              location: data['eventData']['location'] ?? '',
+              lng: data['eventData']['lng'] ?? 0.0,
+              lat: data['eventData']['lat'] ?? 0.0,
+              raduis: data['eventData']['raduis'] ?? 0,
+              tags: List<String>.from(data['eventData']['tags'] ?? []),
+            )
+          : null,
     );
   }
 
-  void _markAllAsRead() {
-    setState(() {
-      for (var notification in _notifications) {
-        notification.isRead = true;
-      }
-    });
-    HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('All notifications marked as read'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _handleNotificationTap(AdminNotification notification) {
-    if (!notification.isRead) {
-      _markAsRead(notification.id);
-    }
-
-    // Handle different notification types
-    switch (notification.type) {
-      case NotificationType.eventApproval:
-        if (notification.eventData != null) {
-          _showEventApprovalDialog(notification);
-        }
-        break;
-      case NotificationType.memberApproval:
-      case NotificationType.adminAdded:
-      case NotificationType.milestone:
-      case NotificationType.userAction:
-      case NotificationType.security:
-      case NotificationType.system:
-        // For other types, just mark as read (already handled above)
-        break;
+  NotificationType _mapType(String? type) {
+    switch (type) {
+      case 'member_approval':
+        return NotificationType.memberApproval;
+      case 'event_approval':
+        return NotificationType.eventApproval;
+      case 'admin_added':
+        return NotificationType.adminAdded;
+      case 'milestone':
+        return NotificationType.milestone;
+      case 'admin_action':
+      case 'user_action':
+        return NotificationType.userAction;
+      case 'security':
+        return NotificationType.security;
+      case 'system':
+        return NotificationType.system;
+      default:
+        return NotificationType.system;
     }
   }
 
-  void _showEventApprovalDialog(AdminNotification notification) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(Icons.event, color: notification.color, size: 24),
-                const SizedBox(width: 8),
-                const Expanded(child: Text('Event Approval Required')),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  notification.eventData!.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  notification.eventData!.description,
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      notification.eventData!.location,
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${notification.eventData!.createdAt.toDate().day}/${notification.eventData!.createdAt.toDate().month}/${notification.eventData!.createdAt.toDate().year}',
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _approveEvent(notification, false);
-                },
-                child: const Text(
-                  'Reject',
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) =>
-                              EventDetailsPage(event: notification.eventData!),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('View Details'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _approveEvent(notification, true);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Approve'),
-              ),
-            ],
+  IconData _mapIcon(String? type) {
+    switch (type) {
+      case 'member_approval':
+        return Icons.person_add;
+      case 'event_approval':
+        return Icons.event;
+      case 'admin_added':
+        return Icons.admin_panel_settings;
+      case 'milestone':
+        return Icons.celebration;
+      case 'admin_action':
+      case 'user_action':
+        return Icons.block;
+      case 'security':
+        return Icons.security;
+      case 'system':
+        return Icons.update;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _mapColor(String? type) {
+    switch (type) {
+      case 'member_approval':
+        return const Color(0xFF10B981);
+      case 'event_approval':
+        return const Color(0xFF8B5CF6);
+      case 'admin_added':
+        return const Color(0xFFF59E0B);
+      case 'milestone':
+        return const Color(0xFFFFD700);
+      case 'admin_action':
+      case 'user_action':
+        return const Color(0xFFEF4444);
+      case 'security':
+        return const Color(0xFFFF6B6B);
+      case 'system':
+        return const Color(0xFF06B6D4);
+      default:
+        return const Color(0xFF6366F1);
+    }
+  }
+
+  int _unreadCount(List<AdminNotification> notifications) =>
+      notifications.where((n) => !n.isRead).length;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF6366F1),
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
           ),
-    );
-  }
-
-  void _approveEvent(AdminNotification notification, bool approved) {
-    setState(() {
-      _notifications.removeWhere((n) => n.id == notification.id);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          approved
-              ? 'Event "${notification.eventData!.title}" approved'
-              : 'Event "${notification.eventData!.title}" rejected',
         ),
-        backgroundColor: approved ? Colors.green : Colors.red,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.notifications,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Notifications',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('notifications')
+              .orderBy('createdAt', descending: true)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final notifications = snapshot.data?.docs
+                    .map(_fromFirestore)
+                    .toList() ??
+                [];
+
+            return Column(
+              children: [
+                _buildStatsHeader(notifications),
+                Expanded(
+                  child: notifications.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.notifications_none,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No notifications',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'You\'re all caught up!',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.only(bottom: 20),
+                          itemCount: notifications.length,
+                          itemBuilder: (context, index) {
+                            return _buildNotificationCard(notifications[index]);
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildStatsHeader() {
+  Widget _buildStatsHeader(List<AdminNotification> notifications) {
+    final unreadCount = _unreadCount(notifications);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       padding: const EdgeInsets.all(20),
@@ -424,7 +321,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
             children: [
               _buildStatBadge(
                 'Total',
-                _notifications.length.toString(),
+                notifications.length.toString(),
                 Icons.inbox,
               ),
               const SizedBox(width: 12),
@@ -436,7 +333,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
               const SizedBox(width: 12),
               _buildStatBadge(
                 'Action Needed',
-                _notifications
+                notifications
                     .where(
                       (n) =>
                           n.type == NotificationType.eventApproval && !n.isRead,
@@ -494,13 +391,12 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border:
-            notification.isRead
-                ? null
-                : Border.all(
-                  color: notification.color.withOpacity(0.3),
-                  width: 1,
-                ),
+        border: notification.isRead
+            ? null
+            : Border.all(
+                color: notification.color.withOpacity(0.3),
+                width: 1,
+              ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(notification.isRead ? 0.05 : 0.08),
@@ -513,12 +409,11 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _handleNotificationTap(notification),
+          onTap: () {},
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Icon with color indicator
                 Container(
                   width: 40,
                   height: 40,
@@ -532,10 +427,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
                     size: 20,
                   ),
                 ),
-
                 const SizedBox(width: 12),
-
-                // Content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,10 +439,9 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
                               notification.title,
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight:
-                                    notification.isRead
-                                        ? FontWeight.w500
-                                        : FontWeight.w600,
+                                fontWeight: notification.isRead
+                                    ? FontWeight.w500
+                                    : FontWeight.w600,
                                 color: const Color(0xFF2C3E50),
                               ),
                             ),
@@ -630,59 +521,29 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
                                 ),
                               ),
                             ),
+                          if (!notification.isRead)
+                            TextButton(
+                              onPressed: () async {
+                                await FirebaseFirestore.instance
+                                    .collection('notifications')
+                                    .doc(notification.id)
+                                    .update({'read': true});
+                              },
+                              child: const Text(
+                                'Mark as Read',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF6366F1),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(width: 8),
-
-                // Action menu
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'read':
-                        _markAsRead(notification.id);
-                        break;
-                      case 'delete':
-                        _deleteNotification(notification.id);
-                        break;
-                    }
-                  },
-                  itemBuilder:
-                      (context) => [
-                        if (!notification.isRead)
-                          const PopupMenuItem(
-                            value: 'read',
-                            child: Row(
-                              children: [
-                                Icon(Icons.mark_email_read, size: 16),
-                                SizedBox(width: 8),
-                                Text('Mark as read'),
-                              ],
-                            ),
-                          ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, size: 16, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text(
-                                'Delete',
-                                style: TextStyle(color: Colors.red),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                  child: Icon(
-                    Icons.more_vert,
-                    color: Colors.grey[400],
-                    size: 18,
-                  ),
-                ),
               ],
             ),
           ),
@@ -704,108 +565,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
     } else {
       return '${(difference.inDays / 7).floor()}w ago';
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF6366F1),
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.white,
-            size: 20,
-          ),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.notifications,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Notifications',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          if (unreadCount > 0)
-            TextButton(
-              onPressed: _markAllAsRead,
-              child: const Text(
-                'Mark all read',
-                style: TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ),
-        ],
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Column(
-          children: [
-            _buildStatsHeader(),
-            Expanded(
-              child:
-                  _notifications.isEmpty
-                      ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.notifications_none,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No notifications',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'You\'re all caught up!',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                      : ListView.builder(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 20),
-                        itemCount: _notifications.length,
-                        itemBuilder: (context, index) {
-                          return _buildNotificationCard(_notifications[index]);
-                        },
-                      ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
