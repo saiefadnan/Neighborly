@@ -46,7 +46,7 @@ class User {
       firebaseUid: uid,
       isAdmin: data['isAdmin'] ?? false,
       blocked: data['blocked'] ?? false,
-      contact: data['contact'],
+      contact: data['contactNumber'], // Map from contactNumber field
       address: data['address'],
       bloodGroup: data['bloodGroup'],
       preferredCommunity: communities,
@@ -59,7 +59,7 @@ class User {
     return {
       'email': email,
       'username': username,
-      'contact': contact,
+      'contactNumber': contact, // Map to contactNumber field
       'address': address,
       'bloodGroup': bloodGroup,
       'preferredCommunity': preferredCommunity, // Now saves as List<String>

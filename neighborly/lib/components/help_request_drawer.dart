@@ -7,27 +7,28 @@ import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as classic_provider;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
 import '../providers/notification_provider.dart';
 import '../providers/help_request_provider.dart';
+import '../pages/authPage.dart';
 
-class HelpRequestDrawer extends StatefulWidget {
+class HelpRequestDrawer extends ConsumerStatefulWidget {
   final Function(Map<String, dynamic>) onSubmit;
   const HelpRequestDrawer({super.key, required this.onSubmit});
 
   @override
-  HelpRequestDrawerState createState() => HelpRequestDrawerState();
+  ConsumerState<HelpRequestDrawer> createState() => HelpRequestDrawerState();
 }
 
-class HelpRequestDrawerState extends State<HelpRequestDrawer> {
+class HelpRequestDrawerState extends ConsumerState<HelpRequestDrawer> {
   final _descriptionController = TextEditingController();
   final _timeController = TextEditingController();
-  final _usernameController = TextEditingController(text: 'Ali');
-  final _phoneController =
-      TextEditingController(); // Add phone number controller
-  final _addressController = TextEditingController(
-    text: '123, Dhanmondi, Dhaka',
-  );
+  final _usernameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
   String _urgency = 'Emergency';
   String _helpType = 'Medical';
   File? _image;
@@ -50,7 +51,6 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
   Timer? _debounce;
   LatLng? _selectedLocation;
 
-  // Local Bangladesh locations as fallback
   final List<Map<String, dynamic>> _localLocations = [
     {'name': 'Dhaka', 'lat': 23.8103, 'lon': 90.4125, 'type': 'city'},
     {'name': 'Chittagong', 'lat': 22.3569, 'lon': 91.7832, 'type': 'city'},
@@ -71,6 +71,84 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
     {'name': 'Ramna', 'lat': 23.7358, 'lon': 90.3964, 'type': 'area'},
     {'name': 'Tejgaon', 'lat': 23.7694, 'lon': 90.3917, 'type': 'area'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+    _getCurrentLocation();
+  }
+
+  void _loadUserData() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(currentUserProvider);
+
+      print('DEBUG: User data: $user');
+      print('DEBUG: User contact: ${user?.contact}');
+      print('DEBUG: User username: ${user?.username}');
+
+      // Load username with fallback chain like in home.dart
+      final username =
+          user?.username ??
+          FirebaseAuth.instance.currentUser?.displayName ??
+          'User';
+      _usernameController.text = username;
+
+      // Load phone number from user contact
+      if (user?.contact != null && user!.contact!.isNotEmpty) {
+        _phoneController.text = user.contact!;
+        print('DEBUG: Phone number set: ${user.contact}');
+      } else {
+        print('DEBUG: No contact found or contact is empty');
+        print('DEBUG: User contact value: ${user?.contact}');
+      }
+    });
+  }
+
+  void _getCurrentLocation() async {
+    try {
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return;
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Reverse geocode to get address
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        String address = [
+          place.name,
+          place.street,
+          place.locality,
+          place.administrativeArea,
+          place.country,
+        ].where((element) => element != null && element.isNotEmpty).join(', ');
+
+        _addressController.text = address;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting location: $e');
+      }
+    }
+  }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -128,10 +206,8 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
       };
 
       // Add notification using the provider
-      final notificationProvider = Provider.of<NotificationProvider>(
-        context,
-        listen: false,
-      );
+      final notificationProvider = classic_provider
+          .Provider.of<NotificationProvider>(context, listen: false);
       notificationProvider.addHelpRequestNotification(
         name: _usernameController.text.trim(),
         message: '$_helpType help needed: $description',
@@ -144,10 +220,8 @@ class HelpRequestDrawerState extends State<HelpRequestDrawer> {
       );
 
       // Add help request to global provider
-      final helpRequestProvider = Provider.of<HelpRequestProvider>(
-        context,
-        listen: false,
-      );
+      final helpRequestProvider = classic_provider
+          .Provider.of<HelpRequestProvider>(context, listen: false);
       helpRequestProvider.addHelpRequestFromMap(helpData);
 
       widget.onSubmit(helpData);

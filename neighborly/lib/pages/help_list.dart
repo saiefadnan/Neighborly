@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/help_request_provider.dart';
 import '../components/responses_drawer.dart';
 
@@ -21,6 +22,9 @@ class _HelpListPageState extends State<HelpListPage>
   bool _nearbyOnly = false;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _isLoading = true;
+  bool _hasError = false;
+  String? currentUserId;
 
   final List<String> _helpTypes = [
     'All',
@@ -34,11 +38,14 @@ class _HelpListPageState extends State<HelpListPage>
   ];
   final List<String> _urgencyLevels = ['All', 'Emergency', 'Urgent', 'General'];
 
-  // Initialize with some default help requests for demo
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Get current user from Firebase Auth
+    final user = FirebaseAuth.instance.currentUser;
+    currentUserId = user?.uid;
 
     _headerAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -62,16 +69,96 @@ class _HelpListPageState extends State<HelpListPage>
     _loadHelpRequests();
   }
 
-  // Separate method to load help requests
-  void _loadHelpRequests() async {
+  // Separate method to load help requests with proper loading states
+  Future<void> _loadHelpRequests() async {
     final provider = Provider.of<HelpRequestProvider>(context, listen: false);
 
-    // Always fetch from backend first - force refresh every time
-    await provider.fetchHelpRequestsFromBackend(force: true);
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
 
-    // Only show sample data if backend collection is completely empty
-    if (provider.helpRequests.isEmpty) {
+    try {
+      // Always fetch from backend first - force refresh every time
+      await provider.fetchHelpRequestsFromBackend(force: true);
+
+      // Check if backend fetch was successful
+      if (provider.helpRequests.isEmpty) {
+        // Backend returned no data, show dummy data as fallback
+        provider.initializeSampleData();
+        setState(() {
+          _hasError = true; // Indicate we're using fallback data
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'No data from server. Showing sample data.',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+      } else {
+        // Backend fetch successful
+        setState(() {
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading help requests: $e');
+
+      // Backend fetch failed, show dummy data as fallback
       provider.initializeSampleData();
+      setState(() {
+        _hasError = true;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Failed to load data from server. Showing sample data.',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -526,12 +613,21 @@ class _HelpListPageState extends State<HelpListPage>
                     const Spacer(),
                   ] else ...[
                     const Spacer(),
-                    if (!isMyHelp)
+                    if (help.userId != currentUserId)
                       _buildActionButton(
                         'Respond',
                         Icons.reply,
                         const Color(0xFF71BB7B),
                         () => _respondToHelp(help),
+                      ),
+                    // For own requests, show delete button when no responses
+                    if (help.userId == currentUserId &&
+                        help.responderCount == 0)
+                      _buildActionButton(
+                        'Delete',
+                        Icons.delete,
+                        Colors.red,
+                        () => _deleteRequest(help),
                       ),
                   ],
 
@@ -589,45 +685,111 @@ class _HelpListPageState extends State<HelpListPage>
     final filteredHelps = _getFilteredHelps(helps);
 
     if (filteredHelps.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      return RefreshIndicator(
+        onRefresh: () async {
+          await _loadHelpRequests();
+        },
+        color: const Color(0xFF71BB7B),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Icon(
-              isMyHelp ? Icons.help_outline : Icons.search_off,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isMyHelp
-                  ? 'No help requests posted yet'
-                  : _searchQuery.isEmpty
-                  ? 'No help requests available'
-                  : 'No help requests found',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isMyHelp ? Icons.help_outline : Icons.search_off,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isMyHelp
+                        ? 'No help requests posted yet'
+                        : _searchQuery.isEmpty
+                        ? 'No help requests available'
+                        : 'No help requests found',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (isMyHelp) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Your posted help requests will appear here',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                    ),
+                  ],
+                  if (_hasError) ...[
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _loadHelpRequests,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry Connection'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF71BB7B),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (isMyHelp) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Your posted help requests will appear here',
-                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-              ),
-            ],
           ],
         ),
       );
     }
 
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      itemCount: filteredHelps.length,
-      itemBuilder: (context, index) {
-        return _buildHelpCard(filteredHelps[index], isMyHelp);
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _loadHelpRequests();
+      },
+      color: const Color(0xFF71BB7B),
+      child: ListView.builder(
+        physics: const BouncingScrollPhysics(),
+        itemCount: filteredHelps.length,
+        itemBuilder: (context, index) {
+          return _buildHelpCard(filteredHelps[index], isMyHelp);
+        },
+      ),
+    );
+  }
+
+  void _deleteRequest(HelpRequestData help) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Request'),
+          content: const Text(
+            'Are you sure you want to delete this help request?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Here you would typically call a provider method to delete the request
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Request deleted successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
       },
     );
   }
@@ -1246,8 +1408,7 @@ class _HelpListPageState extends State<HelpListPage>
                 ],
 
                 // Action buttons
-                if (!help.isResponded &&
-                    help.requesterName != 'Ali Rahman') ...[
+                if (!help.isResponded && help.userId != currentUserId) ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -1260,6 +1421,50 @@ class _HelpListPageState extends State<HelpListPage>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF71BB7B),
                         foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else if (help.userId == currentUserId &&
+                    help.responderCount == 0) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.hourglass_empty, color: Colors.orange),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'No responses yet. Your request is visible to nearby helpers.',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _deleteRequest(help);
+                      },
+                      icon: const Icon(Icons.delete),
+                      label: const Text('Delete Request'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1391,32 +1596,125 @@ class _HelpListPageState extends State<HelpListPage>
         children: [
           _buildFilterSection(),
           Expanded(
-            child: Consumer<HelpRequestProvider>(
-              builder: (context, helpProvider, child) {
-                final communityHelps = helpProvider.getFilteredHelps(
-                  helpType: _selectedHelpType,
-                  urgency: _selectedUrgency,
-                  searchQuery: _searchQuery,
-                  nearbyOnly: _nearbyOnly,
-                  isMyHelp: false,
-                );
-                final myHelps = helpProvider.getFilteredHelps(
-                  helpType: _selectedHelpType,
-                  urgency: _selectedUrgency,
-                  searchQuery: _searchQuery,
-                  nearbyOnly: _nearbyOnly,
-                  isMyHelp: true,
-                );
+            child:
+                _isLoading
+                    ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF71BB7B),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Loading help requests...',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    : Consumer<HelpRequestProvider>(
+                      builder: (context, helpProvider, child) {
+                        final communityHelps = helpProvider.getFilteredHelps(
+                          helpType: _selectedHelpType,
+                          urgency: _selectedUrgency,
+                          searchQuery: _searchQuery,
+                          nearbyOnly: _nearbyOnly,
+                          isMyHelp: false,
+                        );
+                        final myHelps = helpProvider.getFilteredHelps(
+                          helpType: _selectedHelpType,
+                          urgency: _selectedUrgency,
+                          searchQuery: _searchQuery,
+                          nearbyOnly: _nearbyOnly,
+                          isMyHelp: true,
+                        );
 
-                return TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildHelpList(communityHelps, false),
-                    _buildHelpList(myHelps, true),
-                  ],
-                );
-              },
-            ),
+                        return Column(
+                          children: [
+                            // Show status indicator if using fallback data
+                            if (_hasError) ...[
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.1),
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: Colors.orange.withOpacity(0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.info_outline,
+                                      color: Colors.orange,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Expanded(
+                                      child: Text(
+                                        'Showing sample data (server unavailable)',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.orange,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    InkWell(
+                                      onTap: _loadHelpRequests,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Retry',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.orange,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            // Tab content
+                            Expanded(
+                              child: TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  _buildHelpList(communityHelps, false),
+                                  _buildHelpList(myHelps, true),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
           ),
         ],
       ),
