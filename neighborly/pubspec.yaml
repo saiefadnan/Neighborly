@@ -73,10 +73,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env #!!!!don't remove this ever again!!!
+    
     - assets/images/
     - assets/data/
-
+    - .env
 # Flutter Launcher Icons Configuration
 flutter_launcher_icons:
   android: "launcher_icon"
