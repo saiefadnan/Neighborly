@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -98,44 +97,8 @@ class _SignupFormState extends ConsumerState<SignupForm> {
     'Paltan',
     'Uttara',
     'Hazaribagh',
+    'Bashundhara',
   ];
-
-  // Updated method to save user info to Firestore with all fields
-  Future<void> _postUserToFirestore({
-    required String username,
-    required String email,
-    required String addressLine1,
-    String? addressLine2,
-    required String city,
-    required String division,
-    required String postalCode,
-    required String contactNumber,
-    required String bloodGroup,
-    required List<String> preferredCommunity,
-  }) async {
-    try {
-      await FirebaseFirestore.instance.collection('users').add({
-        'username': username,
-        'email': email,
-        'addressLine1': addressLine1,
-        'addressLine2': addressLine2 ?? '',
-        'city': city,
-        'division': division,
-        'postalcode': postalCode,
-        'contactNumber': contactNumber,
-        'bloodGroup': bloodGroup,
-        'preferredCommunity': preferredCommunity,
-        'profilepicurl': '',
-        'isAdmin': false,
-        'blocked': false,
-        'createdAt': Timestamp.now(),
-      });
-      print('✅ User data saved to Firestore successfully');
-    } catch (e) {
-      print('❌ Error saving user data to Firestore: $e');
-      rethrow;
-    }
-  }
 
   void onTapSignup(BuildContext context) async {
     name = _usernameController.text.trim();
@@ -196,7 +159,7 @@ class _SignupFormState extends ConsumerState<SignupForm> {
       );
 
       // After successful authentication, add user to Firestore
-      await _postUserToFirestore(
+      await postUserToFirestore(
         username: name,
         email: email,
         addressLine1: addressLine1,
@@ -977,9 +940,12 @@ class _SignupFormState extends ConsumerState<SignupForm> {
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setBool('rememberMe', rememberMe);
                   ref.read(authUserProvider.notifier).stateOnRemember();
+                  if (!context.mounted) return;
                   final result = await signInWithGoogle(context);
                   if (result == null) {
                     ref.read(authUserProvider.notifier).initState();
+                  } else {
+                    //ref.read(authUserProvider.notifier).fetchUserData();
                   }
                 },
                 child: FaIcon(
@@ -994,9 +960,12 @@ class _SignupFormState extends ConsumerState<SignupForm> {
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setBool('rememberMe', rememberMe);
                   ref.read(authUserProvider.notifier).stateOnRemember();
+                  if (!context.mounted) return;
                   final result = await signInWithFacebook(context);
                   if (result == null) {
                     ref.read(authUserProvider.notifier).initState();
+                  } else {
+                    //.read(authUserProvider.notifier).fetchUserData();
                   }
                 },
                 child: FaIcon(

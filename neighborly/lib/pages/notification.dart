@@ -58,48 +58,15 @@ class NotificationData {
   }
 }
 
-// Beautiful Enhanced NotificationCard Widget
-class NotificationCard extends StatefulWidget {
+// Lightweight NotificationCard Widget (Facebook-style)
+class NotificationCard extends StatelessWidget {
   final NotificationData notification;
   final VoidCallback? onTap;
-  final VoidCallback? onAction;
 
-  const NotificationCard({
-    super.key,
-    required this.notification,
-    this.onTap,
-    this.onAction,
-  });
-
-  @override
-  State<NotificationCard> createState() => _NotificationCardState();
-}
-
-class _NotificationCardState extends State<NotificationCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 150),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+  const NotificationCard({super.key, required this.notification, this.onTap});
 
   Color _getUrgencyColor() {
-    switch (widget.notification.urgency) {
+    switch (notification.urgency) {
       case 'emergency':
         return Colors.red;
       case 'urgent':
@@ -110,7 +77,7 @@ class _NotificationCardState extends State<NotificationCard>
   }
 
   IconData _getTypeIcon() {
-    switch (widget.notification.type) {
+    switch (notification.type) {
       case 'help_request':
         return Icons.volunteer_activism;
       case 'traffic_update':
@@ -126,7 +93,7 @@ class _NotificationCardState extends State<NotificationCard>
 
   String _getTimeAgo() {
     final now = DateTime.now();
-    final difference = now.difference(widget.notification.timestamp);
+    final difference = now.difference(notification.timestamp);
 
     if (difference.inMinutes < 1) {
       return 'Just now';
@@ -141,340 +108,171 @@ class _NotificationCardState extends State<NotificationCard>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _scaleAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: GestureDetector(
-            onTapDown: (_) {
-              _animationController.forward();
-            },
-            onTapUp: (_) {
-              _animationController.reverse();
-              widget.onTap?.call();
-            },
-            onTapCancel: () {
-              _animationController.reverse();
-            },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: _getUrgencyColor().withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-                border: Border.all(
-                  color: _getUrgencyColor().withOpacity(0.3),
-                  width: 1.5,
-                ),
-              ),
-              child: Stack(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: _getUrgencyColor().withOpacity(0.1),
+        highlightColor: _getUrgencyColor().withOpacity(0.05),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: notification.isRead ? Colors.white : Colors.grey[50],
+            border: Border(
+              bottom: BorderSide(color: Colors.grey[200]!, width: 0.5),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Profile image with urgency indicator
+              Stack(
                 children: [
-                  // Urgency indicator bar
-                  Positioned(
-                    left: 0,
-                    top: 16,
-                    bottom: 16,
-                    child: Container(
-                      width: 4,
-                      decoration: BoxDecoration(
-                        color: _getUrgencyColor(),
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(2),
-                          bottomRight: Radius.circular(2),
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundImage: AssetImage(notification.image),
+                  ),
+                  if (notification.urgency == 'emergency')
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
                         ),
                       ),
                     ),
-                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
 
-                  // Main content
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header row
-                        Row(
-                          children: [
-                            // Profile image with online indicator
-                            Stack(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.asset(
-                                    widget.notification.image,
-                                    width: 48,
-                                    height: 48,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                                if (widget.notification.urgency == 'emergency')
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: Container(
-                                      width: 16,
-                                      height: 16,
-                                      decoration: BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.priority_high,
-                                        size: 8,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(width: 12),
-
-                            // Name and type
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        widget.notification.name,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF2C3E50),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: _getUrgencyColor().withOpacity(
-                                            0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          widget.notification.urgency
-                                              .toUpperCase(),
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: _getUrgencyColor(),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        _getTypeIcon(),
-                                        size: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        widget.notification.type
-                                            .replaceAll('_', ' ')
-                                            .toUpperCase(),
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Time and read indicator
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  _getTimeAgo(),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                if (!widget.notification.isRead)
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      color: _getUrgencyColor(),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Message with name
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF1C1E21),
+                          height: 1.3,
                         ),
-                        const SizedBox(height: 12),
-
-                        // Message
-                        Text(
-                          widget.notification.message,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF2C3E50),
-                            height: 1.4,
+                        children: [
+                          TextSpan(
+                            text: notification.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                        // Location (if available)
-                        if (widget.notification.location != null) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                size: 14,
-                                color: Colors.grey[600],
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  widget.notification.location!,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
+                          TextSpan(text: ' ${notification.message}'),
                         ],
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
 
-                        const SizedBox(height: 12),
-
-                        // Action buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: widget.onAction,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _getUrgencyColor(),
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.map, size: 16),
-                                label: const Text(
-                                  'View Location',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                // Handle message action - dismiss previous and show new
-                                ScaffoldMessenger.of(context).clearSnackBars();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.message,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            'Starting conversation with ${widget.notification.name}...',
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    backgroundColor: _getUrgencyColor(),
-                                    duration: const Duration(seconds: 4),
-                                    behavior: SnackBarBehavior.floating,
-                                    margin: const EdgeInsets.all(16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    action: SnackBarAction(
-                                      label: 'Open Chat',
-                                      textColor: Colors.white,
-                                      onPressed: () {
-                                        // Handle open chat action
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: _getUrgencyColor(),
-                                side: BorderSide(color: _getUrgencyColor()),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                  horizontal: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              icon: const Icon(Icons.message, size: 16),
-                              label: const Text(
-                                'Message',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                    // Time and type info
+                    Row(
+                      children: [
+                        Text(
+                          _getTimeAgo(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          _getTypeIcon(),
+                          size: 12,
+                          color: _getUrgencyColor(),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          notification.type.replaceAll('_', ' '),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _getUrgencyColor(),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
-                  ),
+
+                    // Location (if available)
+                    if (notification.location != null) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_outlined,
+                            size: 12,
+                            color: Colors.grey[500],
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              notification.location!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Read indicator and urgency badge
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (!notification.isRead)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _getUrgencyColor(),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  if (notification.urgency != 'normal') ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getUrgencyColor().withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        notification.urgency.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          color: _getUrgencyColor(),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -833,120 +631,93 @@ class _NotificationPageState extends State<NotificationPage>
 
           // Notifications List
           Expanded(
-            child:
-                filteredNotifications.isEmpty
-                    ? _buildEmptyState(_selectedFilter)
-                    : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      itemCount: filteredNotifications.length,
-                      itemBuilder: (context, index) {
-                        final notification = filteredNotifications[index];
-                        return NotificationCard(
-                          notification: notification,
-                          onTap: () {
-                            // Mark this notification as read
-                            _markAsRead(notification.id);
-
-                            // Handle notification tap - dismiss previous and show new
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.asset(
-                                        notification.image,
-                                        width: 32,
-                                        height: 32,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'Viewing ${notification.name}\'s request',
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          Text(
-                                            notification.type
-                                                .replaceAll('_', ' ')
-                                                .toUpperCase(),
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.white70,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(
-                                      notification.urgency == 'emergency'
-                                          ? Icons.priority_high
-                                          : Icons.info_outline,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: _getNotificationColor(
-                                  notification.urgency,
-                                ),
-                                duration: const Duration(seconds: 4),
-                                behavior: SnackBarBehavior.floating,
-                                margin: const EdgeInsets.all(16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                action: SnackBarAction(
-                                  label: 'Details',
-                                  textColor: Colors.white,
-                                  onPressed: () {
-                                    // Handle view details action
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                          onAction: () {
-                            // Handle view location action
-                            if (notification.extraData != null &&
-                                notification.extraData!['coordinates'] !=
-                                    null) {
-                              final coords =
-                                  notification.extraData!['coordinates']
-                                      as Map<String, dynamic>;
-                              final location = LatLng(
-                                coords['lat'].toDouble(),
-                                coords['lng'].toDouble(),
-                              );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                print('🔄 Refreshing notifications...');
+                await notificationProvider.initializeNotifications();
+                print('✅ Notifications refresh completed');
+              },
+              color: const Color(0xFF71BB7B),
+              child:
+                  filteredNotifications.isEmpty
+                      ? _buildEmptyState(_selectedFilter)
+                      : ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        itemCount: filteredNotifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = filteredNotifications[index];
+                          return NotificationCard(
+                            notification: notification,
+                            onTap: () {
+                              // Mark this notification as read
+                              _markAsRead(notification.id);
 
                               // Navigate to map with location
-                              if (widget.onLocationNavigate != null) {
-                                widget.onLocationNavigate!(
-                                  location,
-                                  notification.name,
+                              if (notification.extraData != null &&
+                                  notification.extraData!['coordinates'] !=
+                                      null) {
+                                final coords =
+                                    notification.extraData!['coordinates']
+                                        as Map<String, dynamic>;
+                                final location = LatLng(
+                                  coords['lat'].toDouble(),
+                                  coords['lng'].toDouble(),
                                 );
+
+                                // Navigate to map with location
+                                if (widget.onLocationNavigate != null) {
+                                  widget.onLocationNavigate!(
+                                    location,
+                                    notification.name,
+                                  );
+                                } else {
+                                  // Fallback to just navigate to map tab
+                                  widget.onNavigate?.call(1);
+                                }
                               } else {
                                 // Fallback to just navigate to map tab
                                 widget.onNavigate?.call(1);
                               }
-                            } else {
-                              // Fallback to just navigate to map tab
-                              widget.onNavigate?.call(1);
-                            }
-                          },
-                        );
-                      },
-                    ),
+
+                              // Show subtle feedback
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.map_outlined,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Opening ${notification.name}\'s location on map',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  backgroundColor: _getNotificationColor(
+                                    notification.urgency,
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: const EdgeInsets.all(16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+            ),
           ),
         ],
       ),

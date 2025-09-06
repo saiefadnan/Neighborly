@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:neighborly/functions/alt_auth.dart';
+import 'package:neighborly/pages/authPage.dart';
+import 'package:provider/provider.dart';
 import 'package:neighborly/pages/home.dart';
 import 'package:neighborly/pages/mapHomePage.dart';
 import 'package:neighborly/pages/notification.dart';
 import 'package:neighborly/pages/help_list.dart';
 import 'package:neighborly/pages/forum.dart';
+import 'package:neighborly/providers/notification_provider.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   final PageController _pageController = PageController(
     initialPage: 2,
   ); // Start from home (middle)
@@ -29,6 +35,42 @@ class _AppShellState extends State<AppShell> {
     Icons.groups,
     Icons.notifications_none,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeNotifications();
+    // Listen for auth state changes to reinitialize notifications
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        _initializeNotifications();
+      }
+    });
+
+    // if google auth or facebook auth is used
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (socialAuthUsed) {
+        ref.read(authUserProvider.notifier).fetchUserData();
+        print('Fetched user data after social auth................>');
+      }
+    });
+  }
+
+  Future<void> _initializeNotifications() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final notificationProvider = context.read<NotificationProvider>();
+        print('🔔 Initializing notifications for user: ${user.uid}');
+        await notificationProvider.initializeNotifications();
+        print('✅ Notifications initialized successfully');
+      } else {
+        print('❌ No authenticated user found for notification initialization');
+      }
+    } catch (e) {
+      print('❌ Error initializing notifications: $e');
+    }
+  }
 
   void _onTap(int index) {
     setState(() {

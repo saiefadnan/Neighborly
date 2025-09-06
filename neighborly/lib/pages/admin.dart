@@ -6,6 +6,7 @@ import 'announcements.dart';
 import 'team.dart';
 import 'Schedule.dart';
 import 'admin_notifications.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 //included backend connection
 class AdminHomePage extends StatefulWidget {
@@ -24,7 +25,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   late Animation<Offset> _headerSlideAnimation;
 
   // Mock notification count - in real app this would come from Firebase
-  int _notificationCount = 3;
+  int _notificationCount = 0;
 
   @override
   void initState() {
@@ -52,6 +53,13 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
     _fadeController.forward();
     _headerSlideController.forward();
+
+    // Listen to unread notification count
+    getUnreadNotificationCount().listen((count) {
+      setState(() {
+        _notificationCount = count;
+      });
+    });
   }
 
   @override
@@ -390,21 +398,25 @@ class _AdminHomePageState extends State<AdminHomePage>
                       MaterialPageRoute(builder: (_) => const SchedulePage()),
                     ),
                   ),
-                  _buildActionCard(
-                    'Admin Notifications',
-                    Icons.notifications_rounded,
-                    const Color(0xFF6366F1),
-                    () {
-                      // Add admin notifications navigation
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (_) => Scaffold(body: AdminNotificationsPage()),
-                        ),
+                  StreamBuilder<int>(
+                    stream: getUnreadNotificationCount(),
+                    builder: (context, snapshot) {
+                      final unreadCount = snapshot.data ?? 0;
+                      return _buildActionCard(
+                        'Admin Notifications',
+                        Icons.notifications_rounded,
+                        const Color(0xFF6366F1),
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => Scaffold(body: AdminNotificationsPage()),
+                            ),
+                          );
+                        },
+                        badgeCount: unreadCount,
                       );
                     },
-                    badgeCount: _notificationCount,
                   ),
                 ],
               );
@@ -413,6 +425,14 @@ class _AdminHomePageState extends State<AdminHomePage>
         ),
       ],
     );
+  }
+
+  Stream<int> getUnreadNotificationCount() {
+    return FirebaseFirestore.instance
+        .collection('notifications')
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.size);
   }
 
   @override

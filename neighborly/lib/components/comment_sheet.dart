@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_card.dart';
 import 'package:neighborly/components/comment_tree.dart';
 import 'package:neighborly/notifiers/comment_notifier.dart';
+import 'package:neighborly/pages/authPage.dart';
 
+final Map<String, String> userUrlCache = {};
 final Map<String, GlobalKey> commentKeys = {};
 final DraggableScrollableController _controller =
     DraggableScrollableController();
@@ -36,11 +38,6 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
   @override
   Widget build(BuildContext context) {
     final asyncComments = ref.watch(commentsProvider(widget.postID));
-    // ref.listen(fetchData('comments'), (previous, next) {
-    //   next.whenData((fetchedList) {
-    //     ref.read(commentsProvider.notifier).setComments(fetchedList);
-    //   });
-    // });
     return asyncComments.when(
       data: (comments) {
         //final comments = ref.watch(commentsProvider);
@@ -50,6 +47,9 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
             filteredComments.where((c) => c['parentID'] == null).toList();
         return topLevelComments.isNotEmpty
             ? ListView.builder(
+              addAutomaticKeepAlives: false,
+              addRepaintBoundaries: false,
+              cacheExtent: 200,
               controller: widget.scrollController,
               itemCount: topLevelComments.length,
               itemBuilder: (context, index) {
@@ -75,6 +75,8 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
               },
             )
             : ListView(
+              addAutomaticKeepAlives: false,
+              addRepaintBoundaries: false,
               controller: widget.scrollController,
               padding: EdgeInsets.all(16.0),
               shrinkWrap: true,
@@ -94,6 +96,8 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
       },
       error: (e, _) {
         return ListView(
+          addAutomaticKeepAlives: false,
+          addRepaintBoundaries: false,
           controller: widget.scrollController,
           padding: EdgeInsets.all(16.0),
           shrinkWrap: true,
@@ -341,6 +345,20 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                                         'parentID': replyTo,
                                                         'reacts': 0,
                                                       };
+                                                      if (!userUrlCache
+                                                          .containsKey(
+                                                            newComment['authorID']
+                                                                as String,
+                                                          )) {
+                                                        userUrlCache[newComment['authorID']
+                                                                as String] =
+                                                            ref
+                                                                .read(
+                                                                  currentUserProvider,
+                                                                )
+                                                                ?.profilePicture ??
+                                                            'assets/images/anonymous.jpg';
+                                                      }
                                                       ref
                                                           .read(
                                                             commentsProvider(

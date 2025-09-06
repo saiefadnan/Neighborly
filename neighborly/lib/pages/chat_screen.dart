@@ -22,11 +22,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> _messages = [];
 
   Future<void> sendMessage(String message) async {
+    
     setState(() {
       _messages.add({'sender': 'user', 'text': message});
     });
 
-   final url = Uri.parse('http://10.0.2.2:5000/chat'); // Android emulator
+   final url = Uri.parse('http://172.20.10.2:5000/chat'); // Android emulator
 
  // Change if needed
     try {
@@ -66,6 +67,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+         
           Expanded(
             child: ListView.builder(
               itemCount: _messages.length,
@@ -94,6 +96,33 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _controller.text = "How can I help you?";
+                });//How can I help u added.
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  "How can I help you?",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(

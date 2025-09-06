@@ -43,11 +43,37 @@ class CommunityData {
       imageUrl: json['imageUrl'],
       admins: List<String>.from(json['admins'] ?? []),
       members: List<String>.from(json['members'] ?? []),
-      joinRequests: List<String>.from(json['joinRequests'] ?? []),
+      // Handle joinRequests as array of objects from backend
+      joinRequests: _parseJoinRequests(json['joinRequests']),
       memberCount: json['memberCount'] ?? 0,
       tags: List<String>.from(json['tags'] ?? []),
       recentActivity: json['recentActivity'],
     );
+  }
+
+  // Helper method to parse joinRequests from backend
+  static List<String> _parseJoinRequests(dynamic joinRequestsData) {
+    if (joinRequestsData == null) return [];
+
+    // If it's already a list of strings, return as is
+    if (joinRequestsData is List<String>) {
+      return joinRequestsData;
+    }
+
+    // If it's a list of objects (from backend), extract userEmail
+    if (joinRequestsData is List) {
+      return joinRequestsData
+          .map((request) {
+            if (request is Map<String, dynamic>) {
+              return request['userEmail'] as String? ?? '';
+            }
+            return request.toString();
+          })
+          .where((email) => email.isNotEmpty)
+          .toList();
+    }
+
+    return [];
   }
 
   Map<String, dynamic> toJson() {
@@ -177,6 +203,28 @@ class CommunityProvider extends ChangeNotifier {
     }
   }
 
+  // Fetch communities where user is admin
+  Future<List<CommunityData>> fetchAdminCommunities([String? userEmail]) async {
+    try {
+      String? userEmailToUse = userEmail;
+
+      // If no userEmail provided, try to get it from Firebase Auth
+      if (userEmailToUse == null) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) return [];
+        userEmailToUse = user.email ?? '';
+      }
+
+      final communities = await _communityService.getAdminCommunities(
+        userEmailToUse,
+      );
+      return communities;
+    } catch (e) {
+      debugPrint('Error fetching admin communities: $e');
+      return [];
+    }
+  }
+
   // Join a community
   Future<bool> joinCommunity(
     String communityId, {
@@ -207,26 +255,13 @@ class CommunityProvider extends ChangeNotifier {
         userIdToUse,
         communityId,
         userEmailToUse,
-        autoJoin:
-            true, // Auto-join for now, can be changed to false for admin approval
+        username: 'User', // Can be enhanced to get real username
+        message: 'Requesting to join this community',
       );
 
       if (result['success'] == true) {
-        // Find the community in all communities and move it to my communities
-        final communityIndex = _allCommunities.indexWhere(
-          (c) => c.id == communityId,
-        );
-        if (communityIndex != -1) {
-          final community = _allCommunities[communityIndex].copyWith(
-            joinDate: DateTime.now(),
-            memberCount: _allCommunities[communityIndex].memberCount + 1,
-          );
-          _myCommunities.add(community);
-
-          // Update the community in all communities list with new member count
-          _allCommunities[communityIndex] = community;
-        }
-
+        // For join requests, we don't add to my communities immediately
+        // The request is pending admin approval
         _isLoading = false;
         notifyListeners();
         return true;

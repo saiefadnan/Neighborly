@@ -336,14 +336,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Icon(
-                                  Icons.notifications_active_rounded,
+                                  Icons.people_rounded,
                                   color: Color(0xFF71BB7B),
                                   size: 20,
                                 ),
                               ),
                               const SizedBox(width: 12),
                               const Text(
-                                "Notification Range",
+                                "Event Range",
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -354,7 +354,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            "People within ${notifRange.toInt()} km will be notified",
+                            "People within ${notifRange.toInt()} km can join this event",
                             style: const TextStyle(
                               fontSize: 14,
                               color: Color(0xFF5F6368),
@@ -698,7 +698,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: SizedBox(
-                              height: 400,
+                              height: 450,
                               child: GoogleMap(
                                 gestureRecognizers:
                                     <Factory<OneSequenceGestureRecognizer>>{
@@ -748,7 +748,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                     const SizedBox(height: 24),
                     _buildTagsField(),
 
-                    // Image Upload Section
+                    SizedBox(height: 24),
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -791,7 +791,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Event Image (Optional)',
+                                      'Event Image',
                                       style: TextStyle(
                                         color: Color(0xFF2C3E50),
                                         fontWeight: FontWeight.w600,
@@ -967,34 +967,60 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                                     final imageUrl = await uploadFile(
                                       imagepath,
                                     );
-                                    final docRef =
-                                        FirebaseFirestore.instance
-                                            .collection('events')
-                                            .doc();
+                          
+                                    EventModel newEvent = EventModel(
+                                      id:'',
+                                      title: titleController.text.trim(),
+                                      description:
+                                          descriptionController.text.trim(),
+                                      imageUrl: imageUrl,
+                                      date: () {
+                                        // Parse the time from the controller
+                                        final timeParts = timeController.text
+                                            .trim()
+                                            .split(' ');
+                                        final time = timeParts[0].split(':');
+                                        int hour = int.parse(time[0]);
+                                        int minute = int.parse(time[1]);
+
+                                        // Handle AM/PM
+                                        if (timeParts.length > 1 &&
+                                            timeParts[1].toUpperCase() ==
+                                                'PM' &&
+                                            hour != 12) {
+                                          hour += 12;
+                                        } else if (timeParts.length > 1 &&
+                                            timeParts[1].toUpperCase() ==
+                                                'AM' &&
+                                            hour == 12) {
+                                          hour = 0;
+                                        }
+
+                                        return DateTime(
+                                          selectedDate.year,
+                                          selectedDate.month,
+                                          selectedDate.day,
+                                          hour,
+                                          minute,
+                                        );
+                                      }(),
+                                      approved: true,
+                                      createdAt: Timestamp.now(),
+                                      location: locationController.text.trim(),
+                                      lng: selectedLocation.longitude,
+                                      lat: selectedLocation.latitude,
+                                      raduis: notifRange,
+                                      tags:
+                                          selectedTags.isNotEmpty
+                                              ? selectedTags
+                                              : ['#community', '#event'],
+                                    );
                                     ref
                                         .watch(eventProvider.notifier)
-                                        .addEvents(
-                                          EventModel(
-                                            id: docRef.id,
-                                            title: titleController.text.trim(),
-                                            description:
-                                                descriptionController.text
-                                                    .trim(),
-                                            imageUrl: imageUrl,
-                                            approved: true,
-                                            createdAt: Timestamp.now(),
-                                            location:
-                                                locationController.text.trim(),
-                                            lng: selectedLocation.longitude,
-                                            lat: selectedLocation.latitude,
-                                            raduis: notifRange,
-                                            tags:
-                                                selectedTags.isNotEmpty
-                                                    ? selectedTags
-                                                    : ['#community', '#event'],
-                                          ),
-                                          docRef,
-                                        );
+                                        .storeEvents(newEvent);
+                                    ref
+                                        .watch(eventProvider.notifier)
+                                        .addEvents(newEvent);
                                     showSnackBarSuccess(
                                       context,
                                       "Event added successfully",

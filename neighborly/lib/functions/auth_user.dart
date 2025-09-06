@@ -155,6 +155,7 @@ class AuthUser extends AsyncNotifier<bool> {
   // Clear user data on logout
   void logout() {
     currentUser = null;
+    state = const AsyncData(false);
   }
 
   // Public method to manually fetch user data (for testing)

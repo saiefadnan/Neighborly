@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/app_routes.dart';
+import 'package:neighborly/components/notification_permission_dialog.dart';
+import 'package:neighborly/services/push_notification_service.dart';
 import 'community_list.dart';
 import 'profile.dart';
 import 'chat_screen.dart';
@@ -157,7 +159,8 @@ class _HomePageState extends ConsumerState<HomePage>
         user?.username ??
         FirebaseAuth.instance.currentUser?.displayName ??
         'User';
-
+    final userPic =
+        user?.profilePicture ?? FirebaseAuth.instance.currentUser?.photoURL;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       child: GestureDetector(
@@ -197,9 +200,12 @@ class _HomePageState extends ConsumerState<HomePage>
                     width: 2,
                   ),
                 ),
-                child: const CircleAvatar(
+                child: CircleAvatar(
                   radius: 28,
-                  backgroundImage: AssetImage('assets/images/dummy.png'),
+                  backgroundImage:
+                      userPic != null && userPic.isNotEmpty
+                          ? NetworkImage(userPic)
+                          : AssetImage('assets/images/anonymous.jpg'),
                 ),
               ),
               const SizedBox(width: 18),
@@ -1036,6 +1042,8 @@ class _HomePageState extends ConsumerState<HomePage>
         'User';
     final userEmail =
         user?.email ?? FirebaseAuth.instance.currentUser?.email ?? '';
+    final userPic =
+        user?.profilePicture ?? FirebaseAuth.instance.currentUser?.photoURL;
     final userCommunity =
         user?.preferredCommunity.isNotEmpty == true
             ? user!
@@ -1142,11 +1150,14 @@ class _HomePageState extends ConsumerState<HomePage>
                                 ),
                               ],
                             ),
-                            child: const CircleAvatar(
+                            child: CircleAvatar(
                               radius: 26,
-                              backgroundImage: AssetImage(
-                                'assets/images/dummy.png',
-                              ),
+                              backgroundImage:
+                                  userPic != null && userPic.isNotEmpty
+                                      ? NetworkImage(userPic)
+                                      : AssetImage(
+                                        'assets/images/anonymous.jpg',
+                                      ),
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -1596,6 +1607,9 @@ class _HomePageState extends ConsumerState<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+    final userPic =
+        user?.profilePicture ?? FirebaseAuth.instance.currentUser?.photoURL;
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFFAFAFA),
@@ -1638,6 +1652,35 @@ class _HomePageState extends ConsumerState<HomePage>
           },
         ),
         actions: [
+          // Notification permission button (only show if not granted)
+          FutureBuilder<bool>(
+            future: PushNotificationService.isNotificationPermissionGranted(),
+            builder: (context, snapshot) {
+              if (snapshot.data == false) {
+                return Container(
+                  margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(50),
+                    border: Border.all(
+                      color: Colors.orange.withOpacity(0.5),
+                      width: 2,
+                    ),
+                  ),
+                  child: IconButton(
+                    onPressed: () => showNotificationPermissionDialog(context),
+                    icon: const Icon(
+                      Icons.notifications_off,
+                      color: Colors.orange,
+                      size: 20,
+                    ),
+                    tooltip: 'Enable Notifications',
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           // Emergency button
           Container(
             margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
@@ -1702,9 +1745,12 @@ class _HomePageState extends ConsumerState<HomePage>
               onPressed: () {
                 _scaffoldKey.currentState?.openEndDrawer();
               },
-              icon: const CircleAvatar(
+              icon: CircleAvatar(
                 radius: 18,
-                backgroundImage: AssetImage('assets/images/dummy.png'),
+                backgroundImage:
+                    userPic != null && userPic.isNotEmpty
+                        ? NetworkImage(userPic)
+                        : AssetImage('assets/images/anonymous.jpg'),
               ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -1713,6 +1759,7 @@ class _HomePageState extends ConsumerState<HomePage>
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "home_fab",
         onPressed: () {
           // Use the specialized callback to navigate to map and auto-open help drawer
           if (widget.onNavigateToMapWithHelp != null) {

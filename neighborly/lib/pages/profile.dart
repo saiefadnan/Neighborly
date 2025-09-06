@@ -55,6 +55,7 @@ class _ProfileNameHeaderState extends State<_ProfileNameHeader> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
       });

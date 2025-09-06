@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart';
 
 class TeamPage extends StatefulWidget {
   const TeamPage({super.key});
@@ -13,7 +11,7 @@ class _TeamPageState extends State<TeamPage> with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+  final String _searchQuery = '';
 
   // Community data - same as AdminCommunityManagementPage
   final List<CommunityAdminData> _communities = [

@@ -266,12 +266,12 @@ class ResponseCard extends StatelessWidget {
   final Function(String) onAction;
 
   const ResponseCard({
-    Key? key,
+    super.key,
     required this.response,
     required this.help,
     required this.currentUserId, // Add this line
     required this.onAction,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

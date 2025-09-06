@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminCommunityManagementPage extends StatefulWidget {
   const AdminCommunityManagementPage({super.key});
@@ -18,54 +18,6 @@ class _AdminCommunityManagementPageState
   late Animation<Offset> _headerSlideAnimation;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-
-  // Sample admin communities - in real app, this would come from backend
-  final List<AdminCommunity> _adminCommunities = [
-    AdminCommunity(
-      id: '1',
-      name: 'Dhanmondi',
-      description:
-          'A vibrant residential area known for its cultural heritage and green spaces.',
-      memberCount: 1248,
-      location: 'Dhaka, Bangladesh',
-      image: 'assets/images/Image1.jpg',
-      tags: ['Residential', 'Cultural', 'Safe'],
-      createdDate: DateTime(2023, 6, 15),
-      status: CommunityStatus.active,
-      totalPosts: 342,
-      totalEvents: 28,
-      pendingRequests: 5,
-    ),
-    AdminCommunity(
-      id: '2',
-      name: 'Gulshan',
-      description:
-          'Upscale commercial and residential area with modern amenities.',
-      memberCount: 2156,
-      location: 'Dhaka, Bangladesh',
-      image: 'assets/images/Image2.jpg',
-      tags: ['Commercial', 'Upscale', 'Modern'],
-      createdDate: DateTime(2022, 3, 10),
-      status: CommunityStatus.active,
-      totalPosts: 789,
-      totalEvents: 45,
-      pendingRequests: 12,
-    ),
-    AdminCommunity(
-      id: '3',
-      name: 'Bashundhara',
-      description: 'Modern planned residential area with excellent facilities.',
-      memberCount: 1876,
-      location: 'Dhaka, Bangladesh',
-      image: 'assets/images/Image3.jpg',
-      tags: ['Modern', 'Planned', 'Facilities'],
-      createdDate: DateTime(2023, 1, 20),
-      status: CommunityStatus.active,
-      totalPosts: 456,
-      totalEvents: 32,
-      pendingRequests: 8,
-    ),
-  ];
 
   @override
   void initState() {
@@ -103,150 +55,127 @@ class _AdminCommunityManagementPageState
     super.dispose();
   }
 
-  List<AdminCommunity> _getFilteredCommunities() {
-    if (_searchQuery.isEmpty) return _adminCommunities;
-    return _adminCommunities
-        .where(
-          (community) =>
-              community.name.toLowerCase().contains(
-                _searchQuery.toLowerCase(),
-              ) ||
-              community.description.toLowerCase().contains(
-                _searchQuery.toLowerCase(),
-              ) ||
-              community.tags.any(
-                (tag) => tag.toLowerCase().contains(_searchQuery.toLowerCase()),
-              ),
-        )
-        .toList();
-  }
-
-  void _editCommunity(AdminCommunity community) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CommunityEditPage(community: community),
-      ),
-    ).then((updatedCommunity) {
-      if (updatedCommunity != null) {
-        setState(() {
-          final index = _adminCommunities.indexWhere(
-            (c) => c.id == updatedCommunity.id,
-          );
-          if (index != -1) {
-            _adminCommunities[index] = updatedCommunity;
-          }
-        });
-      }
-    });
-  }
-
   Widget _buildStatsOverview() {
-    final totalMembers = _adminCommunities.fold(
-      0,
-      (sum, community) => sum + community.memberCount,
-    );
-    final totalPosts = _adminCommunities.fold(
-      0,
-      (sum, community) => sum + community.totalPosts,
-    );
-    final totalEvents = _adminCommunities.fold(
-      0,
-      (sum, community) => sum + community.totalEvents,
-    );
-    final pendingRequests = _adminCommunities.fold(
-      0,
-      (sum, community) => sum + community.pendingRequests,
-    );
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('communities').snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data?.docs ?? [];
+        final totalCommunities = docs.length;
+        int totalMembers = 0;
+        int totalPosts = 0;
+        int totalEvents = 0;
+        int pendingRequests = 0;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF71BB7B), Color(0xFF5EA968), Color(0xFF4A9B5A)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF71BB7B).withOpacity(0.3),
-            offset: const Offset(0, 8),
-            blurRadius: 20,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.dashboard,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Communities Overview',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+        for (var doc in docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          // Count members, posts, events, joinRequests from arrays
+          totalMembers += (data['members'] is List) ? (data['members'] as List).length : 0;
+          totalPosts += (data['posts'] is List) ? (data['posts'] as List).length : 0;
+          totalEvents += (data['events'] is List) ? (data['events'] as List).length : 0;
+          pendingRequests += (data['joinRequests'] is List) ? (data['joinRequests'] as List).length : 0;
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF71BB7B), Color(0xFF5EA968), Color(0xFF4A9B5A)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF71BB7B).withOpacity(0.3),
+                offset: const Offset(0, 8),
+                blurRadius: 20,
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Communities',
-                  '${_adminCommunities.length}',
-                  Icons.groups,
-                ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.dashboard,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Communities Overview',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Total Members',
-                  totalMembers.toString(),
-                  Icons.people,
-                ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Communities',
+                      '$totalCommunities',
+                      Icons.groups,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Total Members',
+                      '$totalMembers',
+                      Icons.people,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Total Posts',
+                      '$totalPosts',
+                      Icons.post_add,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Total Events',
+                      '$totalEvents',
+                      Icons.event,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Pending',
+                      '$pendingRequests',
+                      Icons.pending_actions,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total Posts',
-                  totalPosts.toString(),
-                  Icons.post_add,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Pending Requests',
-                  pendingRequests.toString(),
-                  Icons.pending_actions,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -527,10 +456,45 @@ class _AdminCommunityManagementPageState
     }
   }
 
+  Stream<List<AdminCommunity>> getCommunitiesStream() {
+    return FirebaseFirestore.instance
+        .collection('communities')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              final members = data['members'] is List ? (data['members'] as List) : [];
+              final joinRequests = data['joinRequests'] is List ? (data['joinRequests'] as List) : [];
+              final posts = data['posts'] is List ? (data['posts'] as List) : [];
+              final events = data['events'] is List ? (data['events'] as List) : [];
+
+              return AdminCommunity(
+                id: data['id'] ?? doc.id,
+                name: data['name'] ?? 'Unknown',
+                description: data['description'] ?? '',
+                memberCount: members.length,
+                location: data['location'] ?? '',
+                image: data['imageUrl'] ?? 'assets/images/Image1.jpg',
+                tags: List<String>.from(data['tags'] ?? []),
+                createdDate: DateTime.now(), // Parse createdAt if available
+                status: CommunityStatus.active, // Map if you have a status field
+                totalPosts: posts.length,
+                totalEvents: events.length,
+                pendingRequests: joinRequests.length,
+              );
+            }).toList());
+  }
+
+  void _editCommunity(AdminCommunity community) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CommunityEditPage(community: community),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filteredCommunities = _getFilteredCommunities();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -573,89 +537,98 @@ class _AdminCommunityManagementPageState
           ),
         ),
       ),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // Statistics Overview - will collapse when scrolling up
-          SliverToBoxAdapter(
-            child: Column(
-              children: [const SizedBox(height: 20), _buildStatsOverview()],
-            ),
-          ),
+      body: StreamBuilder<List<AdminCommunity>>(
+        stream: getCommunitiesStream(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final communities = snapshot.data ?? [];
+          final filteredCommunities = _searchQuery.isEmpty
+              ? communities
+              : communities.where((community) =>
+                  community.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                  community.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                  community.tags.any((tag) => tag.toLowerCase().contains(_searchQuery.toLowerCase()))
+                ).toList();
 
-          // Sticky Search Section
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _StickySearchDelegate(
-              minHeight: 80,
-              maxHeight: 80,
-              child: Container(
-                color: const Color(0xFFF8F9FA),
-                child: Container(
-                  margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [const SizedBox(height: 20), _buildStatsOverview()],
+                ),
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _StickySearchDelegate(
+                  minHeight: 80,
+                  maxHeight: 80,
+                  child: Container(
+                    color: const Color(0xFFF8F9FA),
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search your communities...',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      prefixIcon: const Icon(
-                        Icons.search,
-                        color: Color(0xFF71BB7B),
-                      ),
-                      suffixIcon:
-                          _searchQuery.isNotEmpty
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search your communities...',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Color(0xFF71BB7B),
+                          ),
+                          suffixIcon: _searchQuery.isNotEmpty
                               ? IconButton(
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _searchQuery = '';
-                                  });
-                                },
-                                icon: const Icon(
-                                  Icons.clear,
-                                  color: Colors.grey,
-                                ),
-                              )
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    color: Colors.grey,
+                                  ),
+                                )
                               : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-
-          // Community List
-          _buildSliverCommunityList(),
-        ],
+              _buildSliverCommunityList(filteredCommunities),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildSliverCommunityList() {
-    final filteredCommunities = _getFilteredCommunities();
-
-    if (filteredCommunities.isEmpty) {
+  Widget _buildSliverCommunityList(List<AdminCommunity> communities) {
+    if (communities.isEmpty) {
       return SliverFillRemaining(
         child: Center(
           child: Padding(
@@ -680,55 +653,8 @@ class _AdminCommunityManagementPageState
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        return _buildCommunityCard(filteredCommunities[index]);
-      }, childCount: filteredCommunities.length),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-        },
-        decoration: InputDecoration(
-          hintText: 'Search your communities...',
-          hintStyle: TextStyle(color: Colors.grey[400]),
-          prefixIcon: const Icon(Icons.search, color: Color(0xFF71BB7B)),
-          suffixIcon:
-              _searchQuery.isNotEmpty
-                  ? IconButton(
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                      });
-                    },
-                    icon: const Icon(Icons.clear, color: Colors.grey),
-                  )
-                  : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 16,
-          ),
-        ),
-      ),
+        return _buildCommunityCard(communities[index]);
+      }, childCount: communities.length),
     );
   }
 }
