@@ -9,7 +9,9 @@ import {
   getNearbyHelpRequests,
   createSampleHelpRequest,
   createDummyHelpRequests,
-  removeDummyHelpRequests
+  removeDummyHelpRequests,
+  migrateHelpedRequestsXP,
+  migrateUserAccumulatedXP
 } from '../controllers/mapControllers';
 
 const mapRouter = new Hono();
@@ -44,4 +46,7 @@ mapRouter.post('/test/create-dummy-data', createDummyHelpRequests);
 // Remove all dummy help requests
 mapRouter.delete('/test/remove-dummy-data', removeDummyHelpRequests);
 
+// Add these routes to your router
+mapRouter.post('/migrate-helped-requests-xp', migrateHelpedRequestsXP);
+mapRouter.post('/migrate-user-accumulated-xp', migrateUserAccumulatedXP);
 export default mapRouter;

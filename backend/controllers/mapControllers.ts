@@ -3,6 +3,155 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import notificationService from '../services/notificationService';
 
+
+// Add these at the end of your mapControllers.ts file
+
+// Migrate existing helpedRequests to add XP values
+export const migrateHelpedRequestsXP = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    await getAuth().verifyIdToken(idToken);
+
+    const db = getFirestore();
+    
+    // Get all helpedRequests that don't have XP field
+    const helpedRequestsQuery = await db.collection('helpedRequests').get();
+    
+    const batch = db.batch();
+    let migratedCount = 0;
+    
+    // Calculate XP based on priority
+    const calculateXP = (priority: string): number => {
+      switch (priority?.toLowerCase()) {
+        case 'emergency':
+          return 500;
+        case 'urgent':
+          return 300;
+        default:
+          return 100; // for 'medium', 'low', or any other priority
+      }
+    };
+
+    for (const doc of helpedRequestsQuery.docs) {
+      const data = doc.data();
+      
+      // Only update if XP field doesn't exist
+      if (!data.hasOwnProperty('xp')) {
+        const priority = data.originalRequestData?.priority || 'medium';
+        const xpValue = calculateXP(priority);
+        
+        batch.update(doc.ref, {
+          xp: xpValue,
+          migratedAt: new Date().toISOString()
+        });
+        
+        migratedCount++;
+        console.log(`Adding XP ${xpValue} to helpedRequest ${doc.id} with priority ${priority}`);
+      }
+    }
+
+    if (migratedCount > 0) {
+      await batch.commit();
+    }
+
+    return c.json({ 
+      success: true, 
+      message: `Successfully migrated ${migratedCount} helpedRequests with XP values`,
+      migratedCount: migratedCount
+    });
+
+  } catch (error) {
+    console.error('Error migrating helpedRequests XP:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to migrate helpedRequests XP' 
+    }, 500);
+  }
+};
+
+// Migrate user accumulated XP based on existing helpedRequests
+export const migrateUserAccumulatedXP = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    await getAuth().verifyIdToken(idToken);
+
+    const db = getFirestore();
+    
+    // Get all helpedRequests that have status completed or in_progress
+    const helpedRequestsQuery = await db.collection('helpedRequests')
+      .where('status', 'in', ['completed', 'in_progress'])
+      .get();
+    
+    // Group XP by user
+    const userXPMap = new Map();
+    
+    for (const doc of helpedRequestsQuery.docs) {
+      const data = doc.data();
+      const userId = data.acceptedUserID;
+      const xp = data.xp || 0;
+      
+      if (userId && xp > 0) {
+        const currentXP = userXPMap.get(userId) || 0;
+        userXPMap.set(userId, currentXP + xp);
+      }
+    }
+
+    const batch = db.batch();
+    let migratedUsers = 0;
+
+    // Update each user's accumulated XP
+    for (const [userId, totalXP] of userXPMap) {
+      const userRef = db.collection('users').doc(userId);
+      const userDoc = await userRef.get();
+      
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        
+        // Only update if accumulateXP field doesn't exist
+        if (!userData?.hasOwnProperty('accumulateXP')) {
+          batch.update(userRef, {
+            accumulateXP: totalXP,
+            xpMigratedAt: new Date().toISOString()
+          });
+          
+          migratedUsers++;
+          console.log(`Setting accumulated XP ${totalXP} for user ${userId}`);
+        }
+      }
+    }
+
+    if (migratedUsers > 0) {
+      await batch.commit();
+    }
+
+    return c.json({ 
+      success: true, 
+      message: `Successfully migrated accumulated XP for ${migratedUsers} users`,
+      migratedUsers: migratedUsers,
+      totalXPEntries: userXPMap.size
+    });
+
+  } catch (error) {
+    console.error('Error migrating user accumulated XP:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to migrate user accumulated XP' 
+    }, 500);
+  }
+};
+
 // Create a new help request
 export const createHelpRequest = async (c: Context) => {
   try {
@@ -320,11 +469,24 @@ await helpRequestRef.update({
 
 // Create entry in helpedRequests collection when responder is accepted
 const helpedRequestRef = getFirestore().collection('helpedRequests').doc(requestId);
+// Calculate XP based on priority for gamification
+const calculateXP = (priority: string): number => {
+  switch (priority?.toLowerCase()) {
+    case 'emergency':
+      return 500;
+    case 'urgent':
+      return 300;
+    default:
+      return 100; // for 'medium', 'low', or any other priority
+  }
+};
+
 const helpedRequestData = {
   requestId: requestId,
   acceptedUserID: responseData?.userId, // This is the responder's userId
   acceptedAt: new Date().toISOString(),
   status: 'in_progress', // Initially in progress
+  xp: calculateXP(helpRequestData.priority), // XP points based on priority
   originalRequestData: {
     title: helpRequestData.title,
     type: helpRequestData.type,
@@ -435,21 +597,56 @@ export const updateHelpRequestStatus = async (c: Context) => {
       updatedAt: new Date().toISOString()
     };
 
-    if (status === 'completed') {
+   if (status === 'completed') {
   updateData.completedAt = new Date().toISOString();
-  
-  // Update the existing helpedRequests entry to mark as completed
+}
+
+// Handle XP accumulation for both completed and in_progress statuses
+if (status === 'completed' || status === 'in_progress') {
   if (helpRequestData.acceptedResponderUserId) {
-    console.log(`Updating helpedRequests entry for request ${requestId} to completed status`);
+    console.log(`Updating helpedRequests entry for request ${requestId} to ${status} status`);
     
     const helpedRequestRef = getFirestore().collection('helpedRequests').doc(requestId);
-    await helpedRequestRef.update({
-      status: 'completed',
-      completedAt: new Date().toISOString()
-    });
-    console.log(`Successfully updated helpedRequests entry for ${requestId} to completed`);
+    const helpedRequestDoc = await helpedRequestRef.get();
+    
+    if (helpedRequestDoc.exists) {
+      const helpedRequestData = helpedRequestDoc.data();
+      const xpGained = helpedRequestData?.xp || 0;
+      
+      // Update helpedRequests status
+      const helpedUpdateData: any = {
+        status: status,
+        updatedAt: new Date().toISOString()
+      };
+      
+      if (status === 'completed') {
+        helpedUpdateData.completedAt = new Date().toISOString();
+      }
+      
+      await helpedRequestRef.update(helpedUpdateData);
+      
+      // Update user's accumulated XP in users collection
+      const userRef = getFirestore().collection('users').doc(helpRequestData.acceptedResponderUserId);
+      const userDoc = await userRef.get();
+
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        const currentAccumulateXP = userData?.accumulateXP || 0;
+        const newAccumulateXP = currentAccumulateXP + xpGained;
+        
+        await userRef.update({
+          accumulateXP: newAccumulateXP
+        });
+        
+        console.log(`Updated user ${helpRequestData.acceptedResponderUserId} XP: ${currentAccumulateXP} + ${xpGained} = ${newAccumulateXP}`);
+      } else {
+        console.log(`User document ${helpRequestData.acceptedResponderUserId} does not exist. Cannot update XP.`);
+      }
+      
+      console.log(`Successfully updated helpedRequests entry for ${requestId} to ${status} and accumulated ${xpGained} XP`);
+    }
   }
-} 
+}
 
 else if (status === 'cancelled') {
       updateData.cancelledAt = new Date().toISOString();
