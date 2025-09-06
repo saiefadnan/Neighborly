@@ -127,7 +127,7 @@ class PostNotifier
             postData.map((post) => post as Map<String, dynamic>).toList();
         state = AsyncData(posts);
       }
-    } catch (e, st) {
+    } catch (e) {
       print('Error loading nearby posts: $e');
       await backupLoadNearByPosts(locationName);
       //state = AsyncError(e, st);
@@ -176,7 +176,7 @@ class PostNotifier
             postData.map((post) => post as Map<String, dynamic>).toList();
         state = AsyncData(posts);
       }
-    } catch (e, st) {
+    } catch (e) {
       print('Error loading explore posts: $e');
       await backupLoadExplorePosts();
     }

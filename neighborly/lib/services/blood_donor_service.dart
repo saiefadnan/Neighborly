@@ -94,11 +94,13 @@ class BloodDonorService {
       final Map<String, dynamic> updateData = {};
       if (bloodGroup != null) updateData['bloodGroup'] = bloodGroup;
       if (isAvailable != null) updateData['isAvailable'] = isAvailable;
-      if (lastDonationDate != null)
+      if (lastDonationDate != null) {
         updateData['lastDonationDate'] = lastDonationDate;
+      }
       if (totalDonations != null) updateData['totalDonations'] = totalDonations;
-      if (emergencyContact != null)
+      if (emergencyContact != null) {
         updateData['emergencyContact'] = emergencyContact;
+      }
       if (medicalNotes != null) updateData['medicalNotes'] = medicalNotes;
 
       final response = await http.put(
@@ -136,12 +138,15 @@ class BloodDonorService {
   }) async {
     try {
       final Map<String, String> queryParams = {};
-      if (bloodGroup != null && bloodGroup != 'All')
+      if (bloodGroup != null && bloodGroup != 'All') {
         queryParams['bloodGroup'] = bloodGroup;
-      if (location != null && location.isNotEmpty)
+      }
+      if (location != null && location.isNotEmpty) {
         queryParams['location'] = location;
-      if (isAvailable != null)
+      }
+      if (isAvailable != null) {
         queryParams['isAvailable'] = isAvailable.toString();
+      }
       if (userEmail != null) queryParams['userEmail'] = userEmail;
 
       final uri = Uri.parse(
