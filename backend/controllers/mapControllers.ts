@@ -20,10 +20,29 @@ export const createHelpRequest = async (c: Context) => {
     // Get user info from Firebase Auth
     const userRecord = await getAuth().getUser(userId);
     const userEmail = userRecord.email;
-    const username = userRecord.displayName || userRecord.email?.split('@')[0] || 'Anonymous User';
     
     if (!userEmail) {
       return c.json({ success: false, message: 'User email not found' }, 400);
+    }
+
+    // Fetch username from users collection using email
+    let username = 'Anonymous User'; // Default fallback
+    try {
+      const userDoc = await getFirestore().collection('users').doc(userEmail).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        username = userData?.username || userRecord.displayName || userRecord.email?.split('@')[0] || 'Anonymous User';
+        console.log(`Found username from Firestore: ${username}`);
+      } else {
+        // Fallback to Firebase Auth if no Firestore document found
+        username = userRecord.displayName || userRecord.email?.split('@')[0] || 'Anonymous User';
+        console.log(`No Firestore document found, using fallback username: ${username}`);
+      }
+    } catch (error) {
+      console.error('Error fetching user from Firestore:', error);
+      // Use Firebase Auth fallback on error
+      username = userRecord.displayName || userRecord.email?.split('@')[0] || 'Anonymous User';
+      console.log(`Error occurred, using fallback username: ${username}`);
     }
     
     const requestData = await c.req.json();

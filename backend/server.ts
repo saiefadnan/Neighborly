@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import authRouter from './routes/authRoute';
+import bloodDonorRoute from './routes/bloodDonorRoute';
 import forumRouter from './routes/forumRoute';
 import mapRouter from './routes/mapRoute';
 import infosRouter from './routes/infosRoute';
@@ -25,6 +26,7 @@ console.log('🔥 Firebase initialized successfully!');
 app.get('/', (c) => c.text('Hello from Bun + Hono on Windows!!'));
 
 app.route('/api/auth', authRouter);
+app.route('/api/blood-donor', bloodDonorRoute);
 app.route('/api/forum',forumRouter);
 app.route('/api/map', mapRouter);
 app.route('/api/infos', infosRouter);

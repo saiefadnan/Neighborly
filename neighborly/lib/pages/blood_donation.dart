@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../pages/authPage.dart';
+import '../services/blood_donor_service.dart';
 
-class BloodDonationPage extends StatefulWidget {
+class BloodDonationPage extends ConsumerStatefulWidget {
   const BloodDonationPage({super.key, this.initialTabIndex = 0});
 
   final int initialTabIndex;
 
   @override
-  State<BloodDonationPage> createState() => _BloodDonationPageState();
+  ConsumerState<BloodDonationPage> createState() => _BloodDonationPageState();
 }
 
-class _BloodDonationPageState extends State<BloodDonationPage>
+class _BloodDonationPageState extends ConsumerState<BloodDonationPage>
     with TickerProviderStateMixin {
   late TabController _tabController;
   late AnimationController _animationController;
@@ -25,9 +28,18 @@ class _BloodDonationPageState extends State<BloodDonationPage>
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _lastDonationController = TextEditingController();
+  final TextEditingController _emergencyContactController =
+      TextEditingController();
+  final TextEditingController _medicalNotesController = TextEditingController();
 
   String _registrationBloodGroup = 'A+';
   bool _isAvailable = true;
+
+  // Registration status tracking
+  bool _isUserRegistered = false;
+  bool _isLoading = false;
+  Map<String, dynamic>? _currentDonorData;
 
   final List<String> bloodGroups = [
     'All',
@@ -139,9 +151,105 @@ class _BloodDonationPageState extends State<BloodDonationPage>
     );
     _animationController.forward();
 
-    // Pre-fill user data (in real app, get from user profile)
-    _nameController.text = 'Ali';
-    _locationController.text = 'Dhaka, Bangladesh';
+    // Load user data after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserData();
+    });
+
+    // Check if user is already registered and load data
+    _checkUserRegistrationStatus();
+    _loadDonorsFromBackend();
+  }
+
+  // Check if current user is already registered as a donor
+  Future<void> _checkUserRegistrationStatus() async {
+    final user = ref.read(currentUserProvider);
+    if (user?.email == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await BloodDonorService.checkDonorRegistration(
+        user!.email,
+      );
+
+      if (result['success'] && result['isRegistered']) {
+        setState(() {
+          _isUserRegistered = true;
+          _currentDonorData = result['donorData'];
+          _loadUserDonorData();
+        });
+      }
+    } catch (e) {
+      print('Error checking registration status: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Load user's donor data into form fields
+  void _loadUserDonorData() {
+    if (_currentDonorData == null) return;
+
+    setState(() {
+      _registrationBloodGroup = _currentDonorData!['bloodGroup'] ?? 'A+';
+      _isAvailable = _currentDonorData!['isAvailable'] ?? true;
+      _lastDonationController.text =
+          _currentDonorData!['lastDonationDate'] ?? '';
+      _emergencyContactController.text =
+          _currentDonorData!['emergencyContact'] ?? '';
+      _medicalNotesController.text = _currentDonorData!['medicalNotes'] ?? '';
+    });
+  }
+
+  // Load donors from backend
+  Future<void> _loadDonorsFromBackend() async {
+    final user = ref.read(currentUserProvider);
+
+    try {
+      final result = await BloodDonorService.getAllDonors(
+        userEmail: user?.email, // For community-based filtering
+      );
+
+      if (result['success']) {
+        setState(() {
+          allDonors = List<Map<String, dynamic>>.from(result['donors'] ?? []);
+        });
+      }
+    } catch (e) {
+      print('Error loading donors: $e');
+      // Keep sample data as fallback
+    }
+  }
+
+  // Load user data into form fields
+  void _loadUserData() {
+    final user = ref.read(currentUserProvider);
+
+    if (user != null) {
+      setState(() {
+        // Load username with fallback chain like in home.dart
+        final username = user.username.isNotEmpty ? user.username : 'User';
+        _nameController.text = username;
+
+        // Load phone number from user contact
+        if (user.contact != null && user.contact!.isNotEmpty) {
+          _phoneController.text = user.contact!;
+        }
+
+        // Load location from user address if available
+        if (user.address != null && user.address!.isNotEmpty) {
+          _locationController.text = user.address!;
+        } else {
+          // Default location
+          _locationController.text = 'Dhaka, Bangladesh';
+        }
+      });
+    }
   }
 
   @override
@@ -152,6 +260,9 @@ class _BloodDonationPageState extends State<BloodDonationPage>
     _nameController.dispose();
     _phoneController.dispose();
     _locationController.dispose();
+    _lastDonationController.dispose();
+    _emergencyContactController.dispose();
+    _medicalNotesController.dispose();
     super.dispose();
   }
 
@@ -885,6 +996,26 @@ class _BloodDonationPageState extends State<BloodDonationPage>
               ],
             ),
           ),
+          const SizedBox(height: 20),
+
+          // Emergency contact (optional)
+          _buildFormField(
+            'Emergency Contact (Optional)',
+            Icons.emergency,
+            _emergencyContactController,
+            '+880 1XXX XXXXXX',
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 20),
+
+          // Medical notes (optional)
+          _buildFormField(
+            'Medical Notes (Optional)',
+            Icons.medical_information,
+            _medicalNotesController,
+            'Any medical conditions or allergies...',
+            maxLines: 3,
+          ),
           const SizedBox(height: 32),
 
           // Register button
@@ -965,6 +1096,7 @@ class _BloodDonationPageState extends State<BloodDonationPage>
     TextEditingController controller,
     String hint, {
     TextInputType? keyboardType,
+    int? maxLines,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1000,6 +1132,7 @@ class _BloodDonationPageState extends State<BloodDonationPage>
           child: TextField(
             controller: controller,
             keyboardType: keyboardType,
+            maxLines: maxLines ?? 1,
             decoration: InputDecoration(
               hintText: hint,
               border: InputBorder.none,
@@ -1014,7 +1147,18 @@ class _BloodDonationPageState extends State<BloodDonationPage>
     );
   }
 
-  void _registerAsDonor() {
+  void _registerAsDonor() async {
+    final user = ref.read(currentUserProvider);
+    if (user?.email == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please sign in to register as a donor'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (_nameController.text.isEmpty ||
         _phoneController.text.isEmpty ||
         _locationController.text.isEmpty) {
@@ -1027,28 +1171,675 @@ class _BloodDonationPageState extends State<BloodDonationPage>
       return;
     }
 
-    // In a real app, you would save this to a database
     setState(() {
-      allDonors.add({
-        'name': _nameController.text,
-        'phone': _phoneController.text,
-        'location': _locationController.text,
-        'bloodGroup': _registrationBloodGroup,
-        'isAvailable': _isAvailable,
-        'lastDonation': 'Never',
-        'totalDonations': 0,
-      });
+      _isLoading = true;
     });
 
-    // Switch to donors tab to show the new registration
-    _tabController.animateTo(0);
-
+    // Show loading
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Successfully registered as a blood donor!'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            SizedBox(width: 16),
+            Text('Registering as donor...'),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+
+    try {
+      final result = await BloodDonorService.registerDonor(
+        email: user!.email,
+        bloodGroup: _registrationBloodGroup,
+        isAvailable: _isAvailable,
+        emergencyContact:
+            _emergencyContactController.text.trim().isNotEmpty
+                ? _emergencyContactController.text.trim()
+                : null,
+        medicalNotes:
+            _medicalNotesController.text.trim().isNotEmpty
+                ? _medicalNotesController.text.trim()
+                : null,
+      );
+
+      // Hide loading
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (result['success']) {
+        setState(() {
+          _isUserRegistered = true;
+          _currentDonorData = result['donorData'];
+          _loadUserDonorData();
+        });
+
+        // Reload donors list
+        await _loadDonorsFromBackend();
+
+        // Switch to donors tab to show the new registration
+        _tabController.animateTo(0);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                const Text(
+                  'Successfully registered as a blood donor!',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF4CAF50),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    result['message'] ?? 'Failed to register as donor',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Hide loading
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error registering as donor: ${e.toString()}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Update existing donor profile
+  void _updateDonorProfile() async {
+    final user = ref.read(currentUserProvider);
+    if (user?.email == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Show loading
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            SizedBox(width: 16),
+            Text('Updating profile...'),
+          ],
+        ),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 3),
+      ),
+    );
+
+    try {
+      final result = await BloodDonorService.updateDonorProfile(
+        email: user!.email,
+        bloodGroup: _registrationBloodGroup,
+        isAvailable: _isAvailable,
+        lastDonationDate:
+            _lastDonationController.text.trim().isNotEmpty
+                ? _lastDonationController.text.trim()
+                : null,
+        emergencyContact:
+            _emergencyContactController.text.trim().isNotEmpty
+                ? _emergencyContactController.text.trim()
+                : null,
+        medicalNotes:
+            _medicalNotesController.text.trim().isNotEmpty
+                ? _medicalNotesController.text.trim()
+                : null,
+      );
+
+      // Hide loading
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (result['success']) {
+        setState(() {
+          _currentDonorData = result['donorData'];
+        });
+
+        // Reload donors list
+        await _loadDonorsFromBackend();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                const Text(
+                  'Profile updated successfully!',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF4CAF50),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    result['message'] ?? 'Failed to update profile',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Hide loading
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error updating profile: ${e.toString()}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Build update form for existing donors
+  Widget _buildUpdateForm() {
+    final user = ref.watch(currentUserProvider);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Colors.orange, Color(0xFFFF8A00)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.edit, color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Update Donor Profile',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Hello ${user?.username ?? 'Donor'}!',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Current status card
+          if (_currentDonorData != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getBloodGroupColor(
+                        _currentDonorData!['bloodGroup'] ?? 'A+',
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _currentDonorData!['bloodGroup'] ?? 'A+',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Current Donor Status',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Registered: ${_currentDonorData!['registrationDate'] ?? 'Today'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          (_currentDonorData!['isAvailable'] ?? false)
+                              ? Colors.green.withOpacity(0.1)
+                              : Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      (_currentDonorData!['isAvailable'] ?? false)
+                          ? 'Available'
+                          : 'Unavailable',
+                      style: TextStyle(
+                        color:
+                            (_currentDonorData!['isAvailable'] ?? false)
+                                ? Colors.green
+                                : Colors.grey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // Blood group selection
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.bloodtype,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Blood Group',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: DropdownButton<String>(
+                  value: _registrationBloodGroup,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  onChanged: (value) {
+                    setState(() {
+                      _registrationBloodGroup = value!;
+                    });
+                  },
+                  items:
+                      bloodGroups.skip(1).map((group) {
+                        return DropdownMenuItem(
+                          value: group,
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getBloodGroupColor(group),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  group,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(group),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Availability toggle
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color:
+                        _isAvailable
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _isAvailable ? Icons.check_circle : Icons.cancel,
+                    color: _isAvailable ? Colors.green : Colors.grey,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Available for Donation',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Toggle when you can/cannot donate',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _isAvailable,
+                  onChanged: (value) {
+                    setState(() {
+                      _isAvailable = value;
+                    });
+                  },
+                  activeColor: Colors.green,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Last donation date
+          _buildFormField(
+            'Last Donation Date',
+            Icons.calendar_today,
+            _lastDonationController,
+            'YYYY-MM-DD or "Never"',
+          ),
+          const SizedBox(height: 20),
+
+          // Emergency contact
+          _buildFormField(
+            'Emergency Contact (Optional)',
+            Icons.emergency,
+            _emergencyContactController,
+            '+880 1XXX XXXXXX',
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 20),
+
+          // Medical notes
+          _buildFormField(
+            'Medical Notes (Optional)',
+            Icons.medical_information,
+            _medicalNotesController,
+            'Any medical conditions or allergies...',
+            maxLines: 3,
+          ),
+          const SizedBox(height: 32),
+
+          // Update button
+          SizedBox(
+            width: double.infinity,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Colors.orange, Color(0xFFFF8A00)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.orange.withOpacity(0.3),
+                    offset: const Offset(0, 8),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _updateDonorProfile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                        : const Text(
+                          'Update Profile',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Info card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.withOpacity(0.3)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Update your availability status regularly. Remember to update your last donation date after each donation to help maintain accurate records.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue.shade700,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1092,9 +1883,12 @@ class _BloodDonationPageState extends State<BloodDonationPage>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white.withOpacity(0.7),
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          tabs: const [
-            Tab(icon: Icon(Icons.people), text: 'Find Donors'),
-            Tab(icon: Icon(Icons.person_add), text: 'Become Donor'),
+          tabs: [
+            const Tab(icon: Icon(Icons.people), text: 'Find Donors'),
+            Tab(
+              icon: Icon(_isUserRegistered ? Icons.edit : Icons.person_add),
+              text: _isUserRegistered ? 'Update Profile' : 'Become Donor',
+            ),
           ],
         ),
       ),
@@ -1102,7 +1896,10 @@ class _BloodDonationPageState extends State<BloodDonationPage>
         opacity: _fadeAnimation,
         child: TabBarView(
           controller: _tabController,
-          children: [_buildDonorsList(), _buildRegistrationForm()],
+          children: [
+            _buildDonorsList(),
+            _isUserRegistered ? _buildUpdateForm() : _buildRegistrationForm(),
+          ],
         ),
       ),
     );
