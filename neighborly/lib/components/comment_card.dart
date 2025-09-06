@@ -10,10 +10,12 @@ import 'package:like_button/like_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 import 'package:http/http.dart' as http;
+import 'package:neighborly/notifiers/post_notifier.dart';
 
 final boxHeightProvider = StateProvider<Map<String, double>>((ref) => {});
 final replyTargetProvider = StateProvider<String?>((ref) => null);
 final kvc = KeyboardVisibilityController();
+Map<String, dynamic> openedPost = {};
 
 class CommentCard extends ConsumerStatefulWidget {
   final dynamic comment;
@@ -31,62 +33,92 @@ class CommentCard extends ConsumerStatefulWidget {
 
 class _CommentCardState extends ConsumerState<CommentCard> {
   bool liked = false;
-  bool? isOffTopic; 
-  bool isDetectionLoading = true;
+  bool isOffTopic = false;
+  bool isDetectionLoading = false;
 
   Future<bool> offTopicDetector() async {
     try {
-      // Use a better model for text classification
+      final hfKey = dotenv.env['HF_API_KEY'];
+      if (hfKey == null || hfKey.isEmpty) {
+        print('HF_API_KEY missing');
+        return false;
+      }
+
+      // Ensure we have post context
+      if (openedPost.isEmpty || openedPost['content'] == null) {
+        print('No post context available for relevance check');
+        return false;
+      }
+
+      // Use BART-MNLI for relevance classification (always warm, fast)
       final url = Uri.parse(
         "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
       );
 
-      final response = await http.post(
-        url,
-        headers: {
-          'Authorization': 'Bearer ${dotenv.env['HF_API_KEY']}',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          "inputs": widget.comment['content'],
-          "parameters": {
-            "candidate_labels": [
-              "community discussion",
-              "neighborly conversation",
-              "local community topic",
-              "off-topic",
-              "irrelevant",
-              "spam",
-            ],
-          },
-        }),
-      );
+      // Combine post and comment for relevance analysis
+      final postContent =
+          "${openedPost['title'] ?? ''} ${openedPost['content'] ?? ''}".trim();
+      final commentContent = widget.comment['content'];
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        final labels = result['labels'] as List;
-        final scores = result['scores'] as List;
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Authorization': 'Bearer $hfKey',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              "inputs": "Post: $postContent\n\nComment: $commentContent",
+              "parameters": {
+                "candidate_labels": [
+                  "relevant to the post topic",
+                  "directly related to the discussion",
+                  "on-topic response",
+                  "completely unrelated",
+                  "off-topic spam",
+                  "irrelevant content",
+                ],
+                "multi_label": false,
+              },
+            }),
+          )
+          .timeout(const Duration(seconds: 8)); // Reasonable timeout
 
-        // Check if off-topic/irrelevant/spam labels have high confidence
-        for (int i = 0; i < labels.length; i++) {
-          final label = labels[i].toString().toLowerCase();
-          final score = scores[i] as double;
-
-          print("Label: $label, Score: $score");
-
-          if ((label.contains('off-topic') ||
-                  label.contains('irrelevant') ||
-                  label.contains('spam')) &&
-              score > 0.7) {
-            return true; // Off-topic
-          }
-        }
-
-        return false; // On-topic
-      } else {
-        print("Error: ${response.statusCode} - ${response.body}");
+      if (response.statusCode != 200) {
+        print("HF error: ${response.statusCode} - ${response.body}");
         return false;
       }
+
+      final result = jsonDecode(response.body);
+
+      // Handle the response
+      if (result is! Map ||
+          !result.containsKey('labels') ||
+          !result.containsKey('scores')) {
+        print('Unexpected response format');
+        return false;
+      }
+
+      final labels = result['labels'] as List;
+      final scores = result['scores'] as List;
+
+      // Check the top prediction
+      if (labels.isNotEmpty && scores.isNotEmpty) {
+        final topLabel = labels[0].toString().toLowerCase();
+        final topScore = (scores[0] as num).toDouble();
+
+        print("Relevance: $topLabel, Score: $topScore");
+
+        // If the top prediction is off-topic related with high confidence
+        if ((topLabel.contains('unrelated') ||
+                topLabel.contains('off-topic') ||
+                topLabel.contains('irrelevant')) &&
+            topScore > 0.7) {
+          return true; // Off-topic
+        }
+      }
+
+      return false; // On-topic
     } catch (e) {
       print('Error in offTopicDetector: $e');
       return false;
@@ -100,10 +132,18 @@ class _CommentCardState extends ConsumerState<CommentCard> {
       });
 
       final result = await offTopicDetector();
-
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(widget.comment['postID'])
+          .collection('comments')
+          .doc(widget.comment['commentID'])
+          .update({'offTopic': result ? 'true' : 'false'})
+          .timeout(Duration(seconds: 10));
+      if (!mounted) return; // Check mounted after async operation
       setState(() {
         isOffTopic = result;
         isDetectionLoading = false;
+        widget.comment['offTopic'] = result ? 'true' : 'false';
       });
     } catch (e) {
       print('Error running off-topic detection: $e');
@@ -133,8 +173,24 @@ class _CommentCardState extends ConsumerState<CommentCard> {
         if (!mounted) return; // Check again before async operation
         await likedByme();
 
-        // Run off-topic detection
-        _runOffTopicDetection();
+        // Initialize off-topic status from existing data
+        if (widget.comment['offTopic'] != null) {
+          if (widget.comment['offTopic'] == 'true') {
+            setState(() {
+              isOffTopic = true;
+            });
+          } else if (widget.comment['offTopic'] == 'false') {
+            setState(() {
+              isOffTopic = false;
+            });
+          }
+        }
+
+        // Run detection if status is pending or missing
+        if (widget.comment['offTopic'] == null ||
+            widget.comment['offTopic'] == 'pending') {
+          _runOffTopicDetection();
+        }
       } catch (e) {
         print('Error in initState callback: $e');
       }
@@ -254,19 +310,19 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                           color: Color(0xFF2C3E50),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF71BB7B),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 10,
-                        ),
-                      ),
+                      // const SizedBox(width: 6),
+                      // Container(
+                      //   padding: const EdgeInsets.all(2),
+                      //   decoration: BoxDecoration(
+                      //     color: const Color(0xFF71BB7B),
+                      //     borderRadius: BorderRadius.circular(8),
+                      //   ),
+                      //   child: const Icon(
+                      //     Icons.check,
+                      //     color: Colors.white,
+                      //     size: 10,
+                      //   ),
+                      // ),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(

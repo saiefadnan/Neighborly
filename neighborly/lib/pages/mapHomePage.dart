@@ -1703,7 +1703,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                     ],
                   ),
                   backgroundColor: Color(0xFF71BB7B),
-                  duration: Duration(seconds: 30),
+                  duration: Duration(seconds: 3),
                 ),
               );
 
@@ -1737,28 +1737,61 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                   // Show success message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text(
-                        'Your help request has been posted! Nearby helpers will be notified.',
+                      content: Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Your help request has been posted successfully! Nearby helpers will be notified.',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
                       ),
-                      backgroundColor: const Color(0xFF71BB7B),
+                      backgroundColor: const Color(0xFF4CAF50),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 4),
                     ),
                   );
                 } else {
                   // Show error message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
-                        result['message'] ?? 'Failed to create help request',
+                      content: Row(
+                        children: [
+                          const Icon(
+                            Icons.error,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              result['message'] ??
+                                  'Failed to create help request',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       backgroundColor: Colors.red,
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 4),
                     ),
                   );
                 }
@@ -1769,14 +1802,25 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                 // Show error message
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      'Error creating help request: ${e.toString()}',
+                    content: Row(
+                      children: [
+                        const Icon(Icons.error, color: Colors.white, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Error creating help request: ${e.toString()}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
                     backgroundColor: Colors.red,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    margin: const EdgeInsets.all(16),
+                    duration: const Duration(seconds: 4),
                   ),
                 );
               }
@@ -2257,7 +2301,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                     context,
                                   ).pop(); // Close the response modal
 
-                                  // Show loading
+                                  // Show loading with shorter duration
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Row(
@@ -2278,7 +2322,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                         ],
                                       ),
                                       backgroundColor: Color(0xFF71BB7B),
-                                      duration: Duration(seconds: 30),
+                                      duration: Duration(seconds: 3),
                                     ),
                                   );
 
@@ -2296,7 +2340,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                               'Anonymous Helper',
                                         );
 
-                                    // Hide loading
+                                    // Hide loading immediately
                                     ScaffoldMessenger.of(
                                       context,
                                     ).hideCurrentSnackBar();
@@ -2305,6 +2349,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                       // Refresh the help requests to get updated data
                                       await _loadHelpRequests();
 
+                                      // Show success message immediately
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -2318,7 +2363,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                               ),
                                               const SizedBox(width: 12),
                                               Text(
-                                                'Response sent to ${helpData['requesterName'] ?? 'requester'}!',
+                                                'Response sent successfully to ${helpData['requesterName'] ?? 'requester'}!',
                                                 style: const TextStyle(
                                                   fontWeight: FontWeight.w600,
                                                 ),
@@ -2326,7 +2371,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                             ],
                                           ),
                                           backgroundColor: const Color(
-                                            0xFF71BB7B,
+                                            0xFF4CAF50,
                                           ),
                                           behavior: SnackBarBehavior.floating,
                                           shape: RoundedRectangleBorder(
@@ -2335,6 +2380,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                             ),
                                           ),
                                           margin: const EdgeInsets.all(16),
+                                          duration: const Duration(seconds: 4),
                                         ),
                                       );
                                     } else {
@@ -2342,9 +2388,24 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                         context,
                                       ).showSnackBar(
                                         SnackBar(
-                                          content: Text(
-                                            result['message'] ??
-                                                'Failed to send response',
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.error,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  result['message'] ??
+                                                      'Failed to send response',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                           backgroundColor: Colors.red,
                                           behavior: SnackBarBehavior.floating,
@@ -2353,19 +2414,36 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                               12,
                                             ),
                                           ),
+                                          margin: const EdgeInsets.all(16),
+                                          duration: const Duration(seconds: 4),
                                         ),
                                       );
                                     }
                                   } catch (e) {
-                                    // Hide loading
+                                    // Hide loading immediately
                                     ScaffoldMessenger.of(
                                       context,
                                     ).hideCurrentSnackBar();
 
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(
-                                          'Error sending response: ${e.toString()}',
+                                        content: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.error,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                'Error sending response: ${e.toString()}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                         backgroundColor: Colors.red,
                                         behavior: SnackBarBehavior.floating,
@@ -2374,6 +2452,8 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                             12,
                                           ),
                                         ),
+                                        margin: const EdgeInsets.all(16),
+                                        duration: const Duration(seconds: 4),
                                       ),
                                     );
                                   }

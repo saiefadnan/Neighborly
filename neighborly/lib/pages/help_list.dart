@@ -126,7 +126,7 @@ class _HelpListPageState extends State<HelpListPage>
 
       // Backend fetch failed, show dummy data as fallback
       provider.initializeSampleData();
-      if(!mounted) return;
+      if (!mounted) return;
       setState(() {
         _hasError = true;
       });
@@ -157,9 +157,11 @@ class _HelpListPageState extends State<HelpListPage>
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
