@@ -72,7 +72,7 @@ class CommentsNotifier
       } else {
         await backupLoadComments();
       }
-    } catch (e, st) {
+    } catch (e) {
       await backupLoadComments();
     }
   }

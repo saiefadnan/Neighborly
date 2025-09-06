@@ -10,7 +10,6 @@ import 'package:like_button/like_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 import 'package:http/http.dart' as http;
-import 'package:neighborly/notifiers/post_notifier.dart';
 
 final boxHeightProvider = StateProvider<Map<String, double>>((ref) => {});
 final replyTargetProvider = StateProvider<String?>((ref) => null);

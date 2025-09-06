@@ -124,7 +124,7 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
           state = AsyncData(allEvents);
         }
       }
-    } catch (e, st) {
+    } catch (e) {
       await backupLoadEvents();
     }
   }
@@ -204,7 +204,7 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
         final data = json.decode(response.body);
         print('Event stored successfully: $data');
       }
-    } catch (e, st) {
+    } catch (e) {
       await backupStoreEvents(event);
     }
   }
