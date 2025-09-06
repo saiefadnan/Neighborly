@@ -133,7 +133,7 @@ class CommentsNotifier
     }
   }
 
-  Future<bool> storeComments(Map<String, dynamic> commentData) async {
+  Future<void> storeComments(Map<String, dynamic> commentData) async {
     final baseUrl = dotenv.env['BASE_URL'];
     final url = Uri.parse('$baseUrl/api/forum/store/comments');
     print(commentData);
@@ -147,33 +147,16 @@ class CommentsNotifier
           .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final newData = {
-          ...commentData,
-          'createdAt': DateTime.now().toIso8601String(),
-        };
-
-        await FirebaseFirestore.instance
-            .collection('posts')
-            .doc(postID)
-            .collection('comments')
-            .doc(commentData['commentID'])
-            .set(data);
-
         await FirebaseFirestore.instance.collection('posts').doc(postID).update(
           {'totalComments': FieldValue.increment(1)},
         );
-
         ref.read(postsProvider.notifier).updateCommentCount(postID);
-        return data['success'];
       } else {
         await backUpStoreComment(commentData);
-        return false;
       }
     } catch (e) {
       print('Error storing comment: $e');
       await backUpStoreComment(commentData);
-      return false;
     }
   }
 
