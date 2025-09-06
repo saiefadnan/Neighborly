@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { firestore } from 'firebase-admin';
-import { Firestore, getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, Firestore, getFirestore } from 'firebase-admin/firestore';
 import type { Context } from 'hono';
 import { SignatureKind } from 'typescript';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,7 +13,7 @@ cloudinary.config({
 });
 
 export const generateUploadSignature = async(c:Context)=>{
-    console.log('hello');
+    console.log('uploading content...');
     try{
     const publicId = `posts/media_${uuidv4()}`;
     const timestamp = Math.floor(Date.now()/1000);
@@ -57,11 +57,18 @@ export const storeComments = async(c:Context)=>{
 }
 
 export const storePosts = async(c: Context)=>{
-  try{
-    console.log('storing posts...');
-  }catch (e){
+ try {
+      const {post} = await c.req.json();
+      console.log('storing post: ', post);
+      const docRef = getFirestore().collection('posts').doc();
+      await docRef.set({...post, 'postID': docRef.id,'timestamp': FieldValue.serverTimestamp(),});
+      console.log('Post stored with ID: ${docRef.id}');
+       return c.json({ success: true}, 200);
 
-  }
+    } catch (e) {
+      console.log('Error storing posts: $e');
+      return c.json({ success: false}, 500);
+    }
 }
 
 
@@ -77,7 +84,7 @@ try{
       
   }catch (e){
       console.error('Error processing request:', e);
-      return c.json({ success: false, post: [] }, 500);
+      return c.json({ success: false, commentData: [] }, 500);
   }
 }
 
@@ -93,7 +100,7 @@ export const loadPosts = async(c: Context)=>{
       
   }catch (e){
       console.error('Error processing request:', e);
-      return c.json({ success: false, post: [] }, 500);
+      return c.json({ success: false, postData: [] }, 500);
   }
 }
 
@@ -109,7 +116,7 @@ export const loadNearbyPosts = async(c: Context)=>{
       
   }catch (e){
       console.error('Error processing request:', e);
-      return c.json({ success: false, post: [] }, 500);
+      return c.json({ success: false, postData: [] }, 500);
   }
 }
 

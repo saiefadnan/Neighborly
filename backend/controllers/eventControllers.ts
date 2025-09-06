@@ -1,4 +1,4 @@
-import { getFirestore } from "firebase-admin/firestore";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import type { Context } from "hono";
 
 export const loadevents = async(c: Context)=>{
@@ -15,9 +15,14 @@ export const loadevents = async(c: Context)=>{
 }
 
 export const storevents = async(c: Context)=>{
-  try{
- console.log('storing events...');
-  }catch (e){
-    
-  }
+  try {
+      const {event}= await c.req.json();
+      console.log('storing event...',event);
+      const docRef = getFirestore().collection('events').doc();
+      await docRef.set({...event, 'id': docRef.id, 'createdAt': new Date(event.createdAt), 'date':new Date(event.date) });
+       return c.json({ success: true}, 200);
+    } catch (e) {
+       console.error('Error processing request:', e);
+      return c.json({ success: false}, 500);
+    }
 }

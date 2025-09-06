@@ -104,6 +104,9 @@ class PostNotifier
   }
 
   Future<void> loadNearByPosts() async {
+    if (state is! AsyncLoading) {
+      state = const AsyncLoading();
+    }
     String locationName = await _getCurrentLocation();
     try {
       final url = Uri.parse(
@@ -153,7 +156,9 @@ class PostNotifier
   Future<void> loadExplorePosts() async {
     String locationName = await _getCurrentLocation();
     try {
-      state = const AsyncLoading();
+      if (state is! AsyncLoading) {
+        state = const AsyncLoading();
+      }
       final url = Uri.parse(
         '${dotenv.env['BASE_URL']}${ApiConfig.forumApiPath}/load/explore/posts',
       );
@@ -205,6 +210,47 @@ class PostNotifier
       error: (e, st) => state,
       loading: () => state,
     );
+  }
+
+  Future<void> storePosts(Map<String, dynamic> post) async {
+    try {
+      print('Storing post: $post');
+      final url = Uri.parse(
+        '${dotenv.env['BASE_URL']}${ApiConfig.forumApiPath}/store/posts',
+      );
+      final response = await http
+          .post(
+            url,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"post": post}),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        post['postID'] = data['postID'];
+        print('Post stored with ID: ${data['postID']} via backend');
+      } else {
+        print('Failed to store post via backend: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error storing posts: $e');
+      await backupStorePosts(post);
+    }
+  }
+
+  Future<void> backupStorePosts(Map<String, dynamic> post) async {
+    try {
+      final docRef = FirebaseFirestore.instance.collection('posts').doc();
+      await docRef.set({
+        ...post,
+        'postID': docRef.id,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      post['postID'] = docRef.id;
+      print('Post stored with ID: ${docRef.id}');
+    } catch (e) {
+      print('Error storing posts: $e');
+    }
   }
 
   void updateCommentCount(String id) {

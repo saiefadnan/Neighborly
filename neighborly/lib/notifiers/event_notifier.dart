@@ -187,9 +187,41 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
     await loadEvents(); // This will now include location-based filtering
   }
 
-  Future<void> addEvents(EventModel event, DocumentReference docRef) async {
+  Future<void> storeEvents(EventModel event) async {
+    print('Storing event...');
     try {
-      await docRef.set(event.toMap());
+      final url = Uri.parse(
+        '${dotenv.env['BASE_URL']}${ApiConfig.eventApiPath}/store/event',
+      );
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'event': event.toMap(apiCall: true)}),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('Event stored successfully: $data');
+      }
+    } catch (e, st) {
+      await backupStoreEvents(event);
+    }
+  }
+
+  Future<void> backupStoreEvents(EventModel event) async {
+    try {
+      print('Backing up event to Firestore...');
+      final docRef = FirebaseFirestore.instance.collection('events').doc();
+      await docRef.set({...event.toMap(), 'id': docRef.id});
+    } catch (e, st) {
+      print('Error storing event to Firestore: $e');
+      state = AsyncError(e, st);
+    }
+  }
+
+  Future<void> addEvents(EventModel event) async {
+    try {
       state = state.when(
         data: (events) => AsyncData([event, ...events]),
         error: (e, st) => state,

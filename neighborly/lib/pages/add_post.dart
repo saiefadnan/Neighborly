@@ -282,16 +282,14 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
       }
 
       final newPost = {
-        'timestamp': FieldValue.serverTimestamp(),
+        'postID': '',
         'authorID': FirebaseAuth.instance.currentUser!.uid,
         'author': FirebaseAuth.instance.currentUser!.displayName.toString(),
         'location':
             _shareLocation && _currentPosition != null
                 ? {
-                  'geopoint': GeoPoint(
-                    _currentPosition!.latitude,
-                    _currentPosition!.longitude,
-                  ),
+                  'longitude': _currentPosition!.longitude,
+                  'latitude': _currentPosition!.latitude,
                   'geohash': geohasher.encode(
                     _currentPosition!.longitude,
                     _currentPosition!.latitude,
@@ -333,32 +331,7 @@ class _AddPostPageState extends ConsumerState<AddPostPage> {
         'category': _selectedCategory,
       };
 
-      // Add post to Firestore with timeout
-      final docRef = await FirebaseFirestore.instance
-          .collection('posts')
-          .add(newPost)
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              throw Exception(
-                'Post submission timed out. Please check your internet connection.',
-              );
-            },
-          );
-
-      // Update with post ID
-      await docRef
-          .update({'postID': docRef.id})
-          .timeout(
-            const Duration(seconds: 5),
-            onTimeout: () {
-              throw Exception(
-                'Failed to update post ID. Please check your internet connection.',
-              );
-            },
-          );
-
-      newPost['postID'] = docRef.id;
+      ref.read(postsProvider.notifier).storePosts(newPost);
       ref.read(postsProvider.notifier).addPosts(newPost);
 
       if (!mounted) return;

@@ -49,20 +49,20 @@ class EventModel {
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toMap({bool apiCall = false}) {
     return {
       'id': id,
       'title': title,
       'desc': description,
       'img': imageUrl,
       'approved': approved,
-      'createdAt': createdAt,
+      'createdAt': !apiCall ? createdAt : createdAt.toDate().toIso8601String(),
       'location': location,
       'lng': lng,
       'lat': lat,
       'raduis': raduis,
       'tags': tags,
-      'date': Timestamp.fromDate(date),
+      'date': !apiCall ? Timestamp.fromDate(date) : date.toIso8601String(),
     };
   }
 }
