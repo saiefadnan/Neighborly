@@ -1,8 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:neighborly/models/event.dart';
-import 'package:neighborly/pages/event_details.dart';
 
 class AdminNotificationsPage extends StatefulWidget {
   const AdminNotificationsPage({super.key});
@@ -44,30 +42,40 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
       type: _mapType(data['type']),
       title: data['title'] ?? '',
       message: data['message'] ?? '',
-      timestamp: (data['createdAt'] is Timestamp)
-          ? data['createdAt'].toDate()
-          : DateTime.tryParse(data['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      timestamp:
+          (data['createdAt'] is Timestamp)
+              ? data['createdAt'].toDate()
+              : DateTime.tryParse(data['createdAt']?.toString() ?? '') ??
+                  DateTime.now(),
       isRead: data['read'] ?? false,
       communityName: data['communityId'],
       actorName: data['actorName'],
       targetName: data['recipientEmail'],
       icon: _mapIcon(data['type']),
       color: _mapColor(data['type']),
-      eventData: (data['eventData'] != null)
-          ? EventModel(
-              id: data['eventData']['id'] ?? '',
-              title: data['eventData']['title'] ?? '',
-              description: data['eventData']['description'] ?? '',
-              imageUrl: data['eventData']['imageUrl'] ?? '',
-              approved: data['eventData']['approved'] ?? false,
-              createdAt: data['eventData']['createdAt'] ?? Timestamp.now(),
-              location: data['eventData']['location'] ?? '',
-              lng: data['eventData']['lng'] ?? 0.0,
-              lat: data['eventData']['lat'] ?? 0.0,
-              raduis: data['eventData']['raduis'] ?? 0,
-              tags: List<String>.from(data['eventData']['tags'] ?? []),
-            )
-          : null,
+      eventData:
+          (data['eventData'] != null)
+              ? EventModel(
+                id: data['eventData']['id'] ?? '',
+                title: data['eventData']['title'] ?? '',
+                description: data['eventData']['description'] ?? '',
+                imageUrl: data['eventData']['imageUrl'] ?? '',
+                approved: data['eventData']['approved'] ?? false,
+                createdAt: data['eventData']['createdAt'] ?? Timestamp.now(),
+                location: data['eventData']['location'] ?? '',
+                lng: data['eventData']['lng'] ?? 0.0,
+                lat: data['eventData']['lat'] ?? 0.0,
+                raduis: data['eventData']['raduis'] ?? 0,
+                tags: List<String>.from(data['eventData']['tags'] ?? []),
+                date:
+                    (data['eventData']['date'] is Timestamp)
+                        ? data['eventData']['date'].toDate()
+                        : DateTime.tryParse(
+                              data['eventData']['date']?.toString() ?? '',
+                            ) ??
+                            DateTime.now(),
+              )
+              : null,
     );
   }
 
@@ -184,60 +192,62 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('notifications')
-              .orderBy('createdAt', descending: true)
-              .snapshots(),
+          stream:
+              FirebaseFirestore.instance
+                  .collection('notifications')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-            final notifications = snapshot.data?.docs
-                    .map(_fromFirestore)
-                    .toList() ??
-                [];
+            final notifications =
+                snapshot.data?.docs.map(_fromFirestore).toList() ?? [];
 
             return Column(
               children: [
                 _buildStatsHeader(notifications),
                 Expanded(
-                  child: notifications.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.notifications_none,
-                                size: 64,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No notifications',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[600],
+                  child:
+                      notifications.isEmpty
+                          ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.notifications_none,
+                                  size: 64,
+                                  color: Colors.grey[400],
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'You\'re all caught up!',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[500],
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No notifications',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey[600],
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  'You\'re all caught up!',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                          : ListView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.only(bottom: 20),
+                            itemCount: notifications.length,
+                            itemBuilder: (context, index) {
+                              return _buildNotificationCard(
+                                notifications[index],
+                              );
+                            },
                           ),
-                        )
-                      : ListView.builder(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.only(bottom: 20),
-                          itemCount: notifications.length,
-                          itemBuilder: (context, index) {
-                            return _buildNotificationCard(notifications[index]);
-                          },
-                        ),
                 ),
               ],
             );
@@ -282,7 +292,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
                   Icons.notifications,
                   color: Colors.white,
                   size: 24,
-                ),//Notifications updated and connected to database
+                ), //Notifications updated and connected to database
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -391,12 +401,13 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: notification.isRead
-            ? null
-            : Border.all(
-                color: notification.color.withOpacity(0.3),
-                width: 1,
-              ),
+        border:
+            notification.isRead
+                ? null
+                : Border.all(
+                  color: notification.color.withOpacity(0.3),
+                  width: 1,
+                ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(notification.isRead ? 0.05 : 0.08),
@@ -439,9 +450,10 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
                               notification.title,
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: notification.isRead
-                                    ? FontWeight.w500
-                                    : FontWeight.w600,
+                                fontWeight:
+                                    notification.isRead
+                                        ? FontWeight.w500
+                                        : FontWeight.w600,
                                 color: const Color(0xFF2C3E50),
                               ),
                             ),

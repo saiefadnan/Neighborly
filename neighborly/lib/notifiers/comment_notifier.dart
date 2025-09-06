@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:neighborly/config/api_config.dart';
 import 'package:neighborly/notifiers/post_notifier.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 
@@ -48,6 +49,35 @@ class CommentsNotifier
   }
 
   Future<void> loadComments() async {
+    try {
+      final url = Uri.parse(
+        '${dotenv.env['BASE_URL']}${ApiConfig.forumApiPath}/load/comments',
+      );
+
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'postID': postID}),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final comments =
+            (data['commentData'] as List<Map<String, dynamic>>)
+                .map((comment) => {...comment})
+                .toList();
+        await fetchUserUrl(comments);
+        state = AsyncData(comments);
+      } else {
+        await backupLoadComments();
+      }
+    } catch (e, st) {
+      await backupLoadComments();
+    }
+  }
+
+  Future<void> backupLoadComments() async {
     try {
       final querySnapshot =
           await FirebaseFirestore.instance
@@ -103,7 +133,7 @@ class CommentsNotifier
     }
   }
 
-  Future<bool> storeComments(Map<String, dynamic> commentData) async {
+  Future<void> storeComments(Map<String, dynamic> commentData) async {
     final baseUrl = dotenv.env['BASE_URL'];
     final url = Uri.parse('$baseUrl/api/forum/store/comments');
     print(commentData);
@@ -117,16 +147,16 @@ class CommentsNotifier
           .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['success'];
+        await FirebaseFirestore.instance.collection('posts').doc(postID).update(
+          {'totalComments': FieldValue.increment(1)},
+        );
+        ref.read(postsProvider.notifier).updateCommentCount(postID);
       } else {
         await backUpStoreComment(commentData);
-        return false;
       }
     } catch (e) {
       print('Error storing comment: $e');
       await backUpStoreComment(commentData);
-      return false;
     }
   }
 

@@ -796,6 +796,15 @@ class _StatisticsPageState extends State<StatisticsPage>
                       dataLabelSettings: DataLabelSettings(
                         isVisible: true,
                         labelPosition: ChartDataLabelPosition.outside,
+                        labelIntersectAction:
+                            LabelIntersectAction
+                                .shift, // Smart labels like in your image
+                        connectorLineSettings: ConnectorLineSettings(
+                          type: ConnectorType.curve,
+                          length: '10%',
+                          width: 1.5,
+                          color: Colors.grey.shade400,
+                        ),
                         builder: (
                           dynamic data,
                           dynamic point,

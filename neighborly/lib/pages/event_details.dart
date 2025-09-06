@@ -395,7 +395,7 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
                           child: _buildInfoCard(
                             Icons.calendar_today_rounded,
                             'Date & Time',
-                            "${event.createdAt.toDate().day}/${event.createdAt.toDate().month}/${event.createdAt.toDate().year}\n${event.createdAt.toDate().hour}:${event.createdAt.toDate().minute.toString().padLeft(2, '0')}",
+                            "${event.date.day}/${event.date.month}/${event.date.year}\n${event.date.hour}:${event.date.minute.toString().padLeft(2, '0')}",
                           ),
                         ),
                         const SizedBox(width: 16),

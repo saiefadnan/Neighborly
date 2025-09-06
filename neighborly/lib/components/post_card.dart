@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'package:flutter_polls/flutter_polls.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:neighborly/components/comment_card.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 import 'package:like_button/like_button.dart';
 import 'package:readmore/readmore.dart';
@@ -586,22 +587,22 @@ class _PostCardState extends ConsumerState<PostCard> {
                                 ),
                           ),
                           // Full-screen indicator
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.6),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.fullscreen,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
+                          // Positioned(
+                          //   top: 8,
+                          //   right: 8,
+                          //   child: Container(
+                          //     padding: const EdgeInsets.all(6),
+                          //     decoration: BoxDecoration(
+                          //       color: Colors.black.withOpacity(0.6),
+                          //       borderRadius: BorderRadius.circular(8),
+                          //     ),
+                          //     child: const Icon(
+                          //       Icons.fullscreen,
+                          //       color: Colors.white,
+                          //       size: 20,
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
@@ -1032,8 +1033,9 @@ class _PostCardState extends ConsumerState<PostCard> {
                                   ],
                                 ).timeout(Duration(seconds: 10)); // Add timeout
 
-                                if (!mounted)
+                                if (!mounted) {
                                   return isLiked; // Check mounted after async operation
+                                }
                                 widget.post['reacts'] = max(
                                   widget.post['reacts'] - 1,
                                   0,
@@ -1051,8 +1053,9 @@ class _PostCardState extends ConsumerState<PostCard> {
                                   ],
                                 ).timeout(Duration(seconds: 10)); // Add timeout
 
-                                if (!mounted)
+                                if (!mounted) {
                                   return isLiked; // Check mounted after async operation
+                                }
                                 widget.post['reacts'] =
                                     widget.post['reacts'] + 1;
                               }
@@ -1095,6 +1098,7 @@ class _PostCardState extends ConsumerState<PostCard> {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
                             onTap: () {
+                              openedPost = widget.post;
                               showCommentBox(
                                 context,
                                 ref,

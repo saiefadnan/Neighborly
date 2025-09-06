@@ -344,6 +344,7 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                                         'content': comment,
                                                         'parentID': replyTo,
                                                         'reacts': 0,
+                                                        'offTopic': 'pending',
                                                       };
                                                       if (!userUrlCache
                                                           .containsKey(
