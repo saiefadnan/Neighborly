@@ -1,12 +1,15 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:like_button/like_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_sheet.dart';
+import 'package:http/http.dart' as http;
 
 final boxHeightProvider = StateProvider<Map<String, double>>((ref) => {});
 final replyTargetProvider = StateProvider<String?>((ref) => null);
@@ -28,6 +31,116 @@ class CommentCard extends ConsumerStatefulWidget {
 
 class _CommentCardState extends ConsumerState<CommentCard> {
   bool liked = false;
+  bool? isOffTopic; 
+  bool isDetectionLoading = true;
+
+  Future<bool> offTopicDetector() async {
+    try {
+      // Use a better model for text classification
+      final url = Uri.parse(
+        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
+      );
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer ${dotenv.env['HF_API_KEY']}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "inputs": widget.comment['content'],
+          "parameters": {
+            "candidate_labels": [
+              "community discussion",
+              "neighborly conversation",
+              "local community topic",
+              "off-topic",
+              "irrelevant",
+              "spam",
+            ],
+          },
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        final labels = result['labels'] as List;
+        final scores = result['scores'] as List;
+
+        // Check if off-topic/irrelevant/spam labels have high confidence
+        for (int i = 0; i < labels.length; i++) {
+          final label = labels[i].toString().toLowerCase();
+          final score = scores[i] as double;
+
+          print("Label: $label, Score: $score");
+
+          if ((label.contains('off-topic') ||
+                  label.contains('irrelevant') ||
+                  label.contains('spam')) &&
+              score > 0.7) {
+            return true; // Off-topic
+          }
+        }
+
+        return false; // On-topic
+      } else {
+        print("Error: ${response.statusCode} - ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print('Error in offTopicDetector: $e');
+      return false;
+    }
+  }
+
+  Future<void> _runOffTopicDetection() async {
+    try {
+      setState(() {
+        isDetectionLoading = true;
+      });
+
+      final result = await offTopicDetector();
+
+      setState(() {
+        isOffTopic = result;
+        isDetectionLoading = false;
+      });
+    } catch (e) {
+      print('Error running off-topic detection: $e');
+      setState(() {
+        isOffTopic = false;
+        isDetectionLoading = false;
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return; // Check mounted first
+
+      try {
+        final context = widget.ckey.currentContext;
+        if (context != null && mounted) {
+          final box = context.findRenderObject() as RenderBox?;
+          final height = box?.size.height ?? 0;
+          ref.read(boxHeightProvider.notifier).update((state) {
+            return {...state, widget.comment['commentID']: height};
+          });
+        }
+
+        if (!mounted) return; // Check again before async operation
+        await likedByme();
+
+        // Run off-topic detection
+        _runOffTopicDetection();
+      } catch (e) {
+        print('Error in initState callback: $e');
+      }
+    });
+  }
+
   Future<void> likedByme() async {
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -52,39 +165,24 @@ class _CommentCardState extends ConsumerState<CommentCard> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return; // Check mounted first
-
-      try {
-        final context = widget.ckey.currentContext;
-        if (context != null && mounted) {
-          final box = context.findRenderObject() as RenderBox?;
-          final height = box?.size.height ?? 0;
-          ref.read(boxHeightProvider.notifier).update((state) {
-            return {...state, widget.comment['commentID']: height};
-          });
-        }
-
-        if (!mounted) return; // Check again before async operation
-        await likedByme();
-      } catch (e) {
-        print('Error in initState callback: $e');
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // Determine colors based on off-topic detection
+    Color backgroundColor = const Color(0xFFFAF8F5); // Light cream background
+    Color borderColor = const Color(0xFF71BB7B).withOpacity(0.1);
+
+    if (isOffTopic == true) {
+      backgroundColor = Colors.orange[50] ?? backgroundColor;
+      borderColor = Colors.orange.withOpacity(0.2);
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAF8F5), // Light cream background
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF71BB7B).withOpacity(0.1),
-          width: 1,
+          color: borderColor,
+          width: isOffTopic == true ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
@@ -188,6 +286,58 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      // Off-topic detection indicator
+                      if (isDetectionLoading)
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.blue[600]!,
+                              ),
+                            ),
+                          ),
+                        )
+                      else if (isOffTopic == true)
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Tooltip(
+                            message: 'This comment may be off-topic',
+                            child: Icon(
+                              Icons.warning_rounded,
+                              color: Colors.orange[700],
+                              size: 12,
+                            ),
+                          ),
+                        )
+                      else if (isOffTopic == false)
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.green[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Tooltip(
+                            message: 'This comment is relevant',
+                            child: Icon(
+                              Icons.check_circle_rounded,
+                              color: Colors.green[700],
+                              size: 12,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
