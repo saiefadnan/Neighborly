@@ -13,6 +13,7 @@ import { initializeApp, cert} from 'firebase-admin/app';
 import { readFileSync } from 'fs'
 import { join } from 'path';
 import eventRouter from './routes/eventRoute';
+import gamificationRouter from './routes/gamificationRoutes';
 const serviceAccount = JSON.parse(
   readFileSync(join(__dirname, 'neighborly-3cb66-firebase-adminsdk-fbsvc-e1cb696dc4.json'), 'utf8')
 );
@@ -36,6 +37,7 @@ app.route('/api/communities', communityRouter);
 app.route('/api', blockRoutes);
 app.route('/api', notificationRouter);
 app.route('/api/fcm', fcmRouter);
+app.route('/api/gamification', gamificationRouter);
 Bun.serve({
   fetch: app.fetch,
   port: 4000,
