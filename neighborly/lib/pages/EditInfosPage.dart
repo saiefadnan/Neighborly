@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
 import '../functions/pfp_uploader.dart';
 import '../components/tickbox_animate.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CurvedHeaderClipper extends CustomClipper<Path> {
   @override
@@ -98,69 +99,170 @@ class _EditInfosPageState extends State<EditInfosPage> {
   }
 
   // Fetch logged-in user's info from backend
+  // Fetch logged-in user's info from backend with Firestore fallback
   Future<void> fetchAndSetUserInfo() async {
     setState(() {
       _isLoading = true;
     });
+
+    bool success = false;
+    Map<String, dynamic>? userData;
+
+    // 1. Try HTTP API first
     try {
       final token = await _getAuthToken();
-      if (token == null) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('No auth token found.')));
-        print('No auth token found.');
-        return;
-      }
-      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.infosApiPath}');
-      print('Fetching user info from: $uri');
-      final response = await http.get(
-        uri,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      print('GET status: \\${response.statusCode}, body: \\${response.body}');
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body)['data'];
-        setState(() {
-          _firstNameController.text = data['firstName'] ?? '';
-          _lastNameController.text = data['lastName'] ?? '';
-          _usernameController.text = data['username'] ?? '';
-          _emailController.text = data['email'] ?? '';
-          _phoneController.text = data['contactNumber'] ?? '';
-          _addressLine1Controller.text = data['addressLine1'] ?? '';
-          _addressLine2Controller.text = data['addressLine2'] ?? '';
-          _cityController.text = data['city'] ?? '';
-          _divisionController.text = data['division'] ?? '';
-          _postalcodeController.text = data['postalcode'] ?? '';
-          _profileImageUrl = data['profilepicurl'];
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to fetch user info: Status \\${response.statusCode}',
-            ),
-          ),
+      if (token != null) {
+        final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.infosApiPath}');
+        print('Fetching user info from: $uri');
+        final response = await http.get(
+          uri,
+          headers: {'Authorization': 'Bearer $token'},
         );
-        print(
-          'Failed to fetch user info: Status \\${response.statusCode}, body: \\${response.body}',
-        );
+        print('GET status: ${response.statusCode}, body: ${response.body}');
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body)['data'];
+          userData = data;
+          success = true;
+          print('Successfully fetched user info from API');
+        }
       }
     } catch (e) {
-      if (!mounted) return;
+      print('API fetch failed, will try Firestore. Error: $e');
+    }
+
+    // 2. If API failed, try Firestore directly
+    if (!success) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final userDoc =
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .get();
+
+          if (userDoc.exists) {
+            userData = userDoc.data();
+            success = true;
+            print('Successfully fetched user info from Firestore');
+          }
+        }
+      } catch (e) {
+        print('Error fetching user info from Firestore: $e');
+      }
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (success && userData != null) {
       setState(() {
-        _isLoading = false;
+        _firstNameController.text = userData!['firstName'] ?? '';
+        _lastNameController.text = userData!['lastName'] ?? '';
+        _usernameController.text = userData!['username'] ?? '';
+        _emailController.text = userData!['email'] ?? '';
+        _phoneController.text = userData!['contactNumber'] ?? '';
+        _addressLine1Controller.text = userData!['addressLine1'] ?? '';
+        _addressLine2Controller.text = userData!['addressLine2'] ?? '';
+        _cityController.text = userData!['city'] ?? '';
+        _divisionController.text = userData!['division'] ?? '';
+        _postalcodeController.text = userData!['postalcode'] ?? '';
+        _profileImageUrl = userData!['profilepicurl'];
       });
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching user info: \\${e.toString()}')),
+        const SnackBar(
+          content: Text(
+            'Failed to fetch user info from both API and Firestore',
+          ),
+        ),
       );
-      print('Error fetching user info: \\${e.toString()}');
+    }
+  }
+
+  // Update user info with Firestore fallback
+  Future<void> updateUserInfoWithFallback(
+    Map<String, dynamic> updateData,
+  ) async {
+    bool success = false;
+
+    // 1. Try HTTP API first
+    try {
+      final token = await _getAuthToken();
+      if (token != null) {
+        final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.infosApiPath}');
+        final response = await http.post(
+          uri,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(updateData),
+        );
+
+        print(
+          '[ProfileImage] Backend response: status=${response.statusCode}, body=${response.body}',
+        );
+
+        if (response.statusCode == 200) {
+          success = true;
+          print('[ProfileImage] User info updated successfully via API.');
+        }
+      }
+    } catch (e) {
+      print('API update failed, will try Firestore. Error: $e');
+    }
+
+    // 2. If API failed, try Firestore directly
+    if (!success) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set(updateData, SetOptions(merge: true));
+
+          success = true;
+          print('[ProfileImage] User info updated successfully via Firestore.');
+        }
+      } catch (e) {
+        print('Error updating user info in Firestore: $e');
+      }
+    }
+
+    if (success) {
+      // Show animated success dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: AnimatedPrompt(
+              title: 'Profile Updated!',
+              subTitle: 'Your information has been updated successfully.',
+              child: const Icon(Icons.check, color: Colors.white),
+            ),
+          );
+        },
+      );
+
+      // Auto-dismiss dialog after 2 seconds and refresh
+      Future.delayed(const Duration(seconds: 2), () {
+        Navigator.of(context).pop(); // Close dialog
+        fetchAndSetUserInfo(); // Refresh fields
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Failed to update user info via both API and Firestore',
+          ),
+        ),
+      );
     }
   }
 
@@ -562,13 +664,7 @@ class _EditInfosPageState extends State<EditInfosPage> {
                               ),
                               onPressed: () async {
                                 print('[ProfileImage] Update button pressed.');
-                                final token = await _getAuthToken();
-                                if (token == null) {
-                                  print(
-                                    '[ProfileImage] No auth token, aborting update.',
-                                  );
-                                  return;
-                                }
+
                                 String? uploadedUrl;
                                 if (_profileImage != null) {
                                   print(
@@ -583,88 +679,31 @@ class _EditInfosPageState extends State<EditInfosPage> {
                                   );
                                   uploadedUrl = _profileImageUrl;
                                 }
-                                print(
-                                  '[ProfileImage] Using profilePicUrl: \\${uploadedUrl ?? "(null)"}',
-                                );
-                                final uri = Uri.parse(
-                                  '${ApiConfig.baseUrl}${ApiConfig.infosApiPath}',
-                                );
-                                final response = await http.post(
-                                  uri,
-                                  headers: {
-                                    'Authorization': 'Bearer $token',
-                                    'Content-Type': 'application/json',
-                                  },
-                                  body: jsonEncode({
-                                    'firstName': _firstNameController.text,
-                                    'lastName': _lastNameController.text,
-                                    'username': _usernameController.text,
-                                    'addressLine1':
-                                        _addressLine1Controller.text,
-                                    'addressLine2':
-                                        _addressLine2Controller.text,
-                                    'city': _cityController.text,
-                                    'contactNumber': _phoneController.text,
-                                    'division': _divisionController.text,
-                                    'postalcode': _postalcodeController.text,
-                                    if (uploadedUrl != null)
-                                      'profilepicurl': uploadedUrl,
-                                  }),
-                                );
-                                print(
-                                  '[ProfileImage] Backend response: status=\${response.statusCode}, body=\${response.body}',
-                                );
-                                if (response.statusCode == 200) {
-                                  print(
-                                    '[ProfileImage] User info updated successfully.',
-                                  );
 
-                                  // Show animated success dialog
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible: false,
-                                    builder: (BuildContext context) {
-                                      return Dialog(
-                                        backgroundColor: Colors.transparent,
-                                        child: AnimatedPrompt(
-                                          title: 'Profile Updated!',
-                                          subTitle:
-                                              'Your information has been updated successfully.',
-                                          child: const Icon(
-                                            Icons.check,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  );
+                                print(
+                                  '[ProfileImage] Using profilePicUrl: ${uploadedUrl ?? "(null)"}',
+                                );
 
-                                  // Auto-dismiss dialog after 2 seconds and refresh
-                                  Future.delayed(
-                                    const Duration(seconds: 2),
-                                    () {
-                                      Navigator.of(
-                                        context,
-                                      ).pop(); // Close dialog
-                                      fetchAndSetUserInfo(); // Refresh fields
-                                    },
-                                  );
-                                } else {
-                                  String errorMsg =
-                                      'Failed to update user info';
-                                  try {
-                                    final resp = jsonDecode(response.body);
-                                    if (resp['message'] != null) {
-                                      errorMsg = resp['message'];
-                                    }
-                                  } catch (_) {}
-                                  print(
-                                    '[ProfileImage] Error updating user info: $errorMsg',
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(errorMsg)),
-                                  );
+                                // Prepare update data
+                                final updateData = {
+                                  'firstName': _firstNameController.text,
+                                  'lastName': _lastNameController.text,
+                                  'username': _usernameController.text,
+                                  'addressLine1': _addressLine1Controller.text,
+                                  'addressLine2': _addressLine2Controller.text,
+                                  'city': _cityController.text,
+                                  'contactNumber': _phoneController.text,
+                                  'division': _divisionController.text,
+                                  'postalcode': _postalcodeController.text,
+                                };
+
+                                // Add profile picture URL if available
+                                if (uploadedUrl != null) {
+                                  updateData['profilepicurl'] = uploadedUrl;
                                 }
+
+                                // Update with fallback support
+                                await updateUserInfoWithFallback(updateData);
                               },
                               child: const Text(
                                 "Update",
