@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Add this line only
 // Add this import
 
 class CurvedHeaderClipper extends CustomClipper<Path> {
@@ -37,6 +38,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
   String? _name;
   String? _email;
   String? _phone;
+  String? _profilePicUrl; // Add this line only
   bool _loading = true;
 
   @override
@@ -46,6 +48,9 @@ class _ProfileHeaderState extends State<ProfileHeader> {
   }
 
   Future<void> _fetchUserInfo() async {
+    bool success = false;
+
+    // 1. Try HTTP API first
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -68,15 +73,47 @@ class _ProfileHeaderState extends State<ProfileHeader> {
                   .trim();
           _email = data['email'] ?? '';
           _phone = data['contactNumber'] ?? '';
+          _profilePicUrl = data['profilepicurl']; // Add this line only
           _loading = false;
         });
-      } else {
-        setState(() {
-          _loading = false;
-        });
+        success = true;
       }
     } catch (e) {
-      if (!mounted) return;
+      print('API fetch failed, will try Firestore. Error: $e');
+    }
+
+    // 2. If API failed, try Firestore directly
+    if (!success) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final userDoc =
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .get();
+
+          if (userDoc.exists) {
+            final userData = userDoc.data()!;
+            setState(() {
+              _name =
+                  ((userData['firstName'] ?? '') +
+                          ' ' +
+                          (userData['lastName'] ?? ''))
+                      .trim();
+              _email = userData['email'] ?? '';
+              _phone = userData['contactNumber'] ?? '';
+              _profilePicUrl = userData['profilepicurl']; // Add this line only
+              _loading = false;
+            });
+          }
+        }
+      } catch (e) {
+        print('Error fetching user info from Firestore: $e');
+      }
+    }
+
+    if (!success) {
       setState(() {
         _loading = false;
       });
@@ -104,7 +141,9 @@ class _ProfileHeaderState extends State<ProfileHeader> {
                 child: CircleAvatar(
                   radius: 60,
                   backgroundImage:
-                      (widget.profileImageUrl != null &&
+                      (_profilePicUrl != null && _profilePicUrl!.isNotEmpty)
+                          ? NetworkImage(_profilePicUrl!)
+                          : (widget.profileImageUrl != null &&
                               widget.profileImageUrl!.isNotEmpty)
                           ? NetworkImage(widget.profileImageUrl!)
                           : const AssetImage('assets/images/dummy.png')

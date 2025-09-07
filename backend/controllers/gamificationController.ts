@@ -309,6 +309,8 @@ export const migrateUserLevels = async (c: Context) => {
 
 
 // Get user's badge counts based on help request types
+// Get user's badge counts based on help request types + Community Hero
+// Get user's badge counts based on help request types + Community Hero + Kindstart
 export const getUserBadgeCounts = async (c: Context) => {
   try {
     const authHeader = c.req.header('Authorization');
@@ -321,8 +323,14 @@ export const getUserBadgeCounts = async (c: Context) => {
     const decodedToken = await getAuth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
-    // Get all helpedRequests for this user
-    const helpedRequestsQuery = await getFirestore()
+    // Get all helpedRequests for this user (any status for Kindstart badge)
+    const allHelpedRequestsQuery = await getFirestore()
+      .collection('helpedRequests')
+      .where('acceptedUserID', '==', userId)
+      .get();
+
+    // Get completed/in_progress helpedRequests for medal counts
+    const completedHelpedRequestsQuery = await getFirestore()
       .collection('helpedRequests')
       .where('acceptedUserID', '==', userId)
       .where('status', 'in', ['completed', 'in_progress'])
@@ -331,10 +339,15 @@ export const getUserBadgeCounts = async (c: Context) => {
     let bronzeCount = 0;  // General type
     let goldCount = 0;    // Emergency type
     let otherCount = 0;   // Other types
+    
+    // Total help count for Kindstart badge (any status)
+    const totalHelpCount = allHelpedRequestsQuery.docs.length;
+    const kindstartUnlocked = totalHelpCount >= 1;
 
     const helpDetails = [];
 
-    for (const doc of helpedRequestsQuery.docs) {
+    // Count medals based on completed/in_progress helps only
+    for (const doc of completedHelpedRequestsQuery.docs) {
       const data = doc.data();
       const type = data.originalRequestData?.type || 'Unknown';
       
@@ -357,16 +370,31 @@ export const getUserBadgeCounts = async (c: Context) => {
       });
     }
 
+    // Get user's post count for Community Hero badge
+    const postsQuery = await getFirestore()
+      .collection('posts')
+      .where('authorID', '==', userId)
+      .get();
+
+    const postCount = postsQuery.docs.length;
+    const communityHeroUnlocked = postCount >= 3;
+
     return c.json({ 
       success: true, 
       data: {
         userId: userId,
         badges: {
-          Bronze: bronzeCount,    // General type count
-          Gold: goldCount,        // Emergency type count
-          Other: otherCount       // Other types count
+          Bronze: bronzeCount,    // General type count (completed/in_progress only)
+          Gold: goldCount,        // Emergency type count (completed/in_progress only)
+          Other: otherCount,      // Other types count (completed/in_progress only)
+          CommunityHero: communityHeroUnlocked ? 1 : 0,  // Community Hero badge (3+ posts)
+          Kindstart: kindstartUnlocked ? 1 : 0  // Kindstart badge (1+ helps of any status)
         },
-        totalHelps: bronzeCount + goldCount + otherCount,
+        helpCount: totalHelpCount,  // Total helps (any status)
+        postCount: postCount,
+        communityHeroUnlocked: communityHeroUnlocked,
+        kindstartUnlocked: kindstartUnlocked,
+        totalHelps: bronzeCount + goldCount + otherCount,  // Only completed/in_progress
         helpDetails: helpDetails  // For debugging
       }
     });
@@ -376,6 +404,121 @@ export const getUserBadgeCounts = async (c: Context) => {
     return c.json({ 
       success: false, 
       message: 'Failed to get user badge counts' 
+    }, 500);
+  }
+};
+
+// Get user's post count and Community Hero badge status
+export const getUserPostCount = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    // Get all posts for this user
+    const postsQuery = await getFirestore()
+      .collection('posts')
+      .where('authorID', '==', userId)
+      .get();
+
+    const postCount = postsQuery.docs.length;
+    const communityHeroUnlocked = postCount >= 3;
+
+    const postDetails = [];
+
+    for (const doc of postsQuery.docs) {
+      const data = doc.data();
+      
+      // Collect post details for debugging
+      postDetails.push({
+        postID: doc.id,
+        title: data.title || 'Untitled',
+        category: data.category || 'Unknown',
+        timestamp: data.timestamp,
+        totalComments: data.totalComments || 0,
+        upvotes: data.upvotes || 0,
+        downvotes: data.downvotes || 0
+      });
+    }
+
+    return c.json({ 
+      success: true, 
+      data: {
+        userId: userId,
+        postCount: postCount,
+        communityHeroUnlocked: communityHeroUnlocked,
+        postDetails: postDetails  // For debugging
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting user post count:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to get user post count' 
+    }, 500);
+  }
+};
+
+// Get user's help count and Kindstart badge status
+export const getUserHelpCount = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    // Get all helpedRequests for this user (any status)
+    const helpedRequestsQuery = await getFirestore()
+      .collection('helpedRequests')
+      .where('acceptedUserID', '==', userId)
+      .get();
+
+    const helpCount = helpedRequestsQuery.docs.length;
+    const kindstartUnlocked = helpCount >= 1;
+
+    const helpDetails = [];
+
+    for (const doc of helpedRequestsQuery.docs) {
+      const data = doc.data();
+      
+      // Collect help details for debugging
+      helpDetails.push({
+        requestId: data.requestId,
+        type: data.originalRequestData?.type || 'Unknown',
+        status: data.status || 'Unknown',
+        acceptedAt: data.acceptedAt,
+        xp: data.xp || 0,
+        requesterUsername: data.originalRequestData?.requesterUsername || 'Unknown'
+      });
+    }
+
+    return c.json({ 
+      success: true, 
+      data: {
+        userId: userId,
+        helpCount: helpCount,
+        kindstartUnlocked: kindstartUnlocked,
+        helpDetails: helpDetails  // For debugging
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting user help count:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to get user help count' 
     }, 500);
   }
 };
