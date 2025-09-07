@@ -17,7 +17,7 @@ void main() async {
   //dont remove this ever again!!!
   //dont remove this ever again!!!
   //dont remove this ever again!!!
-  await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: ".env");//no problems now
   //dont remove this ever again!!!
   //dont remove this ever again!!!
   //dont remove this ever again!!!
