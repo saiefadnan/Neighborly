@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 void main() {
-  runApp(MaterialApp(
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData.light(),
-    home: ChatScreen(),
-  ));
+  runApp(
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(),
+      home: ChatScreen(),
+    ),
+  );
 }
 
 class ChatScreen extends StatefulWidget {
@@ -22,14 +24,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> _messages = [];
 
   Future<void> sendMessage(String message) async {
-    
     setState(() {
       _messages.add({'sender': 'user', 'text': message});
     });
 
-   final url = Uri.parse('http://172.20.10.2:5000/chat'); // Android emulator
+    final url = Uri.parse('http://172.20.10.2:5000/chat'); // Android emulator
 
- // Change if needed
+    // Change if needed
     try {
       final response = await http.post(
         url,
@@ -67,7 +68,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-         
           Expanded(
             child: ListView.builder(
               itemCount: _messages.length,
@@ -101,8 +101,8 @@ class _ChatScreenState extends State<ChatScreen> {
             child: GestureDetector(
               onTap: () {
                 setState(() {
-                  _controller.text = "How can I help you?";
-                });//How can I help u added.
+                  _controller.text = "How can u help me?";
+                }); //How can I help u added.
               },
               child: Container(
                 width: double.infinity,
@@ -112,7 +112,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
-                  "How can I help you?",
+                  "How can u help me?",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15,
@@ -137,8 +137,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                   ),
                 ),
