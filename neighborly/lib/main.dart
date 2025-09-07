@@ -16,9 +16,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   //dont remove this ever again!!!
   //dont remove this ever again!!!
-  //dont remove this ever again!!!
  
-  //dont remove this ever again!!!
   //dont remove this ever again!!!
   //dont remove this ever again!!!
 

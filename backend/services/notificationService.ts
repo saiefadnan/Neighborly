@@ -126,6 +126,9 @@ class NotificationService {
   // Create notification for help response
   async createHelpResponseNotification(helpRequestId: string, responderData: any): Promise<{ success: boolean; message: string }> {
     try {
+      console.log('🔔 Creating help response notification for:', helpRequestId);
+      console.log('📊 Responder data:', responderData);
+      
       // Get original help request
       const helpRequestDoc = await getDB().collection('helpRequests').doc(helpRequestId).get();
       if (!helpRequestDoc.exists) {
@@ -133,6 +136,9 @@ class NotificationService {
       }
 
       const helpRequest = helpRequestDoc.data();
+      console.log('📋 Help request data:', helpRequest);
+      console.log('👤 Help request username:', helpRequest?.username);
+      
       const requesterId = helpRequest.userId;
 
       // Check if requester is within daily notification limit
@@ -154,7 +160,7 @@ class NotificationService {
         message: `${responderData.username} responded to your ${helpRequest.title} help request`,
         helpRequestId: helpRequestId,
         helpRequestData: {
-          requesterName: helpRequest.username,
+          requesterName: helpRequest.username || helpRequest.userEmail?.split('@')[0] || 'Anonymous User',
           requesterUserId: requesterId,
           helpType: helpRequest.title,
           urgency: helpRequest.priority,

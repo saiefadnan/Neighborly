@@ -20,6 +20,7 @@ final commentFocusNodeProvider = Provider<FocusNode>((ref) {
 });
 
 final hintTextProvider = StateProvider<String>((ref) => '');
+final expandedCommentsProvider = StateProvider<Map<String, bool>>((ref) => {});
 
 class BottomCommentSheet extends ConsumerStatefulWidget {
   final String postID;
@@ -35,9 +36,15 @@ class BottomCommentSheet extends ConsumerStatefulWidget {
 }
 
 class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
+  bool childExists(dynamic comments, String parentID) {
+    return comments.where((c) => c['parentID'] == parentID).isNotEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     final asyncComments = ref.watch(commentsProvider(widget.postID));
+    final expandedComments = ref.watch(expandedCommentsProvider);
+
     return asyncComments.when(
       data: (comments) {
         //final comments = ref.watch(commentsProvider);
@@ -58,17 +65,109 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
                 commentKeys.putIfAbsent(commentId, () => GlobalKey());
 
                 return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CommentCard(
                       ckey: commentKeys[commentId]!,
                       comment: topLevelComments[index],
                       depth: 0,
                     ),
-                    buildCommentTree(
-                      comments,
-                      topLevelComments[index]['commentID'],
-                      1,
-                    ),
+                    childExists(comments, topLevelComments[index]['commentID'])
+                        ? Padding(
+                          padding: const EdgeInsets.only(
+                            left: 44,
+                            top: 8,
+                            bottom: 4,
+                          ),
+                          child: GestureDetector(
+                            onTap: () {
+                              ref
+                                  .read(expandedCommentsProvider.notifier)
+                                  .update((state) {
+                                    final newState = {...state};
+                                    newState[commentId] =
+                                        !(newState[commentId] ?? false);
+                                    return newState;
+                                  });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFF71BB7B,
+                                  ).withOpacity(0.2),
+                                  width: 1,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.03),
+                                    blurRadius: 3,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    !(expandedComments[commentId] ?? false)
+                                        ? Icons.keyboard_arrow_down_rounded
+                                        : Icons.keyboard_arrow_up_rounded,
+                                    size: 16,
+                                    color: const Color(0xFF71BB7B),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    !(expandedComments[commentId] ?? false)
+                                        ? "View replies"
+                                        : "Hide replies",
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF71BB7B),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF71BB7B,
+                                      ).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      "${comments.where((c) => c['parentID'] == topLevelComments[index]['commentID']).length}",
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF71BB7B),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                        : SizedBox.shrink(),
+                    expandedComments[commentId] != null &&
+                            expandedComments[commentId]!
+                        ? buildCommentTree(
+                          comments,
+                          topLevelComments[index]['commentID'],
+                          1,
+                        )
+                        : SizedBox.shrink(),
                     SizedBox(height: 16.0),
                   ],
                 );
@@ -344,7 +443,9 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                                         'content': comment,
                                                         'parentID': replyTo,
                                                         'reacts': 0,
+                                                        'offTopic': 'pending',
                                                       };
+
                                                       if (!userUrlCache
                                                           .containsKey(
                                                             newComment['authorID']
@@ -384,6 +485,23 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                                       WidgetsBinding.instance.addPostFrameCallback((
                                                         _,
                                                       ) {
+                                                        // Auto-expand parent comment first
+                                                        if (replyTo != null) {
+                                                          ref
+                                                              .read(
+                                                                expandedCommentsProvider
+                                                                    .notifier,
+                                                              )
+                                                              .update((state) {
+                                                                final newState =
+                                                                    {...state};
+                                                                newState[replyTo] =
+                                                                    true;
+                                                                return newState;
+                                                              });
+                                                        }
+
+                                                        // Then scroll to the new comment
                                                         final key =
                                                             commentKeys[newComment['commentID']];
 
@@ -426,7 +544,6 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                                           );
                                                         }
                                                       });
-
                                                       ref
                                                           .read(
                                                             replyTargetProvider

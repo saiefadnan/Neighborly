@@ -19,6 +19,9 @@ class _StatisticsPageState extends State<StatisticsPage>
     with TickerProviderStateMixin {
   Map<String, int> helpRequestStats = {};
   Map<String, int> helpedRequestStats = {};
+  int successfulHelpsCount = 0; // ← ADD THIS LINE
+  int userRank = 0; // ← ADD THIS LINE
+  int helpResponseSuccess = 0; // ← ADD THIS LINE
   bool isLoadingStats = true;
   // Declare AnimationControllers for each card
   late AnimationController _breathingController1;
@@ -114,6 +117,146 @@ class _StatisticsPageState extends State<StatisticsPage>
     }
   }
 
+  Future<void> _fetchSuccessfulHelpsCount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+
+        // 1. Try HTTP API first
+        try {
+          final response = await http.get(
+            Uri.parse('${ApiConfig.baseUrl}/api/stats/user-successful-helps'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            if (data['success'] == true) {
+              setState(() {
+                successfulHelpsCount = data['count'] ?? 0;
+              });
+              print(
+                'Fetched successful helps count from API: $successfulHelpsCount',
+              );
+              return;
+            }
+          }
+        } catch (e) {
+          print('API fetch failed, trying Firestore fallback. Error: $e');
+        }
+
+        // 2. Firestore fallback if API failed
+        try {
+          final helpRequestsSnapshot =
+              await FirebaseFirestore.instance.collection('helpRequests').get();
+
+          int count = 0;
+          for (var doc in helpRequestsSnapshot.docs) {
+            final data = doc.data();
+            final acceptedResponderId = data['acceptedResponderId'];
+            final acceptedResponderUserId = data['acceptedResponderUserId'];
+
+            if (acceptedResponderId == user.uid ||
+                acceptedResponderUserId == user.uid) {
+              count++;
+            }
+          }
+
+          setState(() {
+            successfulHelpsCount = count;
+          });
+          print(
+            'Fetched successful helps count from Firestore: $successfulHelpsCount',
+          );
+        } catch (e) {
+          print('Firestore fallback failed: $e');
+        }
+      }
+    } catch (e) {
+      print('Error fetching successful helps count: $e');
+    }
+  }
+
+  Future<void> _fetchUserRank() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+
+        // 1. Try HTTP API first
+        try {
+          final response = await http.get(
+            Uri.parse('${ApiConfig.baseUrl}/api/stats/leaderboard'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            if (data['success'] == true) {
+              setState(() {
+                userRank = data['userRank'] ?? 0; // ← ADD THIS LINE
+              });
+              print('Fetched user rank from API: $userRank');
+              return;
+            }
+          }
+        } catch (e) {
+          print(
+            'Leaderboard API fetch failed, trying Firestore fallback. Error: $e',
+          );
+        }
+
+        // 2. Firestore fallback if API failed
+        try {
+          final usersSnapshot =
+              await FirebaseFirestore.instance.collection('users').get();
+
+          // Create list of users with XP
+          List<Map<String, dynamic>> usersWithXP = [];
+
+          for (var doc in usersSnapshot.docs) {
+            final data = doc.data();
+            final accumulateXP = data['accumulateXP'] ?? 0;
+
+            usersWithXP.add({'userId': doc.id, 'accumulateXP': accumulateXP});
+          }
+
+          // Sort by XP (highest first)
+          usersWithXP.sort(
+            (a, b) => b['accumulateXP'].compareTo(a['accumulateXP']),
+          );
+
+          // Find current user's rank
+          int rank = 0;
+          for (int i = 0; i < usersWithXP.length; i++) {
+            if (usersWithXP[i]['userId'] == user.uid) {
+              // Handle ties: find the rank of users with same XP
+              int currentUserXP = usersWithXP[i]['accumulateXP'];
+              rank = 1;
+              for (int j = 0; j < i; j++) {
+                if (usersWithXP[j]['accumulateXP'] > currentUserXP) {
+                  rank++;
+                }
+              }
+              break;
+            }
+          }
+
+          setState(() {
+            userRank = rank;
+            // Calculate help response success: if user helped > 0, then 100%, otherwise 0%
+          });
+          print('Fetched user rank from Firestore: $userRank');
+        } catch (e) {
+          print('Firestore leaderboard fallback failed: $e');
+        }
+      }
+    } catch (e) {
+      print('Error fetching user rank: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -150,8 +293,29 @@ class _StatisticsPageState extends State<StatisticsPage>
       CurvedAnimation(parent: _breathingController4, curve: Curves.easeInOut),
     );
 
-    _fetchHelpRequestStats();
-    _fetchHelpedRequestStats();
+    // Fetch data in sequence
+    _fetchAllData();
+  }
+
+  // ADD this new method:
+  Future<void> _fetchAllData() async {
+    await _fetchHelpRequestStats();
+    await _fetchHelpedRequestStats();
+    await _fetchSuccessfulHelpsCount(); // ← Wait for this to complete first
+    await _fetchUserRank(); // ← Then calculate percentage
+
+    // Calculate help response success after all data is loaded
+    setState(() {
+      if (successfulHelpsCount > 0) {
+        helpResponseSuccess = 100;
+      } else {
+        helpResponseSuccess = 0;
+      }
+    });
+
+    print(
+      'All data loaded. successfulHelpsCount: $successfulHelpsCount, helpResponseSuccess: $helpResponseSuccess',
+    );
   }
 
   @override
@@ -176,7 +340,7 @@ class _StatisticsPageState extends State<StatisticsPage>
             children: [
               _statCard(
                 iconData: Icons.flash_on_outlined,
-                label: '55', // This is hardcoded
+                label: '$successfulHelpsCount', // ← NOW DYNAMIC!
                 subLabel: 'Helped\nRequests',
                 gradient: const LinearGradient(
                   colors: [Color(0xFFFF9C64), Color(0xFFFF9C64)],
@@ -187,7 +351,7 @@ class _StatisticsPageState extends State<StatisticsPage>
               const SizedBox(width: 16),
               _statCard(
                 iconData: Icons.leaderboard_outlined,
-                label: '#2',
+                label: userRank > 0 ? '#$userRank' : '#-', // ← NOW DYNAMIC!
                 subLabel: 'Leaderboard\nRank',
                 gradient: const LinearGradient(
                   colors: [Color(0xFFB084F4), Color(0xFFB084F4)],
@@ -202,7 +366,7 @@ class _StatisticsPageState extends State<StatisticsPage>
             children: [
               _statCard(
                 iconData: Icons.check_circle_outlined,
-                label: '83%',
+                label: '$helpResponseSuccess%', // ← NOW DYNAMIC!
                 subLabel: 'Help Response\nSuccess',
                 gradient: const LinearGradient(
                   colors: [Color(0xFFB8F46C), Color(0xFFB8F46C)],
@@ -274,11 +438,13 @@ class _StatisticsPageState extends State<StatisticsPage>
   }) {
     // same color mapping as before
     Color baseColor = Colors.white;
-    if (label == '55') {
+    if (label == '$successfulHelpsCount') {
       baseColor = const Color.fromARGB(255, 255, 146, 82);
-    } else if (label == '#2') {
+    } else if (label == (userRank > 0 ? '#$userRank' : '#-')) {
+      // ← UPDATE THIS
       baseColor = const Color.fromARGB(255, 155, 110, 224);
-    } else if (label == '83%') {
+    } else if (label == '$helpResponseSuccess%') {
+      // ← UPDATE THIS
       baseColor = const Color.fromARGB(255, 142, 218, 43);
     } else if (label == '2 km') {
       baseColor = const Color.fromARGB(255, 83, 171, 221);
@@ -796,6 +962,15 @@ class _StatisticsPageState extends State<StatisticsPage>
                       dataLabelSettings: DataLabelSettings(
                         isVisible: true,
                         labelPosition: ChartDataLabelPosition.outside,
+                        labelIntersectAction:
+                            LabelIntersectAction
+                                .shift, // Smart labels like in your image
+                        connectorLineSettings: ConnectorLineSettings(
+                          type: ConnectorType.curve,
+                          length: '10%',
+                          width: 1.5,
+                          color: Colors.grey.shade400,
+                        ),
                         builder: (
                           dynamic data,
                           dynamic point,

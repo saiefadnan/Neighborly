@@ -1113,7 +1113,42 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
             acceptedResponderId,
           ),
         ] else if (responders.isNotEmpty) ...[
-          _buildRespondersSection(helpData, responders),
+          // Use ResponsesDrawer for responder management
+          InkWell(
+            onTap: () {
+              Navigator.of(context).pop(); // Close current bottom sheet
+              final helpRequestData = _convertToHelpRequestData(helpData);
+              ResponsesDrawer.show(context, helpRequestData);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.people, color: Colors.blue),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '${responders.length} people are responding to this request',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.blue,
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ] else ...[
           Container(
             padding: const EdgeInsets.all(16),
@@ -1366,209 +1401,23 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     );
   }
 
-  // Build responders list for my requests (when no one is accepted yet)
-  Widget _buildRespondersSection(
-    Map<String, dynamic> helpData,
-    List<dynamic> responders,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'People Offering Help (${responders.length})',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2C3E50),
-                ),
-              ),
-            ),
-            if (responders.length > 2) ...[
-              InkWell(
-                onTap: () {
-                  // Convert helpData to HelpRequestData format for ResponsesDrawer
-                  final helpRequestData = HelpRequestData(
-                    id: helpData['id'] ?? '',
-                    title: helpData['title'] ?? helpData['type'] ?? '',
-                    description: helpData['description'] ?? '',
-                    helpType: helpData['type'] ?? '',
-                    urgency:
-                        helpData['urgency'] ??
-                        helpData['priority'] ??
-                        'general',
-                    location: helpData['address'] ?? '',
-                    distance: '0.5 km',
-                    timePosted: helpData['time'] ?? 'Just now',
-                    requesterName: helpData['requesterName'] ?? 'Anonymous',
-                    requesterImage: 'assets/images/dummy.png',
-                    contactNumber: helpData['phone'] ?? '',
-                    responderCount: (helpData['responders'] as List).length,
-                    isResponded: false,
-                    userId: helpData['userId'] ?? '',
-                  );
-
-                  Navigator.of(context).pop(); // Close current bottom sheet
-                  ResponsesDrawer.show(context, helpRequestData);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'View All',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.arrow_forward_ios,
-                        color: Colors.blue,
-                        size: 12,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Show only first 2 responders, with option to view all
-        ...responders
-            .take(2)
-            .map(
-              (responder) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundImage: const AssetImage(
-                        'assets/images/dummy.png',
-                      ),
-                      radius: 25,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            responder['username'] ?? 'Anonymous',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'Responded ${responder['responseTime'] ?? 'recently'}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          Text(
-                            responder['phone'] ?? 'No phone provided',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _acceptResponder(helpData, responder),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF71BB7B),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text('Accept'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        // Show "view all" option if there are more than 2 responders
-        if (responders.length > 2) ...[
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () {
-              // Convert helpData to HelpRequestData format for ResponsesDrawer
-              final helpRequestData = HelpRequestData(
-                id: helpData['id'] ?? '',
-                title: helpData['title'] ?? helpData['type'] ?? '',
-                description: helpData['description'] ?? '',
-                helpType: helpData['type'] ?? '',
-                urgency:
-                    helpData['urgency'] ?? helpData['priority'] ?? 'general',
-                location: helpData['address'] ?? '',
-                distance: '0.5 km',
-                timePosted: helpData['time'] ?? 'Just now',
-                requesterName: helpData['requesterName'] ?? 'Anonymous',
-                requesterImage: 'assets/images/dummy.png',
-                contactNumber: helpData['phone'] ?? '',
-                responderCount: (helpData['responders'] as List).length,
-                isResponded: false,
-                userId: helpData['userId'] ?? '',
-              );
-
-              Navigator.of(context).pop(); // Close current bottom sheet
-              ResponsesDrawer.show(context, helpRequestData);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.people, color: Colors.blue, size: 16),
-                  const SizedBox(width: 8),
-                  Text(
-                    'View All ${responders.length} Responses',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.blue,
-                    size: 14,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ],
+  // Convert Map to HelpRequestData for ResponsesDrawer
+  HelpRequestData _convertToHelpRequestData(Map<String, dynamic> helpData) {
+    return HelpRequestData(
+      id: helpData['id'] ?? '',
+      title: helpData['title'] ?? helpData['type'] ?? '',
+      description: helpData['description'] ?? '',
+      helpType: helpData['type'] ?? '',
+      urgency: helpData['urgency'] ?? helpData['priority'] ?? 'general',
+      location: helpData['address'] ?? '',
+      distance: '0.5 km',
+      timePosted: helpData['time'] ?? 'Just now',
+      requesterName: helpData['requesterName'] ?? 'Anonymous',
+      requesterImage: 'assets/images/dummy.png',
+      contactNumber: helpData['phone'] ?? '',
+      responderCount: (helpData['responders'] as List?)?.length ?? 0,
+      isResponded: false,
+      userId: helpData['userId'] ?? '',
     );
   }
 
@@ -1854,7 +1703,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                     ],
                   ),
                   backgroundColor: Color(0xFF71BB7B),
-                  duration: Duration(seconds: 30),
+                  duration: Duration(seconds: 3),
                 ),
               );
 
@@ -1888,28 +1737,61 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                   // Show success message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text(
-                        'Your help request has been posted! Nearby helpers will be notified.',
+                      content: Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Your help request has been posted successfully! Nearby helpers will be notified.',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
                       ),
-                      backgroundColor: const Color(0xFF71BB7B),
+                      backgroundColor: const Color(0xFF4CAF50),
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 4),
                     ),
                   );
                 } else {
                   // Show error message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
-                        result['message'] ?? 'Failed to create help request',
+                      content: Row(
+                        children: [
+                          const Icon(
+                            Icons.error,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              result['message'] ??
+                                  'Failed to create help request',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       backgroundColor: Colors.red,
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 4),
                     ),
                   );
                 }
@@ -1920,14 +1802,25 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                 // Show error message
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      'Error creating help request: ${e.toString()}',
+                    content: Row(
+                      children: [
+                        const Icon(Icons.error, color: Colors.white, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Error creating help request: ${e.toString()}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
                     backgroundColor: Colors.red,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    margin: const EdgeInsets.all(16),
+                    duration: const Duration(seconds: 4),
                   ),
                 );
               }
@@ -2035,134 +1928,6 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           ),
         ),
       ],
-    );
-  }
-
-  // Accept a responder for my request
-  void _acceptResponder(
-    Map<String, dynamic> helpData,
-    Map<String, dynamic> responder,
-  ) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          title: const Text('Accept Helper'),
-          content: Text(
-            'Do you want to accept ${responder['username']} as your helper? They will be notified and you can coordinate directly.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop(); // Close the bottom sheet too
-
-                if (currentUserId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please sign in to accept helpers'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
-                // Show loading
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Row(
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Text('Accepting helper...'),
-                      ],
-                    ),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 30),
-                  ),
-                );
-
-                try {
-                  final result = await MapService.acceptResponder(
-                    requestId: helpData['id'],
-                    responseId:
-                        responder['userId'], // Using userId as responseId for compatibility
-                  );
-
-                  // Hide loading
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-                  if (result['success']) {
-                    // Refresh the help requests to get updated data
-                    await _loadHelpRequests();
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '${responder['username']} has been accepted as your helper!',
-                        ),
-                        backgroundColor: Colors.green,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          result['message'] ?? 'Failed to accept helper',
-                        ),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  // Hide loading
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error accepting helper: ${e.toString()}'),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF71BB7B),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Accept'),
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -2536,7 +2301,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                     context,
                                   ).pop(); // Close the response modal
 
-                                  // Show loading
+                                  // Show loading with shorter duration
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Row(
@@ -2557,7 +2322,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                         ],
                                       ),
                                       backgroundColor: Color(0xFF71BB7B),
-                                      duration: Duration(seconds: 30),
+                                      duration: Duration(seconds: 3),
                                     ),
                                   );
 
@@ -2575,7 +2340,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                               'Anonymous Helper',
                                         );
 
-                                    // Hide loading
+                                    // Hide loading immediately
                                     ScaffoldMessenger.of(
                                       context,
                                     ).hideCurrentSnackBar();
@@ -2584,6 +2349,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                       // Refresh the help requests to get updated data
                                       await _loadHelpRequests();
 
+                                      // Show success message immediately
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -2597,7 +2363,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                               ),
                                               const SizedBox(width: 12),
                                               Text(
-                                                'Response sent to ${helpData['requesterName'] ?? 'requester'}!',
+                                                'Response sent successfully to ${helpData['requesterName'] ?? 'requester'}!',
                                                 style: const TextStyle(
                                                   fontWeight: FontWeight.w600,
                                                 ),
@@ -2605,7 +2371,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                             ],
                                           ),
                                           backgroundColor: const Color(
-                                            0xFF71BB7B,
+                                            0xFF4CAF50,
                                           ),
                                           behavior: SnackBarBehavior.floating,
                                           shape: RoundedRectangleBorder(
@@ -2614,6 +2380,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                             ),
                                           ),
                                           margin: const EdgeInsets.all(16),
+                                          duration: const Duration(seconds: 4),
                                         ),
                                       );
                                     } else {
@@ -2621,9 +2388,24 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                         context,
                                       ).showSnackBar(
                                         SnackBar(
-                                          content: Text(
-                                            result['message'] ??
-                                                'Failed to send response',
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.error,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  result['message'] ??
+                                                      'Failed to send response',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                           backgroundColor: Colors.red,
                                           behavior: SnackBarBehavior.floating,
@@ -2632,19 +2414,36 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                               12,
                                             ),
                                           ),
+                                          margin: const EdgeInsets.all(16),
+                                          duration: const Duration(seconds: 4),
                                         ),
                                       );
                                     }
                                   } catch (e) {
-                                    // Hide loading
+                                    // Hide loading immediately
                                     ScaffoldMessenger.of(
                                       context,
                                     ).hideCurrentSnackBar();
 
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(
-                                          'Error sending response: ${e.toString()}',
+                                        content: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.error,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                'Error sending response: ${e.toString()}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                         backgroundColor: Colors.red,
                                         behavior: SnackBarBehavior.floating,
@@ -2653,6 +2452,8 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                                             12,
                                           ),
                                         ),
+                                        margin: const EdgeInsets.all(16),
+                                        duration: const Duration(seconds: 4),
                                       ),
                                     );
                                   }
