@@ -198,6 +198,7 @@ class _PostCardState extends ConsumerState<PostCard> {
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     Map<String, dynamic> votedByMap = {};
+    print('VotedByMap before vote: $votedByMap');
     bool hasVoted = false;
     String? userVotedOptionId;
     if (widget.post['type'] == 'poll') {
@@ -626,17 +627,29 @@ class _PostCardState extends ConsumerState<PostCard> {
               const SizedBox(height: 20),
               FlutterPolls(
                 pollId: widget.post['postID'].toString(),
-                onVoted: (PollOption option, int selectedIndex) async {
+                onVoted: (PollOption option, int totalVotes) async {
+                  print('=== VOTE DEBUG ===');
+                  print('Selected Index: $totalVotes');
+                  print('Option ID: ${option.id}');
+                  print('Option Title: ${option.title}');
+                  print('Current hasVoted: $hasVoted');
+                  print('Current userVotedOptionId: $userVotedOptionId');
+                  print('==================');
                   if (!hasVoted) {
                     try {
                       final uid = FirebaseAuth.instance.currentUser!.uid;
                       final postRef = FirebaseFirestore.instance
                           .collection('posts')
                           .doc(widget.post['postID']);
-                      votedByMap[uid] = option.id; // track who voted what
+                      votedByMap[uid] = option.id;
+                      widget.post['poll']['votedBy'] = votedByMap;
+                      print('VotedByMap after vote: $votedByMap');
 
                       final options = List<Map<String, dynamic>>.from(
                         widget.post['poll']['options'],
+                      );
+                      final selectedIndex = options.indexWhere(
+                        (opt) => opt['id'].toString() == option.id,
                       );
                       options[selectedIndex]['votes'] =
                           ((options[selectedIndex]['votes'] as int?) ?? 0) + 1;
