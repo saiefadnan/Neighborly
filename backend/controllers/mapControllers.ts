@@ -1113,3 +1113,56 @@ export const removeDummyHelpRequests = async (c: Context) => {
     }, 500);
   }
 };
+
+// Get responses for a specific help request
+export const getHelpRequestResponses = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    await getAuth().verifyIdToken(idToken);
+
+    const requestId = c.req.param('requestId');
+    
+    if (!requestId) {
+      return c.json({ success: false, message: 'Request ID is required' }, 400);
+    }
+
+    const db = getFirestore();
+    
+    // Get the help request to verify it exists
+    const helpRequestDoc = await db.collection('helpRequests').doc(requestId).get();
+    
+    if (!helpRequestDoc.exists) {
+      return c.json({ success: false, message: 'Help request not found' }, 404);
+    }
+
+    // Get all responses for this help request
+    const responsesQuery = await db.collection('helpRequestResponses')
+      .where('requestId', '==', requestId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const responses = responsesQuery.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    return c.json({ 
+      success: true, 
+      responses: responses,
+      count: responses.length
+    });
+
+  } catch (error) {
+    console.error('Error getting help request responses:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to get help request responses' 
+    }, 500);
+  }
+};
