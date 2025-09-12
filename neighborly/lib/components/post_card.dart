@@ -154,7 +154,7 @@ class _PostCardState extends ConsumerState<PostCard> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializePostData();
     });
-
+    print(widget.post);
     if (widget.post['type'] == 'video' && widget.post['mediaUrl'] != null) {
       _videoController = VideoPlayerController.networkUrl(
         Uri.parse(widget.post['mediaUrl']),
@@ -346,6 +346,17 @@ class _PostCardState extends ConsumerState<PostCard> {
                                     (widget.post['timestamp'] as Timestamp)
                                         .toDate()
                                         .toIso8601String(),
+                                  )
+                                  : widget.post['timestamp'] is Map
+                                  ? _getFormattedTime(
+                                    DateTime.fromMillisecondsSinceEpoch(
+                                      (widget.post['timestamp']['_seconds']
+                                                  as int) *
+                                              1000 +
+                                          ((widget.post['timestamp']['_nanoseconds']
+                                                  as int) ~/
+                                              1000000),
+                                    ).toIso8601String(),
                                   )
                                   : 'Just now',
                               style: TextStyle(

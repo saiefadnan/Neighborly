@@ -57,6 +57,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
           (data['eventData'] != null)
               ? EventModel(
                 id: data['eventData']['id'] ?? '',
+                creatorId: data['eventData']['creatorId'] ?? '',
                 title: data['eventData']['title'] ?? '',
                 description: data['eventData']['description'] ?? '',
                 imageUrl: data['eventData']['imageUrl'] ?? '',
@@ -65,7 +66,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage>
                 location: data['eventData']['location'] ?? '',
                 lng: data['eventData']['lng'] ?? 0.0,
                 lat: data['eventData']['lat'] ?? 0.0,
-                raduis: data['eventData']['raduis'] ?? 0,
+                radius: data['eventData']['radius'] ?? 0,
                 tags: List<String>.from(data['eventData']['tags'] ?? []),
                 date:
                     (data['eventData']['date'] is Timestamp)

@@ -1119,11 +1119,10 @@ export const getHelpRequestResponses = async (c: Context) => {
   try {
     const authHeader = c.req.header('Authorization');
     const idToken = authHeader?.replace('Bearer ', '');
-    
-    if (!idToken) {
-      return c.json({ success: false, message: 'No authorization token provided' }, 401);
-    }
 
+    if (!idToken) {
+      return c.json({ success: false, message: 'Missing Authorization header' }, 401);
+    }
     await getAuth().verifyIdToken(idToken);
 
     const requestId = c.req.param('requestId');
@@ -1132,9 +1131,8 @@ export const getHelpRequestResponses = async (c: Context) => {
       return c.json({ success: false, message: 'Request ID is required' }, 400);
     }
 
+    // Get the help request first to verify it exists
     const db = getFirestore();
-    
-    // Get the help request to verify it exists
     const helpRequestDoc = await db.collection('helpRequests').doc(requestId).get();
     
     if (!helpRequestDoc.exists) {

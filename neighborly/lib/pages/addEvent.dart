@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -123,19 +125,17 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
-        // return
         setState(() {
           locationController.text =
               '${place.name}, ${place.locality}, ${place.country}';
         });
+        print('Location set: ${locationController.text}'); // Debug log
       } else {
         setState(() {
           locationController.text = 'Unknown location';
         });
-        // return
       }
     } catch (e) {
-      // return
       setState(() {
         locationController.text = 'Error fetching location';
       });
@@ -143,7 +143,32 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+
+    // Add listeners to update button state when fields change
+    titleController.addListener(_updateButtonState);
+    dateController.addListener(_updateButtonState);
+    timeController.addListener(_updateButtonState);
+    locationController.addListener(_updateButtonState);
+    descriptionController.addListener(_updateButtonState);
+  }
+
+  void _updateButtonState() {
+    setState(() {
+      // This will trigger a rebuild and update the button appearance
+    });
+  }
+
+  @override
   void dispose() {
+    // Remove listeners before disposing
+    titleController.removeListener(_updateButtonState);
+    dateController.removeListener(_updateButtonState);
+    timeController.removeListener(_updateButtonState);
+    locationController.removeListener(_updateButtonState);
+    descriptionController.removeListener(_updateButtonState);
+
     titleController.dispose();
     dateController.dispose();
     timeController.dispose();
@@ -179,11 +204,34 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   // Check if all required fields are filled (for UI state)
   bool get _areAllFieldsFilled {
-    return titleController.text.trim().isNotEmpty &&
-        dateController.text.trim().isNotEmpty &&
-        timeController.text.trim().isNotEmpty &&
-        locationController.text.trim().isNotEmpty &&
-        descriptionController.text.trim().isNotEmpty;
+    final titleFilled = titleController.text.trim().isNotEmpty;
+    final dateFilled = dateController.text.trim().isNotEmpty;
+    final timeFilled = timeController.text.trim().isNotEmpty;
+    final locationFilled = locationController.text.trim().isNotEmpty;
+    final descriptionFilled = descriptionController.text.trim().isNotEmpty;
+
+    final allFilled =
+        titleFilled &&
+        dateFilled &&
+        timeFilled &&
+        locationFilled &&
+        descriptionFilled;
+
+    // Debug logging
+    print('=== BUTTON STATE CHECK ===');
+    print('Title filled: $titleFilled (${titleController.text.trim()})');
+    print('Date filled: $dateFilled (${dateController.text.trim()})');
+    print('Time filled: $timeFilled (${timeController.text.trim()})');
+    print(
+      'Location filled: $locationFilled (${locationController.text.trim()})',
+    );
+    print(
+      'Description filled: $descriptionFilled (${descriptionController.text.trim()})',
+    );
+    print('All fields filled: $allFilled');
+    print('========================');
+
+    return allFilled;
   }
 
   // Get icon for event type
@@ -618,15 +666,15 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                             icon: Icons.access_time,
                           ),
                           _buildTextField(
-                            "Location *",
-                            locationController,
-                            icon: Icons.location_on,
-                          ),
-                          _buildTextField(
                             "Description *",
                             descriptionController,
                             maxLines: 3,
                             icon: Icons.description,
+                          ),
+                          _buildTextField(
+                            "Location *",
+                            locationController,
+                            icon: Icons.location_on,
                           ),
                         ],
                       ),
@@ -964,12 +1012,19 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                                   });
 
                                   try {
-                                    final imageUrl = await uploadFile(
-                                      imagepath,
-                                    );
-                          
+                                    String imageUrl = '';
+                                    if (imagepath != null) {
+                                      imageUrl = await uploadFile(imagepath);
+                                    }
+
                                     EventModel newEvent = EventModel(
-                                      id:'',
+                                      id: '',
+                                      creatorId:
+                                          FirebaseAuth
+                                              .instance
+                                              .currentUser
+                                              ?.uid ??
+                                          '',
                                       title: titleController.text.trim(),
                                       description:
                                           descriptionController.text.trim(),
@@ -1009,11 +1064,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                                       location: locationController.text.trim(),
                                       lng: selectedLocation.longitude,
                                       lat: selectedLocation.latitude,
-                                      raduis: notifRange,
+                                      radius: notifRange,
                                       tags:
                                           selectedTags.isNotEmpty
                                               ? selectedTags
-                                              : ['#community', '#event'],
+                                              : [],
                                     );
                                     ref
                                         .watch(eventProvider.notifier)
@@ -1021,6 +1076,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                                     ref
                                         .watch(eventProvider.notifier)
                                         .addEvents(newEvent);
+                                    if (!context.mounted) return;
                                     showSnackBarSuccess(
                                       context,
                                       "Event added successfully",

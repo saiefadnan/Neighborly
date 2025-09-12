@@ -107,7 +107,7 @@ Future<Map<String, dynamic>?> fetchUserXP() async {
         result = {
           'userId': user.uid,
           'username': userData['displayName'] ?? 'Anonymous User',
-          'profilepicurl': userData['profilepicurl'] ?? null, // ← Add this
+          'profilepicurl': userData['profilepicurl'], // ← Add this
           'accumulateXP': accumulateXP,
           'level': level,
           'lastUpdated':

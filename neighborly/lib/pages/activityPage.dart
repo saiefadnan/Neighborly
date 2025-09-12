@@ -132,7 +132,7 @@ class _ActivityPageState extends State<ActivityPage> {
                   'Gold': goldCount,
                   'Other': otherCount,
                   'CommunityHero': postsQuery.docs.length >= 3 ? 1 : 0,
-                  'Kindstart': helpedQuery.docs.length >= 1 ? 1 : 0,
+                  'Kindstart': helpedQuery.docs.isNotEmpty ? 1 : 0,
                 },
               };
             });
@@ -487,7 +487,7 @@ class _ActivityPageState extends State<ActivityPage> {
                       image: 'assets/images/PostTestComplete.png',
                     ),
                   )
-                  .toList(),
+                  ,
 
             // Dynamic medal certification messages
             // Dynamic medal certification messages
@@ -568,7 +568,7 @@ class _ActivityPageState extends State<ActivityPage> {
                       image: 'assets/images/PostTestComplete.png',
                     ),
                   )
-                  .toList(),
+                  ,
 
             // Show message if no accepted help requests
             if (!isLoading && acceptedHelpRequests.isEmpty)

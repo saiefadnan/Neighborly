@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -76,7 +77,8 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
   }
 
   // Filter events based on user location and event radius
-  List<EventModel> _filterEventsByLocation(
+  List<EventModel> _filterEventsByJoinedOrLocation(
+    List<String> joinedEvents,
     List<EventModel> events,
     Position userLocation,
   ) {
@@ -88,8 +90,9 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
         event.lng,
       );
 
+      event.joined = joinedEvents.contains(event.id);
       // Check if user is within the event's radius
-      return distance <= event.raduis;
+      return distance <= event.radius || joinedEvents.contains(event.id);
     }).toList();
   }
 
@@ -98,33 +101,87 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
       final url = Uri.parse(
         '${dotenv.env['BASE_URL']}${ApiConfig.eventApiPath}/load/nearby/events',
       );
-
+      print('Loading events from API...');
       final response = await http
           .post(
             url,
             headers: {'Content-Type': 'application/json'},
-            body: json.encode({}),
+            body: json.encode({'uid': FirebaseAuth.instance.currentUser!.uid}),
           )
           .timeout(const Duration(seconds: 8));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print('API Response: $data'); // Debug log to see the structure
+
         final allEvents =
-            (data['eventData'] as List<Map<String, dynamic>>)
-                .map((event) => EventModel.fromMap(event))
+            (data['eventData'] as List<dynamic>)
+                .map((eventData) {
+                  try {
+                    // Convert timestamp fields if they come as Map from API
+                    final eventMap = Map<String, dynamic>.from(eventData);
+
+                    // Handle createdAt timestamp conversion
+                    if (eventMap['createdAt'] is Map) {
+                      final timestampMap =
+                          eventMap['createdAt'] as Map<String, dynamic>;
+                      eventMap['createdAt'] = Timestamp(
+                        timestampMap['_seconds'] ??
+                            timestampMap['seconds'] ??
+                            0,
+                        timestampMap['_nanoseconds'] ??
+                            timestampMap['nanoseconds'] ??
+                            0,
+                      );
+                    }
+
+                    // Handle date timestamp conversion
+                    if (eventMap['date'] is Map) {
+                      final timestampMap =
+                          eventMap['date'] as Map<String, dynamic>;
+                      eventMap['date'] = Timestamp(
+                        timestampMap['_seconds'] ??
+                            timestampMap['seconds'] ??
+                            0,
+                        timestampMap['_nanoseconds'] ??
+                            timestampMap['nanoseconds'] ??
+                            0,
+                      );
+                    }
+
+                    return EventModel.fromMap(eventMap);
+                  } catch (e) {
+                    print('Error parsing event: $e');
+                    print('Event data: $eventData');
+                    return null;
+                  }
+                })
+                .where((event) => event != null)
+                .cast<EventModel>()
+                .toList();
+
+        final joinedEvents =
+            (data['joinedIds'] as List<dynamic>)
+                .map((id) => id as String)
                 .toList();
 
         final userLocation = await _getCurrentLocation();
 
         if (userLocation != null) {
           // Filter events based on user location and event radius
-          final nearbyEvents = _filterEventsByLocation(allEvents, userLocation);
+          final nearbyEvents = _filterEventsByJoinedOrLocation(
+            joinedEvents,
+            allEvents,
+            userLocation,
+          );
           state = AsyncData(nearbyEvents);
-        } else {
-          // If location is not available, show all events
-          state = AsyncData(allEvents);
         }
+        // else {
+        //   // If location is not available, show all events
+        //   state = AsyncData(allEvents);
+        // }
       }
     } catch (e) {
+      print('Error loading events from API: $e');
       await backupLoadEvents();
     }
   }
@@ -137,6 +194,19 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
               .where('approved', isEqualTo: true)
               .orderBy('createdAt', descending: true)
               .get();
+      final queryJoinedSnapshot =
+          await FirebaseFirestore.instance
+              .collectionGroup('participants')
+              .where(
+                'memberId',
+                isEqualTo: FirebaseAuth.instance.currentUser!.uid,
+              )
+              .get();
+
+      final joinedEvents =
+          queryJoinedSnapshot.docs
+              .map((doc) => doc['eventId'] as String)
+              .toList();
 
       final allEvents =
           querySnapshot.docs.map((doc) {
@@ -144,43 +214,48 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
             return EventModel.fromMap(event);
           }).toList();
 
-      // Get user's current location and filter events
       final userLocation = await _getCurrentLocation();
 
       if (userLocation != null) {
         // Filter events based on user location and event radius
-        final nearbyEvents = _filterEventsByLocation(allEvents, userLocation);
-        state = AsyncData(nearbyEvents);
+        final joinedOrnearbyEvents = _filterEventsByJoinedOrLocation(
+          joinedEvents,
+          allEvents,
+          userLocation,
+        );
+        state = AsyncData(joinedOrnearbyEvents);
       } else {
         // If location is not available, show all events
         state = AsyncData(allEvents);
       }
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncError(e, st);
+      print('Error loading events from Firestore: $e');
     }
   }
 
   // Load all events without location filtering (for admin or debugging)
-  Future<void> loadAllEvents() async {
-    try {
-      final querySnapshot =
-          await FirebaseFirestore.instance
-              .collection('events')
-              .where('approved', isEqualTo: true)
-              .orderBy('createdAt', descending: true)
-              .get();
+  // Future<void> loadAllEvents() async {
+  //   try {
+  //     final querySnapshot =
+  //         await FirebaseFirestore.instance
+  //             .collection('events')
+  //             .where('approved', isEqualTo: true)
+  //             .orderBy('createdAt', descending: true)
+  //             .get();
 
-      final allEvents =
-          querySnapshot.docs.map((doc) {
-            final event = doc.data();
-            return EventModel.fromMap(event);
-          }).toList();
+  //     final allEvents =
+  //         querySnapshot.docs.map((doc) {
+  //           final event = doc.data();
+  //           return EventModel.fromMap(event);
+  //         }).toList();
 
-      state = AsyncData(allEvents);
-    } catch (e, st) {
-      state = AsyncError(e, st);
-    }
-  }
+  //     state = AsyncData(allEvents);
+  //   } catch (e, st) {
+  //     state = AsyncError(e, st);
+  //   }
+  // }
 
   Future<void> handleRefresh() async {
     state = const AsyncLoading();
@@ -202,6 +277,7 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
           .timeout(const Duration(seconds: 8));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        event.id = data['eventId'];
         print('Event stored successfully: $data');
       }
     } catch (e) {
@@ -213,6 +289,7 @@ class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
     try {
       print('Backing up event to Firestore...');
       final docRef = FirebaseFirestore.instance.collection('events').doc();
+      event.id = docRef.id;
       await docRef.set({...event.toMap(), 'id': docRef.id});
     } catch (e, st) {
       print('Error storing event to Firestore: $e');
