@@ -459,4 +459,194 @@ class MapService {
       throw Exception('Error removing dummy help requests: $e');
     }
   }
+
+  // ============= ROUTE MANAGEMENT METHODS =============
+
+  // Create a new route for a help request
+  static Future<Map<String, dynamic>> createRoute({
+    required String helpRequestId,
+    required String routeName,
+    required List<LatLng> routePoints,
+    required List<Map<String, dynamic>> waypoints,
+  }) async {
+    try {
+      print('🗺️ Creating route for help request: $helpRequestId');
+      
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/routes'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'helpRequestId': helpRequestId,
+          'routeName': routeName,
+          'routePoints': routePoints.map((point) => {
+            'latitude': point.latitude,
+            'longitude': point.longitude,
+          }).toList(),
+          'waypoints': waypoints.map((waypoint) => {
+            'position': {
+              'latitude': waypoint['position'].latitude,
+              'longitude': waypoint['position'].longitude,
+            },
+            'instruction': waypoint['instruction'] ?? '',
+            'landmark': waypoint['landmark'] ?? '',
+          }).toList(),
+        }),
+      );
+
+      print('🗺️ Create route response status: ${response.statusCode}');
+      print('🗺️ Create route response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        return {
+          'success': true,
+          'routeId': data['routeId'],
+          'route': data['route'],
+          'message': data['message'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to create route',
+        };
+      }
+    } catch (e) {
+      print('🗺️ Error creating route: $e');
+      return {'success': false, 'message': 'Network error: ${e.toString()}'};
+    }
+  }
+
+  // Get routes for a specific help request
+  static Future<Map<String, dynamic>> getRoutesForHelpRequest(
+    String helpRequestId,
+  ) async {
+    try {
+      print('🗺️ Getting routes for help request: $helpRequestId');
+      print('🗺️ Help request ID length: ${helpRequestId.length}');
+      print('🗺️ Help request ID is empty: ${helpRequestId.isEmpty}');
+      print('🗺️ Base URL: $baseUrl');
+      
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final fullUrl = '$baseUrl/routes/help-request/$helpRequestId';
+      print('🗺️ Full URL being called: $fullUrl');
+      print('🗺️ Token present: ${token.isNotEmpty}');
+
+      final response = await http.get(
+        Uri.parse(fullUrl),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      print('🗺️ Get routes response status: ${response.statusCode}');
+      print('🗺️ Get routes response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'routes': data['routes'] ?? [],
+          'count': data['count'] ?? 0,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to get routes',
+        };
+      }
+    } catch (e) {
+      print('🗺️ Error getting routes: $e');
+      return {'success': false, 'message': 'Network error: ${e.toString()}'};
+    }
+  }
+
+  // Accept a route (only by help request owner)
+  static Future<Map<String, dynamic>> acceptRoute(String routeId) async {
+    try {
+      print('🗺️ Accepting route: $routeId');
+      
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/routes/$routeId/accept'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('🗺️ Accept route response status: ${response.statusCode}');
+      print('🗺️ Accept route response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'],
+          'routeId': data['routeId'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to accept route',
+        };
+      }
+    } catch (e) {
+      print('🗺️ Error accepting route: $e');
+      return {'success': false, 'message': 'Network error: ${e.toString()}'};
+    }
+  }
+
+  // Delete a route (only by route creator)
+  static Future<Map<String, dynamic>> deleteRoute(String routeId) async {
+    try {
+      print('🗺️ Deleting route: $routeId');
+      
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/routes/$routeId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      print('🗺️ Delete route response status: ${response.statusCode}');
+      print('🗺️ Delete route response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to delete route',
+        };
+      }
+    } catch (e) {
+      print('🗺️ Error deleting route: $e');
+      return {'success': false, 'message': 'Network error: ${e.toString()}'};
+    }
+  }
 }

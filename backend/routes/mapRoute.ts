@@ -12,7 +12,11 @@ import {
   removeDummyHelpRequests,
   migrateHelpedRequestsXP,
   migrateUserAccumulatedXP,
-  getHelpRequestResponses
+  getHelpRequestResponses,
+  createRoute,
+  getRoutesForHelpRequest,
+  acceptRoute,
+  deleteRoute
 } from '../controllers/mapControllers';
 
 const mapRouter = new Hono();
@@ -51,4 +55,19 @@ mapRouter.get('/requests/:requestId/responses', getHelpRequestResponses);
 // Add these routes to your router
 mapRouter.post('/migrate-helped-requests-xp', migrateHelpedRequestsXP);
 mapRouter.post('/migrate-user-accumulated-xp', migrateUserAccumulatedXP);
+
+// ============= ROUTE MANAGEMENT ENDPOINTS =============
+
+// Create a new route for a help request
+mapRouter.post('/routes', createRoute);
+
+// Get routes for a specific help request
+mapRouter.get('/routes/help-request/:helpRequestId', getRoutesForHelpRequest);
+
+// Accept a route (only by help request owner)
+mapRouter.put('/routes/:routeId/accept', acceptRoute);
+
+// Delete a route (only by route creator)
+mapRouter.delete('/routes/:routeId', deleteRoute);
+
 export default mapRouter;
