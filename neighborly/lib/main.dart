@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/app_routes.dart';
 import 'package:neighborly/firebase_options.dart';
@@ -14,6 +14,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load environment variables
+  try {
+    await dotenv.load(fileName: ".env");
+    print("✅ Environment variables loaded!");
+  } catch (e) {
+    print("⚠️ Warning: Could not load .env file: $e");
+    print("⚠️ Using default configuration");
+  }
+  
   //dont remove this ever again!!!
   //dont remove this ever again!!!
  

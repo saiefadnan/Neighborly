@@ -10,11 +10,16 @@ class MapService {
 
   // Get the current user's Firebase ID token
   static Future<String?> _getAuthToken() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      return await user.getIdToken();
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        return await user.getIdToken();
+      }
+      return null;
+    } catch (e) {
+      print('Error getting auth token: $e');
+      return null;
     }
-    return null;
   }
 
   // Create a new help request
@@ -80,6 +85,9 @@ class MapService {
     String status = 'open',
   }) async {
     try {
+      print('🌐 MapService: Getting nearby help requests...');
+      print('🌐 Base URL: $baseUrl');
+      
       final token = await _getAuthToken();
       if (token == null) {
         throw Exception('User not authenticated');
@@ -94,10 +102,15 @@ class MapService {
         },
       );
 
+      print('🌐 Making nearby request to: ${uri.toString()}');
+
       final response = await http.get(
         uri,
         headers: {'Authorization': 'Bearer $token'},
       );
+
+      print('🌐 Nearby response status: ${response.statusCode}');
+      print('🌐 Nearby response body: ${response.body}');
 
       /**print('Nearby API Request: ${uri.toString()}');
       print('Nearby Response status: ${response.statusCode}');
@@ -126,6 +139,9 @@ class MapService {
     int limit = 50,
   }) async {
     try {
+      print('🌐 MapService: Getting help requests...');
+      print('🌐 Base URL: $baseUrl');
+      
       final token = await _getAuthToken();
       if (token == null) {
         throw Exception('User not authenticated');
@@ -141,14 +157,15 @@ class MapService {
         '$baseUrl/requests',
       ).replace(queryParameters: queryParams);
 
+      print('🌐 Making request to: ${uri.toString()}');
+
       final response = await http.get(
         uri,
         headers: {'Authorization': 'Bearer $token'},
       );
 
-      /**print('API Request: ${uri.toString()}');
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');**/
+      print('🌐 Response status: ${response.statusCode}');
+      print('🌐 Response body: ${response.body}');
 
       final data = jsonDecode(response.body);
 

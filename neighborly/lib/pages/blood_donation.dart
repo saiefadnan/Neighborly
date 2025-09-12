@@ -55,63 +55,9 @@ class _BloodDonationPageState extends ConsumerState<BloodDonationPage>
 
   final List<String> availabilityOptions = ['All', 'Available', 'Unavailable'];
 
-  // Sample donor data - in a real app, this would come from a database
-  List<Map<String, dynamic>> allDonors = [
-    {
-      'name': 'Ahmed Rahman',
-      'phone': '+880 1712 345678',
-      'location': 'Dhanmondi, Dhaka',
-      'bloodGroup': 'A+',
-      'isAvailable': true,
-      'lastDonation': '3 months ago',
-      'totalDonations': 8,
-    },
-    {
-      'name': 'Sarah Johnson',
-      'phone': '+880 1812 765432',
-      'location': 'Gulshan, Dhaka',
-      'bloodGroup': 'O-',
-      'isAvailable': true,
-      'lastDonation': '4 months ago',
-      'totalDonations': 12,
-    },
-    {
-      'name': 'Mohammad Ali',
-      'phone': '+880 1612 987654',
-      'location': 'Uttara, Dhaka',
-      'bloodGroup': 'B+',
-      'isAvailable': false,
-      'lastDonation': '1 month ago',
-      'totalDonations': 5,
-    },
-    {
-      'name': 'Fatima Khan',
-      'phone': '+880 1512 456789',
-      'location': 'Mirpur, Dhaka',
-      'bloodGroup': 'AB+',
-      'isAvailable': true,
-      'lastDonation': '5 months ago',
-      'totalDonations': 7,
-    },
-    {
-      'name': 'David Wilson',
-      'phone': '+880 1412 654321',
-      'location': 'Banani, Dhaka',
-      'bloodGroup': 'O+',
-      'isAvailable': true,
-      'lastDonation': '2 months ago',
-      'totalDonations': 15,
-    },
-    {
-      'name': 'Rashida Begum',
-      'phone': '+880 1312 789123',
-      'location': 'Old Dhaka',
-      'bloodGroup': 'A-',
-      'isAvailable': false,
-      'lastDonation': '2 weeks ago',
-      'totalDonations': 3,
-    },
-  ];
+  // Donors list - loaded from backend
+  List<Map<String, dynamic>> allDonors = [];
+  bool _isLoadingDonors = false;
 
   List<Map<String, dynamic>> get filteredDonors {
     return allDonors.where((donor) {
@@ -151,14 +97,12 @@ class _BloodDonationPageState extends ConsumerState<BloodDonationPage>
     );
     _animationController.forward();
 
-    // Load user data after the widget is built
+    // Load everything after the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadUserData();
+      _checkUserRegistrationStatus();
+      _loadDonorsFromBackend();
     });
-
-    // Check if user is already registered and load data
-    _checkUserRegistrationStatus();
-    _loadDonorsFromBackend();
   }
 
   // Check if current user is already registered as a donor
@@ -210,19 +154,45 @@ class _BloodDonationPageState extends ConsumerState<BloodDonationPage>
   Future<void> _loadDonorsFromBackend() async {
     final user = ref.read(currentUserProvider);
 
+    setState(() {
+      _isLoadingDonors = true;
+    });
+
     try {
+      print('🩸 Loading donors from backend...');
       final result = await BloodDonorService.getAllDonors(
         userEmail: user?.email, // For community-based filtering
       );
 
+      print('🩸 Backend response: ${result.toString()}');
+
       if (result['success']) {
+        final donorsData = result['donors'];
+        print('🩸 Donors data type: ${donorsData.runtimeType}');
+        print('🩸 Donors data: $donorsData');
+        
+        final newDonors = List<Map<String, dynamic>>.from(result['donors'] ?? []);
         setState(() {
-          allDonors = List<Map<String, dynamic>>.from(result['donors'] ?? []);
+          allDonors = newDonors;
+        });
+        print('🩸 Loaded ${allDonors.length} donors from backend');
+        print('🩸 All donors list: $allDonors');
+        print('🩸 Filtered donors: ${filteredDonors.length}');
+      } else {
+        print('🩸 Backend failed: ${result['message']}');
+        setState(() {
+          allDonors = [];
         });
       }
     } catch (e) {
-      print('Error loading donors: $e');
-      // Keep sample data as fallback
+      print('🩸 Error loading donors: $e');
+      setState(() {
+        allDonors = [];
+      });
+    } finally {
+      setState(() {
+        _isLoadingDonors = false;
+      });
     }
   }
 
@@ -298,6 +268,40 @@ class _BloodDonationPageState extends ConsumerState<BloodDonationPage>
         return Colors.green.shade600;
       default:
         return Colors.grey.shade600;
+    }
+  }
+
+  // Helper method to format registration date
+  String _formatRegistrationDate(dynamic registrationDate) {
+    if (registrationDate == null) return 'Today';
+    
+    try {
+      // Handle Firestore Timestamp
+      if (registrationDate is Map && registrationDate.containsKey('_seconds')) {
+        final seconds = registrationDate['_seconds'] as int;
+        final date = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+        return '${date.day}/${date.month}/${date.year}';
+      }
+      
+      // Handle DateTime object
+      if (registrationDate is DateTime) {
+        return '${registrationDate.day}/${registrationDate.month}/${registrationDate.year}';
+      }
+      
+      // Handle string format
+      if (registrationDate is String) {
+        try {
+          final date = DateTime.parse(registrationDate);
+          return '${date.day}/${date.month}/${date.year}';
+        } catch (e) {
+          return registrationDate; // Return as-is if can't parse
+        }
+      }
+      
+      return 'Today';
+    } catch (e) {
+      print('Error formatting registration date: $e');
+      return 'Today';
     }
   }
 
@@ -683,42 +687,7 @@ class _BloodDonationPageState extends ConsumerState<BloodDonationPage>
         SliverToBoxAdapter(child: _buildSearchAndFilters()),
         SliverToBoxAdapter(child: const SizedBox(height: 20)),
 
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _StickyHeaderDelegate(
-            minHeight: 70,
-            maxHeight: 70,
-            child: Container(
-              color: const Color(0xFFFAFAFA),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.bloodtype,
-                      color: Colors.red,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '${filteredDonors.length} Donors Found',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        
 
         // Donors list
         filteredDonors.isEmpty
@@ -1200,6 +1169,9 @@ class _BloodDonationPageState extends ConsumerState<BloodDonationPage>
     try {
       final result = await BloodDonorService.registerDonor(
         email: user!.email,
+        name: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+        location: _locationController.text.trim(),
         bloodGroup: _registrationBloodGroup,
         isAvailable: _isAvailable,
         emergencyContact:
@@ -1342,6 +1314,9 @@ class _BloodDonationPageState extends ConsumerState<BloodDonationPage>
     try {
       final result = await BloodDonorService.updateDonorProfile(
         email: user!.email,
+        name: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+        location: _locationController.text.trim(),
         bloodGroup: _registrationBloodGroup,
         isAvailable: _isAvailable,
         lastDonationDate:
@@ -1546,7 +1521,7 @@ class _BloodDonationPageState extends ConsumerState<BloodDonationPage>
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          'Registered: ${_currentDonorData!['registrationDate'] ?? 'Today'}',
+                          'Registered: ${_formatRegistrationDate(_currentDonorData!['registrationDate'])}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,

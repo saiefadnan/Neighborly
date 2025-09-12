@@ -3,6 +3,7 @@ import bloodDonorController from '../controllers/bloodDonorController';
 
 const bloodDonorRoute = new Hono();
 
-bloodDonorRoute.route('/blood-donor', bloodDonorController);
+// Mount the controller directly without additional path
+bloodDonorRoute.route('/', bloodDonorController);
 
 export default bloodDonorRoute;
