@@ -505,17 +505,19 @@ class _EventPlanState extends ConsumerState<EventPlan>
                   unselectedLabelColor: const Color(0xFF5F6368),
                   labelStyle: const TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                   unselectedLabelStyle: const TextStyle(
                     fontWeight: FontWeight.w500,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  indicatorPadding: const EdgeInsets.all(4),
                   tabs: const [
                     Tab(text: 'Upcoming'),
-                    Tab(text: 'Past Events'),
+                    Tab(text: 'Past'),
                     Tab(text: 'My Events'),
-                    Tab(text: 'Joined Events'),
+                    Tab(text: 'Joined'),
                   ],
                 ),
               ),
