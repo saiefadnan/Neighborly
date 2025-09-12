@@ -160,16 +160,16 @@ class _EditInfosPageState extends State<EditInfosPage> {
     if (success && userData != null) {
       setState(() {
         _firstNameController.text = userData!['firstName'] ?? '';
-        _lastNameController.text = userData!['lastName'] ?? '';
-        _usernameController.text = userData!['username'] ?? '';
-        _emailController.text = userData!['email'] ?? '';
-        _phoneController.text = userData!['contactNumber'] ?? '';
-        _addressLine1Controller.text = userData!['addressLine1'] ?? '';
-        _addressLine2Controller.text = userData!['addressLine2'] ?? '';
-        _cityController.text = userData!['city'] ?? '';
-        _divisionController.text = userData!['division'] ?? '';
-        _postalcodeController.text = userData!['postalcode'] ?? '';
-        _profileImageUrl = userData!['profilepicurl'];
+        _lastNameController.text = userData['lastName'] ?? '';
+        _usernameController.text = userData['username'] ?? '';
+        _emailController.text = userData['email'] ?? '';
+        _phoneController.text = userData['contactNumber'] ?? '';
+        _addressLine1Controller.text = userData['addressLine1'] ?? '';
+        _addressLine2Controller.text = userData['addressLine2'] ?? '';
+        _cityController.text = userData['city'] ?? '';
+        _divisionController.text = userData['division'] ?? '';
+        _postalcodeController.text = userData['postalcode'] ?? '';
+        _profileImageUrl = userData['profilepicurl'];
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

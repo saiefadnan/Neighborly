@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -33,7 +34,7 @@ class _EventPlanState extends ConsumerState<EventPlan>
     );
     _animationController.forward();
 
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -104,6 +105,16 @@ class _EventPlanState extends ConsumerState<EventPlan>
     }).toList();
   }
 
+  List<EventModel> _getMyEvents(List<EventModel> events) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    return events.where((event) => event.creatorId == currentUserId).toList();
+  }
+
+  List<EventModel> _getJoinedEvents(List<EventModel> events) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    return events.where((event) => event.joined).toList();
+  }
+
   List<EventModel> _getPastEvents(List<EventModel> events) {
     final now = DateTime.now();
     return events.where((event) {
@@ -113,6 +124,7 @@ class _EventPlanState extends ConsumerState<EventPlan>
   }
 
   Widget _buildEventGrid(List<EventModel> events, String emptyMessage) {
+    print('hello');
     return RefreshIndicator(
       onRefresh: _handleRefresh,
       color: const Color(0xFF71BB7B),
@@ -200,6 +212,7 @@ class _EventPlanState extends ConsumerState<EventPlan>
       onTap: () {
         EventModel newEvent = EventModel(
           id: event.id,
+          creatorId: event.creatorId,
           title: event.title,
           imageUrl: event.imageUrl,
           description: event.description,
@@ -208,7 +221,7 @@ class _EventPlanState extends ConsumerState<EventPlan>
           location: event.location,
           lat: (event.lat as num).toDouble(),
           lng: (event.lng as num).toDouble(),
-          raduis: (event.raduis as num).toDouble(),
+          radius: (event.radius as num).toDouble(),
           tags: event.tags,
           date: event.date,
         );
@@ -457,48 +470,6 @@ class _EventPlanState extends ConsumerState<EventPlan>
             );
           },
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16, top: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF71BB7B).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFF71BB7B).withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () async {
-                  await _handleRefresh();
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  child:
-                      asyncEvent.isLoading
-                          ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFF71BB7B),
-                              ),
-                            ),
-                          )
-                          : const Icon(
-                            Icons.refresh_rounded,
-                            color: Color(0xFF71BB7B),
-                            size: 20,
-                          ),
-                ),
-              ),
-            ),
-          ),
-        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48.0),
           child: Container(
@@ -540,7 +511,12 @@ class _EventPlanState extends ConsumerState<EventPlan>
                     fontWeight: FontWeight.w500,
                     fontSize: 14,
                   ),
-                  tabs: const [Tab(text: 'Upcoming'), Tab(text: 'Past Events')],
+                  tabs: const [
+                    Tab(text: 'Upcoming'),
+                    Tab(text: 'Past Events'),
+                    Tab(text: 'My Events'),
+                    Tab(text: 'Joined Events'),
+                  ],
                 ),
               ),
             ),
@@ -551,12 +527,16 @@ class _EventPlanState extends ConsumerState<EventPlan>
         data: (events) {
           final upcomingEvents = _getUpcomingEvents(events);
           final pastEvents = _getPastEvents(events);
+          final myEvents = _getMyEvents(events);
+          final joinedEvents = _getJoinedEvents(events);
 
           return TabBarView(
             controller: _tabController,
             children: [
               _buildEventGrid(upcomingEvents, "No Upcoming Events"),
               _buildEventGrid(pastEvents, "No Past Events"),
+              _buildEventGrid(myEvents, "No My Events"),
+              _buildEventGrid(joinedEvents, "No Joined Events"),
             ],
           );
         },

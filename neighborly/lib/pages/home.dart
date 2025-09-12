@@ -9,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/app_routes.dart';
-import 'package:neighborly/components/notification_permission_dialog.dart';
 import 'package:neighborly/services/push_notification_service.dart';
 import 'community_list.dart';
 import 'profile.dart';
@@ -1667,15 +1666,15 @@ class _HomePageState extends ConsumerState<HomePage>
                       width: 2,
                     ),
                   ),
-                  child: IconButton(
-                    onPressed: () => showNotificationPermissionDialog(context),
-                    icon: const Icon(
-                      Icons.notifications_off,
-                      color: Colors.orange,
-                      size: 20,
-                    ),
-                    tooltip: 'Enable Notifications',
-                  ),
+                  // child: IconButton(
+                  //   onPressed: () => showNotificationPermissionDialog(context),
+                  //   icon: const Icon(
+                  //     Icons.notifications_off,
+                  //     color: Colors.orange,
+                  //     size: 20,
+                  //   ),
+                  //   tooltip: 'Enable Notifications',
+                  // ),
                 );
               }
               return const SizedBox.shrink();

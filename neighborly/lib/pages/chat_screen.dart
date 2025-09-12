@@ -49,6 +49,7 @@ class _ChatScreenState extends State<ChatScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _messages.add({'sender': 'bot', 'text': 'Error: Connection failed.'});
       });

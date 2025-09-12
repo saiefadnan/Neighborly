@@ -10,6 +10,8 @@ import 'package:like_button/like_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/components/comment_sheet.dart';
 import 'package:http/http.dart' as http;
+import 'package:timeago/timeago.dart' as timeago;
+
 final boxHeightProvider = StateProvider<Map<String, double>>((ref) => {});
 final replyTargetProvider = StateProvider<String?>((ref) => null);
 final kvc = KeyboardVisibilityController();
@@ -33,6 +35,11 @@ class _CommentCardState extends ConsumerState<CommentCard> {
   bool liked = false;
   bool isOffTopic = false;
   bool isDetectionLoading = false;
+
+  String formatCreatedAt(String createdAt) {
+    final dateTime = DateTime.parse(createdAt); // parse ISO 8601
+    return timeago.format(dateTime, locale: 'en_short');
+  }
 
   Future<bool> offTopicDetector() async {
     try {
@@ -332,7 +339,9 @@ class _CommentCardState extends ConsumerState<CommentCard> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          '2h',
+                          widget.comment['createdAt'] != null
+                              ? formatCreatedAt(widget.comment['createdAt'])
+                              : 'Just now',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 11,

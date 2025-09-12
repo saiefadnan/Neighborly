@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:neighborly/models/event.dart';
+import 'package:neighborly/notifiers/event_notifier.dart';
 
 class EventDetailsPage extends ConsumerStatefulWidget {
   final EventModel event;
@@ -47,7 +48,7 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
         final data = doc.data();
         if (data != null) {
           setState(() {
-            hasJoined = data['joined'];
+            hasJoined = true;
           });
         }
       }
@@ -131,6 +132,7 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
       if (hasJoined) {
+        print('$uid left the event');
         await FirebaseFirestore.instance
             .collection('events')
             .doc(widget.event.id)
@@ -138,17 +140,23 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
             .doc(uid)
             .delete();
       } else {
+        print(uid + ' joined the event');
         await FirebaseFirestore.instance
             .collection('events')
             .doc(widget.event.id)
             .collection('participants')
             .doc(uid)
-            .set({'joined': true}, SetOptions(merge: true));
+            .set({
+              'memberId': uid,
+              'eventId': widget.event.id,
+            }, SetOptions(merge: true));
       }
       setState(() {
         hasJoined = !hasJoined;
+        widget.event.joined = hasJoined;
+        ref.invalidate(eventProvider);
       });
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -724,12 +732,17 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
         ],
       ),
       child: ElevatedButton(
-        onPressed: () async {
-          await toggleJoinStatus();
-        },
+        onPressed:
+            widget.event.date.isAfter(DateTime.now())
+                ? () async {
+                  await toggleJoinStatus();
+                }
+                : null,
         style: ElevatedButton.styleFrom(
           backgroundColor:
-              hasJoined ? Colors.grey[400] : const Color(0xFF71BB7B),
+              widget.event.date.isAfter(DateTime.now())
+                  ? (hasJoined ? Colors.red[400] : const Color(0xFF71BB7B))
+                  : Colors.grey[400],
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -741,12 +754,16 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              hasJoined ? Icons.check_circle_rounded : Icons.add_rounded,
+              widget.event.date.isAfter(DateTime.now())
+                  ? (hasJoined ? Icons.check_circle_rounded : Icons.add_rounded)
+                  : Icons.access_time_rounded,
               size: 20,
             ),
             const SizedBox(width: 8),
             Text(
-              hasJoined ? "You're Joined!" : "Join This Event",
+              widget.event.date.isAfter(DateTime.now())
+                  ? (hasJoined ? "You're Joined!" : "Join This Event")
+                  : "Event has ended",
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ],
