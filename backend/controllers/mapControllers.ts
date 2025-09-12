@@ -1139,16 +1139,17 @@ export const getHelpRequestResponses = async (c: Context) => {
       return c.json({ success: false, message: 'Help request not found' }, 404);
     }
 
-    // Get all responses for this help request
-    const responsesQuery = await db.collection('helpRequestResponses')
-      .where('requestId', '==', requestId)
+    // Get all responses for this help request from the subcollection
+    const responsesSnapshot = await helpRequestDoc.ref.collection('responses')
       .orderBy('createdAt', 'desc')
       .get();
 
-    const responses = responsesQuery.docs.map(doc => ({
+    const responses = responsesSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
+
+    console.log(`Found ${responses.length} responses for request ${requestId}`);
 
     return c.json({ 
       success: true, 

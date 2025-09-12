@@ -193,12 +193,17 @@ class ResponsesDrawer {
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           final token = await user.getIdToken();
+          
+          // Fix the API URL to match the backend route
           final response = await http.get(
             Uri.parse(
-              '${ApiConfig.baseUrl}/api/map/requests/$requestId/responses',
+              '${ApiConfig.baseUrl}${ApiConfig.mapApiPath}/requests/$requestId/responses',
             ),
             headers: {'Authorization': 'Bearer $token'},
           );
+
+          print('API Response Status: ${response.statusCode}');
+          print('API Response Body: ${response.body}');
 
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
@@ -213,7 +218,7 @@ class ResponsesDrawer {
         print('API fetch failed, trying Firestore fallback. Error: $e');
       }
 
-      // 2. Firestore fallback if API failed
+      // 2. Firestore fallback if API failed - Try subcollection first (most common)
       if (!success) {
         try {
           final responsesSnapshot =
@@ -224,14 +229,37 @@ class ResponsesDrawer {
                   .orderBy('createdAt', descending: true)
                   .get();
 
+          if (responsesSnapshot.docs.isNotEmpty) {
+            responses =
+                responsesSnapshot.docs
+                    .map((doc) => {'id': doc.id, ...doc.data()})
+                    .toList();
+            success = true;
+            print('Fetched ${responses.length} responses from Firestore subcollection');
+          }
+        } catch (e) {
+          print('Firestore subcollection fetch failed: $e');
+        }
+      }
+
+      // 3. Try separate helpRequestResponses collection if subcollection is empty
+      if (!success || responses.isEmpty) {
+        try {
+          final responsesSnapshot =
+              await FirebaseFirestore.instance
+                  .collection('helpRequestResponses')
+                  .where('requestId', isEqualTo: requestId)
+                  .orderBy('createdAt', descending: true)
+                  .get();
+
           responses =
               responsesSnapshot.docs
                   .map((doc) => {'id': doc.id, ...doc.data()})
                   .toList();
           success = true;
-          print('Fetched ${responses.length} responses from Firestore');
+          print('Fetched ${responses.length} responses from helpRequestResponses collection');
         } catch (e) {
-          print('Firestore fallback failed: $e');
+          print('Firestore helpRequestResponses collection fetch failed: $e');
         }
       }
 
