@@ -6,6 +6,51 @@ const bloodDonorController = new Hono();
 // Get Firestore instance (lazy initialization)
 const getDb = () => admin.firestore();
 
+// Test route to debug user lookup
+bloodDonorController.get('/debug/user/:email', async (c) => {
+  try {
+    const email = c.req.param('email');
+    console.log(`🔍 DEBUG: Looking for user with email: ${email}`);
+    
+    // Try document ID approach
+    const userDocById = await getDb().collection('users').doc(email).get();
+    console.log(`🔍 DEBUG: User found by doc ID: ${userDocById.exists}`);
+    
+    // Try query approach
+    const userQuery = await getDb().collection('users')
+      .where('email', '==', email)
+      .get();
+    console.log(`🔍 DEBUG: Query results: ${userQuery.docs.length} documents`);
+    
+    // List all users (limited to 5 for debugging)
+    const allUsers = await getDb().collection('users').limit(5).get();
+    console.log(`🔍 DEBUG: Total users in collection: ${allUsers.docs.length}`);
+    
+    const userList = allUsers.docs.map(doc => ({
+      id: doc.id,
+      email: doc.data()?.email,
+      username: doc.data()?.username
+    }));
+    
+    return c.json({
+      success: true,
+      debug: {
+        searchEmail: email,
+        foundByDocId: userDocById.exists,
+        foundByQuery: userQuery.docs.length > 0,
+        totalUsers: allUsers.docs.length,
+        sampleUsers: userList
+      }
+    });
+  } catch (e) {
+    console.error('DEBUG error:', e);
+    return c.json({ 
+      success: false, 
+      error: e instanceof Error ? e.message : 'Unknown error' 
+    }, 500);
+  }
+});
+
 // Check if user is registered as a donor
 bloodDonorController.get('/check/:email', async (c) => {
   try {
@@ -62,12 +107,12 @@ bloodDonorController.get('/check/:email', async (c) => {
 bloodDonorController.post('/register', async (c) => {
   try {
     const body = await c.req.json();
-    const { email, bloodGroup, isAvailable, emergencyContact, medicalNotes } = body;
+    const { email, bloodGroup, isAvailable, emergencyContact, medicalNotes, name, phone, location } = body;
 
-    if (!email || !bloodGroup) {
+    if (!email || !bloodGroup || !name || !phone || !location) {
       return c.json({
         success: false,
-        message: 'Email and blood group are required'
+        message: 'Email, blood group, name, phone, and location are required'
       }, 400);
     }
 
@@ -84,18 +129,14 @@ bloodDonorController.post('/register', async (c) => {
       }, 409);
     }
 
-    // Check if user exists in users collection
-    const userDoc = await getDb().collection('users').doc(email).get();
-    if (!userDoc.exists) {
-      return c.json({
-        success: false,
-        message: 'User not found in system'
-      }, 404);
-    }
+    console.log(`✅ Registering donor: ${email} - ${name}`);
 
-    // Create new donor record
+    // Create new donor record with all user info
     const donorData = {
       email,
+      name,
+      phone,
+      location,
       bloodGroup,
       isAvailable: isAvailable ?? true,
       emergencyContact: emergencyContact || null,
@@ -137,7 +178,7 @@ bloodDonorController.put('/update/:email', async (c) => {
   try {
     const email = c.req.param('email');
     const body = await c.req.json();
-    const { bloodGroup, isAvailable, lastDonationDate, totalDonations, emergencyContact, medicalNotes } = body;
+    const { name, phone, location, bloodGroup, isAvailable, lastDonationDate, totalDonations, emergencyContact, medicalNotes } = body;
 
     if (!email) {
       return c.json({ success: false, message: 'Email is required' }, 400);
@@ -169,6 +210,9 @@ bloodDonorController.put('/update/:email', async (c) => {
     };
 
     // Only update provided fields
+    if (name !== undefined) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (location !== undefined) updateData.location = location;
     if (bloodGroup !== undefined) updateData.bloodGroup = bloodGroup;
     if (isAvailable !== undefined) updateData.isAvailable = isAvailable;
     if (lastDonationDate !== undefined) updateData.lastDonationDate = lastDonationDate;
@@ -218,40 +262,31 @@ bloodDonorController.get('/', async (c) => {
 
     const donorSnapshot = await query.get();
     
-    // Get all donor data with user details
-    const donorsWithUserData = await Promise.all(
-      donorSnapshot.docs.map(async (donorDoc) => {
-        const donorData = donorDoc.data();
-        // Get user details from users collection
-        let userData = null;
-        try {
-          const userDoc = await getDb().collection('users').doc(donorData.email).get();
-          if (userDoc.exists) {
-            userData = userDoc.data();
-          }
-        } catch (userError) {
-          console.error(`Error fetching user data for ${donorData.email}:`, userError);
-        }
-        return {
-          id: donorDoc.id,
-          ...donorData,
-          isAvailable: donorData.isAvailable ?? true,
-          // User details
-          name: userData?.username || 'Anonymous',
-          phone: userData?.contactNumber || userData?.contact || '',
-          location: userData?.address || '',
-          // Format dates
-          registrationDate: donorData.registrationDate?.toDate?.()?.toISOString?.() || null,
-          updatedAt: donorData.updatedAt?.toDate?.()?.toISOString?.() || null,
-          lastDonation: donorData.lastDonationDate || 'Never'
-        };
-      })
-    );
+    // Get all donor data directly from blood_donors collection - no need for user lookup
+    const donorsData = donorSnapshot.docs.map((donorDoc) => {
+      const donorData = donorDoc.data();
+      return {
+        id: donorDoc.id,
+        email: donorData.email,
+        name: donorData.name || 'Anonymous',
+        phone: donorData.phone || '',
+        location: donorData.location || '',
+        bloodGroup: donorData.bloodGroup,
+        isAvailable: donorData.isAvailable ?? true,
+        emergencyContact: donorData.emergencyContact,
+        medicalNotes: donorData.medicalNotes,
+        totalDonations: donorData.totalDonations || 0,
+        // Format dates
+        registrationDate: donorData.registrationDate?.toDate?.()?.toISOString?.() || null,
+        updatedAt: donorData.updatedAt?.toDate?.()?.toISOString?.() || null,
+        lastDonation: donorData.lastDonationDate || 'Never'
+      };
+    });
 
-    // Apply location filter if provided (after fetching user data)
-    let filteredDonors = donorsWithUserData;
+    // Apply location filter if provided (after fetching donor data)
+    let filteredDonors = donorsData;
     if (location && location.trim() !== '') {
-      filteredDonors = donorsWithUserData.filter((donor: any) => 
+      filteredDonors = donorsData.filter((donor: any) => 
         donor.location.toLowerCase().includes(location.toLowerCase())
       );
     }
