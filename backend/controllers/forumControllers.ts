@@ -62,8 +62,8 @@ export const storePosts = async(c: Context)=>{
       console.log('storing post: ', post);
       const docRef = getFirestore().collection('posts').doc();
       await docRef.set({...post, 'postID': docRef.id,'timestamp': FieldValue.serverTimestamp(),});
-      console.log('Post stored with ID: ${docRef.id}');
-       return c.json({ success: true}, 200);
+      console.log('Post stored with ID: ', docRef.id);
+       return c.json({ success: true, postID: docRef.id}, 200);
 
     } catch (e) {
       console.log('Error storing posts: $e');
