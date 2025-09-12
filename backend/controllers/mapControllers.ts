@@ -1113,3 +1113,62 @@ export const removeDummyHelpRequests = async (c: Context) => {
     }, 500);
   }
 };
+
+
+// Get all responses for a specific help request
+export const getHelpRequestResponses = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+
+    if (!idToken) {
+      return c.json({ success: false, message: 'Missing Authorization header' }, 401);
+    }
+
+    // Verify user token
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    const requestId = c.req.param('requestId');
+
+    if (!requestId) {
+      return c.json({ success: false, message: 'Request ID is required' }, 400);
+    }
+
+    // Get the help request first to verify it exists
+    const helpRequestDoc = await getFirestore()
+      .collection('helpRequests')
+      .doc(requestId)
+      .get();
+
+    if (!helpRequestDoc.exists) {
+      return c.json({ success: false, message: 'Help request not found' }, 404);
+    }
+
+    // Get all responses for this request
+    const responsesSnapshot = await getFirestore()
+      .collection('helpRequests')
+      .doc(requestId)
+      .collection('responses')
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const responses = responsesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    console.log(`Found ${responses.length} responses for request ${requestId}`);
+
+    return c.json({
+      success: true,
+      responses: responses,
+      count: responses.length,
+      message: `Found ${responses.length} responses`
+    });
+
+  } catch (error) {
+    console.error('Error fetching responses:', error);
+    return c.json({ success: false, message: 'Failed to fetch responses' }, 500);
+  }
+};
