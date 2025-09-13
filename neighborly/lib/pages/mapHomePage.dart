@@ -8,6 +8,7 @@ import 'package:neighborly/pages/forum.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
 import 'package:neighborly/components/responses_drawer.dart';
 import 'package:neighborly/components/route_sharing_bottom_sheet.dart';
+import 'package:neighborly/components/shared_routes_bottom_sheet.dart';
 import 'package:neighborly/services/map_service.dart';
 import 'package:neighborly/providers/help_request_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -478,156 +479,6 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           ),
         );
       }
-    }
-  }
-
-  // Create dummy help requests for testing
-  Future<void> _createDummyData() async {
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      final result = await MapService.createDummyHelpRequests();
-
-      if (result['success']) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.add_circle, color: Colors.white, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Created ${result['count']} dummy help requests',
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.all(16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
-        }
-
-        // Reload help requests to show the new dummy data
-        await _loadHelpRequests();
-      } else {
-        throw Exception(result['message']);
-      }
-    } catch (e) {
-      print('Error creating dummy data: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Failed to create dummy data',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  // Remove all dummy help requests
-  Future<void> _removeDummyData() async {
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      final result = await MapService.removeDummyHelpRequests();
-
-      if (result['success']) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.delete_sweep, color: Colors.white, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Removed ${result['removedCount']} dummy help requests',
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.all(16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
-        }
-
-        // Reload help requests to reflect the removal
-        await _loadHelpRequests();
-      } else {
-        throw Exception(result['message']);
-      }
-    } catch (e) {
-      print('Error removing dummy data: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Failed to remove dummy data',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -1211,6 +1062,26 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
             ),
           ),
         ] else if (status == 'open') ...[
+          // Show Routes button for route-type requests
+          if (helpData['type'] == 'Route' || helpData['title'] == 'Route') ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showRoutesForMyRequest(helpData),
+                icon: const Icon(Icons.route),
+                label: const Text('Show Routes'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF71BB7B),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -1336,6 +1207,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                 requesterName: helpData['requesterName'] ?? 'Anonymous',
                 requesterImage: 'assets/images/dummy.png',
                 contactNumber: helpData['phone'] ?? '',
+                status: helpData['status'] ?? 'open',
                 responderCount: (helpData['responders'] as List).length,
                 isResponded: false,
                 userId: helpData['userId'] ?? '',
@@ -1415,6 +1287,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       requesterName: helpData['requesterName'] ?? 'Anonymous',
       requesterImage: 'assets/images/dummy.png',
       contactNumber: helpData['phone'] ?? '',
+      status: helpData['status'] ?? 'open',
       responderCount: (helpData['responders'] as List?)?.length ?? 0,
       isResponded: false,
       userId: helpData['userId'] ?? '',
@@ -2821,6 +2694,22 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           ],
         );
       },
+    );
+  }
+
+  // Show routes for my request (for request owners)
+  void _showRoutesForMyRequest(Map<String, dynamic> helpData) {
+    Navigator.of(context).pop(); // Close current bottom sheet first
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SharedRoutesBottomSheet(
+        helpRequestId: helpData['id'] ?? '',
+        isOwner: true, // Current user is the request owner
+        ownerUserId: currentUserId ?? '',
+      ),
     );
   }
 

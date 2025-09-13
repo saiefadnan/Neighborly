@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:neighborly/models/feedback_models.dart';
+import 'package:neighborly/services/report_feedback_service.dart';
+import 'package:neighborly/services/image_evidence_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'dart:io';
 
 class ReportFeedbackPage extends StatefulWidget {
   const ReportFeedbackPage({super.key});
@@ -96,14 +102,24 @@ class ReportTab extends StatefulWidget {
 
 class _ReportTabState extends State<ReportTab> {
   final _formKey = GlobalKey<FormState>();
-  final _reportedUserController = TextEditingController();
+  final _reportedUserEmailController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _evidenceController = TextEditingController();
+  final _textEvidenceController = TextEditingController();
 
   String _selectedReportType = 'User Behavior';
   String _selectedSeverity = 'Medium';
   bool _isAnonymous = false;
   bool _isSubmitting = false;
+  
+  // Image evidence handling
+  final ImagePicker _imagePicker = ImagePicker();
+  final List<File> _selectedImages = [];
+  String _evidenceType = 'text'; // 'text' or 'image' or 'both'
+  
+  // Progress tracking
+  bool _isUploadingImages = false;
+  double _currentImageProgress = 0.0;
+  String _uploadStatus = '';
 
   final List<String> _reportTypes = [
     'User Behavior',
@@ -121,10 +137,133 @@ class _ReportTabState extends State<ReportTab> {
 
   @override
   void dispose() {
-    _reportedUserController.dispose();
+    _reportedUserEmailController.dispose();
     _descriptionController.dispose();
-    _evidenceController.dispose();
+    _textEvidenceController.dispose();
     super.dispose();
+  }
+
+  // Enhanced image picker methods with validation
+  Future<void> _pickImages() async {
+    try {
+      if (_selectedImages.length >= 5) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Maximum 5 images allowed per report'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final List<XFile> images = await _imagePicker.pickMultiImage();
+      if (images.isNotEmpty) {
+        // Check if adding these images would exceed the limit
+        final remainingSlots = 5 - _selectedImages.length;
+        final imagesToAdd = images.take(remainingSlots).toList();
+        
+        if (images.length > remainingSlots) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Only added ${imagesToAdd.length} images. Maximum 5 images allowed.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+
+        // Validate each image before adding
+        List<File> validImages = [];
+        for (XFile xFile in imagesToAdd) {
+          final file = File(xFile.path);
+          final validation = await ImageEvidenceService.validateImage(file);
+          
+          if (validation.isValid) {
+            validImages.add(file);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Invalid image: ${validation.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+
+        if (validImages.isNotEmpty) {
+          setState(() {
+            _selectedImages.addAll(validImages);
+            if (_evidenceType == 'text') {
+              _evidenceType = 'both';
+            } else if (_evidenceType != 'both') {
+              _evidenceType = 'image';
+            }
+          });
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking images: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    try {
+      if (_selectedImages.length >= 5) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Maximum 5 images allowed per report'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80, // Compress slightly for better performance
+      );
+      
+      if (image != null) {
+        final file = File(image.path);
+        final validation = await ImageEvidenceService.validateImage(file);
+        
+        if (validation.isValid) {
+          setState(() {
+            _selectedImages.add(file);
+            if (_evidenceType == 'text') {
+              _evidenceType = 'both';
+            } else if (_evidenceType != 'both') {
+              _evidenceType = 'image';
+            }
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Invalid image: ${validation.error}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error taking photo: $e')),
+      );
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+      if (_selectedImages.isEmpty && _textEvidenceController.text.isEmpty) {
+        _evidenceType = 'text';
+      } else if (_selectedImages.isEmpty) {
+        _evidenceType = 'text';
+      } else if (_textEvidenceController.text.isEmpty) {
+        _evidenceType = 'image';
+      }
+    });
   }
 
   Color _getSeverityColor(String severity) {
@@ -170,49 +309,85 @@ class _ReportTabState extends State<ReportTab> {
 
     setState(() {
       _isSubmitting = true;
+      if (_selectedImages.isNotEmpty) {
+        _isUploadingImages = true;
+        _currentImageProgress = 0.0;
+        _uploadStatus = 'Preparing images...';
+      }
     });
 
     try {
+      // Get current user ID
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
       // Create report data
       final report = ReportData(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        reporterId: 'current_user_id', // In real app, get from auth
-        reportedUserId: _reportedUserController.text.trim(),
+        reporterId: user.uid,
+        reportedUserEmail: _reportedUserEmailController.text.trim(),
         reportType: _selectedReportType,
         severity: _selectedSeverity,
         description: _descriptionController.text.trim(),
-        evidence:
-            _evidenceController.text.trim().isEmpty
+        textEvidence:
+            _textEvidenceController.text.trim().isEmpty
                 ? null
-                : _evidenceController.text.trim(),
+                : _textEvidenceController.text.trim(),
+        imageEvidenceUrls: _selectedImages.isNotEmpty 
+            ? _selectedImages.map((file) => file.path).toList() 
+            : null,
         createdAt: DateTime.now(),
         isAnonymous: _isAnonymous,
       );
 
-      // Save report
-      FeedbackService.addReport(report);
-
-      // Simulate API call delay
-      await Future.delayed(const Duration(seconds: 2));
+      // Submit report to backend with progress tracking
+      final result = await ReportFeedbackService.submitReport(
+        report, 
+        images: _selectedImages.isNotEmpty ? _selectedImages : null,
+        onImageUploadProgress: (current, total, progress) {
+          if (mounted) {
+            setState(() {
+              _currentImageProgress = progress;
+              _uploadStatus = 'Uploading image $current of $total... ${(progress * 100).toInt()}%';
+            });
+          }
+        },
+      );
 
       if (mounted) {
         setState(() {
           _isSubmitting = false;
+          _isUploadingImages = false;
+          _uploadStatus = '';
         });
 
-        _showSuccessDialog();
+        if (result['success'] == true) {
+          _showSuccessDialog();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${result['error']}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
+          _isUploadingImages = false;
+          _uploadStatus = '';
         });
 
-        // Show error dialog
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error submitting report: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -283,13 +458,15 @@ class _ReportTabState extends State<ReportTab> {
   }
 
   void _resetForm() {
-    _reportedUserController.clear();
+    _reportedUserEmailController.clear();
     _descriptionController.clear();
-    _evidenceController.clear();
+    _textEvidenceController.clear();
     setState(() {
       _selectedReportType = 'User Behavior';
       _selectedSeverity = 'Medium';
       _isAnonymous = false;
+      _selectedImages.clear();
+      _evidenceType = 'text';
     });
   }
 
@@ -476,9 +653,9 @@ class _ReportTabState extends State<ReportTab> {
             ),
             const SizedBox(height: 16),
 
-            // Reported User/Content
+            // Reported User Email
             const Text(
-              'Reported User/Content',
+              'Reported User Email',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -499,11 +676,12 @@ class _ReportTabState extends State<ReportTab> {
                 ],
               ),
               child: TextFormField(
-                controller: _reportedUserController,
+                controller: _reportedUserEmailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
-                  hintText: 'Enter username, help request ID, or content',
+                  hintText: 'Enter user email address (e.g., user@example.com)',
                   prefixIcon: Icon(
-                    Icons.person_search,
+                    Icons.email_outlined,
                     color: Color(0xFF71BB7B),
                   ),
                   border: InputBorder.none,
@@ -514,7 +692,11 @@ class _ReportTabState extends State<ReportTab> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please specify what you\'re reporting';
+                    return 'Please enter the user\'s email address';
+                  }
+                  // Basic email validation
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
+                    return 'Please enter a valid email address';
                   }
                   return null;
                 },
@@ -576,7 +758,10 @@ class _ReportTabState extends State<ReportTab> {
               ),
             ),
             const SizedBox(height: 8),
+            
+            // Evidence Type Selection
             Container(
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -588,17 +773,287 @@ class _ReportTabState extends State<ReportTab> {
                   ),
                 ],
               ),
-              child: TextFormField(
-                controller: _evidenceController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'Screenshots, timestamps, additional context...',
-                  prefixIcon: Icon(Icons.attach_file, color: Color(0xFF71BB7B)),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.all(16),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.description, color: const Color(0xFF71BB7B), size: 20),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Choose Evidence Type',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2C3E50),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      // Text Evidence Button
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              if (_evidenceType == 'image') {
+                                _evidenceType = 'both';
+                              } else if (_evidenceType == 'both') {
+                                _evidenceType = 'image';
+                              } else {
+                                _evidenceType = 'text';
+                              }
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: (_evidenceType == 'text' || _evidenceType == 'both')
+                                  ? const Color(0xFF71BB7B).withOpacity(0.1)
+                                  : Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: (_evidenceType == 'text' || _evidenceType == 'both')
+                                    ? const Color(0xFF71BB7B)
+                                    : Colors.grey,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.text_fields,
+                                  size: 16,
+                                  color: (_evidenceType == 'text' || _evidenceType == 'both')
+                                      ? const Color(0xFF71BB7B)
+                                      : Colors.grey,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Text',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: (_evidenceType == 'text' || _evidenceType == 'both')
+                                        ? const Color(0xFF71BB7B)
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Image Evidence Button
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              if (_evidenceType == 'text') {
+                                _evidenceType = 'both';
+                              } else if (_evidenceType == 'both') {
+                                _evidenceType = 'text';
+                              } else {
+                                _evidenceType = 'image';
+                              }
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: (_evidenceType == 'image' || _evidenceType == 'both')
+                                  ? const Color(0xFF71BB7B).withOpacity(0.1)
+                                  : Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: (_evidenceType == 'image' || _evidenceType == 'both')
+                                    ? const Color(0xFF71BB7B)
+                                    : Colors.grey,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.image,
+                                  size: 16,
+                                  color: (_evidenceType == 'image' || _evidenceType == 'both')
+                                      ? const Color(0xFF71BB7B)
+                                      : Colors.grey,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Images',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: (_evidenceType == 'image' || _evidenceType == 'both')
+                                        ? const Color(0xFF71BB7B)
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Text Evidence Input
+            if (_evidenceType == 'text' || _evidenceType == 'both')
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextFormField(
+                  controller: _textEvidenceController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: 'Describe the evidence, timestamps, additional context...',
+                    prefixIcon: Icon(Icons.description, color: Color(0xFF71BB7B)),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+            
+            if ((_evidenceType == 'text' || _evidenceType == 'both') && (_evidenceType == 'image' || _evidenceType == 'both'))
+              const SizedBox(height: 12),
+
+            // Image Evidence Section
+            if (_evidenceType == 'image' || _evidenceType == 'both')
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // Image picker buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _pickImages,
+                            icon: const Icon(Icons.photo_library),
+                            label: const Text('Gallery'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF71BB7B),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _pickImageFromCamera,
+                            icon: const Icon(Icons.camera_alt),
+                            label: const Text('Camera'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[600],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    // Selected images display
+                    if (_selectedImages.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Selected Images:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2C3E50),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 80,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _selectedImages.length,
+                          itemBuilder: (context, index) {
+                            return Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      image: DecorationImage(
+                                        image: FileImage(_selectedImages[index]),
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: GestureDetector(
+                                      onTap: () => _removeImage(index),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             const SizedBox(height: 16),
 
             // Anonymous Option
@@ -658,46 +1113,110 @@ class _ReportTabState extends State<ReportTab> {
             ),
             const SizedBox(height: 24),
 
-            // Submit Button
+            // Submit Button with Progress
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitReport,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF71BB7B),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                ),
-                child:
-                    _isSubmitting
-                        ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
+              child: Column(
+                children: [
+                  // Progress indicator for image uploads
+                  if (_isUploadingImages) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF71BB7B).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF71BB7B).withOpacity(0.3),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              LoadingAnimationWidget.staggeredDotsWave(
+                                color: const Color(0xFF71BB7B),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _uploadStatus,
+                                  style: TextStyle(
+                                    color: const Color(0xFF71BB7B),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          LinearProgressIndicator(
+                            value: _currentImageProgress,
+                            backgroundColor: Colors.grey[300],
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Color(0xFF71BB7B),
                             ),
                           ),
-                        )
-                        : const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.send),
-                            SizedBox(width: 8),
-                            Text(
-                              'Submit Report',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  
+                  // Submit button
+                  ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitReport,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF71BB7B),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
+                    child: _isSubmitting
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _isUploadingImages 
+                                    ? 'Uploading Images...' 
+                                    : 'Submitting Report...',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.send),
+                              SizedBox(width: 8),
+                              Text(
+                                'Submit Report',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -801,13 +1320,19 @@ class _FeedbackTabState extends State<FeedbackTab> {
     });
 
     try {
+      // Get current user ID
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
       // Create feedback data
       final feedback = FeedbackData(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        userId: 'current_user_id', // In real app, get from auth
-        targetUserId:
+        userId: user.uid,
+        targetUserEmail:
             _userController.text.trim().isEmpty
-                ? 'unknown_user'
+                ? 'unknown@example.com'
                 : _userController.text.trim(),
         feedbackType: _selectedFeedbackType,
         rating: _rating,
@@ -818,21 +1343,27 @@ class _FeedbackTabState extends State<FeedbackTab> {
                 : _improvementController.text.trim(),
         wouldRecommend: _wouldRecommend,
         createdAt: DateTime.now(),
-        isVerified: true, // Mark as verified since it's from current user
+        isVerified: true,
       );
 
-      // Save feedback
-      FeedbackService.addFeedback(feedback);
-
-      // Simulate API call delay
-      await Future.delayed(const Duration(seconds: 2));
+      // Submit feedback to backend
+      final result = await ReportFeedbackService.submitFeedback(feedback);
 
       if (mounted) {
         setState(() {
           _isSubmitting = false;
         });
 
-        _showSuccessDialog();
+        if (result['success'] == true) {
+          _showSuccessDialog();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${result['error']}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -840,7 +1371,6 @@ class _FeedbackTabState extends State<FeedbackTab> {
           _isSubmitting = false;
         });
 
-        // Show error dialog
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error submitting feedback: $e'),
@@ -1104,9 +1634,9 @@ class _FeedbackTabState extends State<FeedbackTab> {
             ),
             const SizedBox(height: 16),
 
-            // User/Experience (Optional)
+            // User Email/Experience (Optional)
             const Text(
-              'About User/Experience (Optional)',
+              'User Email (Optional)',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -1128,10 +1658,11 @@ class _FeedbackTabState extends State<FeedbackTab> {
               ),
               child: TextFormField(
                 controller: _userController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
-                  hintText: 'Username or help request details...',
+                  hintText: 'User email address (e.g., helper@example.com)',
                   prefixIcon: Icon(
-                    Icons.person_outline,
+                    Icons.email_outlined,
                     color: Color(0xFF71BB7B),
                   ),
                   border: InputBorder.none,
@@ -1140,6 +1671,15 @@ class _FeedbackTabState extends State<FeedbackTab> {
                     vertical: 12,
                   ),
                 ),
+                validator: (value) {
+                  // Only validate if not empty since this is optional
+                  if (value != null && value.trim().isNotEmpty) {
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
+                      return 'Please enter a valid email address';
+                    }
+                  }
+                  return null;
+                },
               ),
             ),
             const SizedBox(height: 16),

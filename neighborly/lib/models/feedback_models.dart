@@ -1,7 +1,7 @@
 class FeedbackData {
   final String id;
   final String userId;
-  final String targetUserId;
+  final String targetUserEmail;
   final String? helpRequestId;
   final String feedbackType;
   final double rating;
@@ -14,7 +14,7 @@ class FeedbackData {
   FeedbackData({
     required this.id,
     required this.userId,
-    required this.targetUserId,
+    required this.targetUserEmail,
     this.helpRequestId,
     required this.feedbackType,
     required this.rating,
@@ -30,7 +30,7 @@ class FeedbackData {
     return {
       'id': id,
       'userId': userId,
-      'targetUserId': targetUserId,
+      'targetUserEmail': targetUserEmail,
       'helpRequestId': helpRequestId,
       'feedbackType': feedbackType,
       'rating': rating,
@@ -46,7 +46,7 @@ class FeedbackData {
     return FeedbackData(
       id: json['id'],
       userId: json['userId'],
-      targetUserId: json['targetUserId'],
+      targetUserEmail: json['targetUserEmail'],
       helpRequestId: json['helpRequestId'],
       feedbackType: json['feedbackType'],
       rating: json['rating'].toDouble(),
@@ -62,12 +62,13 @@ class FeedbackData {
 class ReportData {
   final String id;
   final String reporterId;
-  final String reportedUserId;
+  final String reportedUserEmail;
   final String? reportedContentId;
   final String reportType;
   final String severity;
   final String description;
-  final String? evidence;
+  final String? textEvidence;
+  final List<String>? imageEvidenceUrls; // URLs of uploaded images
   final DateTime createdAt;
   final String status; // 'pending', 'reviewed', 'resolved', 'dismissed'
   final bool isAnonymous;
@@ -75,12 +76,13 @@ class ReportData {
   ReportData({
     required this.id,
     required this.reporterId,
-    required this.reportedUserId,
+    required this.reportedUserEmail,
     this.reportedContentId,
     required this.reportType,
     required this.severity,
     required this.description,
-    this.evidence,
+    this.textEvidence,
+    this.imageEvidenceUrls,
     required this.createdAt,
     this.status = 'pending',
     required this.isAnonymous,
@@ -91,12 +93,13 @@ class ReportData {
     return {
       'id': id,
       'reporterId': reporterId,
-      'reportedUserId': reportedUserId,
+      'reportedUserEmail': reportedUserEmail,
       'reportedContentId': reportedContentId,
       'reportType': reportType,
       'severity': severity,
       'description': description,
-      'evidence': evidence,
+      'textEvidence': textEvidence,
+      'imageEvidenceUrls': imageEvidenceUrls,
       'createdAt': createdAt.toIso8601String(),
       'status': status,
       'isAnonymous': isAnonymous,
@@ -107,12 +110,15 @@ class ReportData {
     return ReportData(
       id: json['id'],
       reporterId: json['reporterId'],
-      reportedUserId: json['reportedUserId'],
+      reportedUserEmail: json['reportedUserEmail'],
       reportedContentId: json['reportedContentId'],
       reportType: json['reportType'],
       severity: json['severity'],
       description: json['description'],
-      evidence: json['evidence'],
+      textEvidence: json['textEvidence'],
+      imageEvidenceUrls: json['imageEvidenceUrls'] != null 
+          ? List<String>.from(json['imageEvidenceUrls']) 
+          : null,
       createdAt: DateTime.parse(json['createdAt']),
       status: json['status'] ?? 'pending',
       isAnonymous: json['isAnonymous'],
@@ -137,16 +143,16 @@ class FeedbackService {
     // In a real app, this would be saved to a database
   }
 
-  // Get feedback for a specific user
-  static List<FeedbackData> getFeedbackForUser(String userId) {
+  // Get feedback for a specific user by email
+  static List<FeedbackData> getFeedbackForUser(String userEmail) {
     return _feedbacks
-        .where((feedback) => feedback.targetUserId == userId)
+        .where((feedback) => feedback.targetUserEmail == userEmail)
         .toList();
   }
 
-  // Get average rating for a user
-  static double getAverageRating(String userId) {
-    final userFeedbacks = getFeedbackForUser(userId);
+  // Get average rating for a user by email
+  static double getAverageRating(String userEmail) {
+    final userFeedbacks = getFeedbackForUser(userEmail);
     if (userFeedbacks.isEmpty) return 0.0;
 
     final totalRating = userFeedbacks.fold(
@@ -156,30 +162,30 @@ class FeedbackService {
     return totalRating / userFeedbacks.length;
   }
 
-  // Get feedback count for a user
-  static int getFeedbackCount(String userId) {
-    return getFeedbackForUser(userId).length;
+  // Get feedback count for a user by email
+  static int getFeedbackCount(String userEmail) {
+    return getFeedbackForUser(userEmail).length;
   }
 
-  // Get recent feedback for a user (for help history)
-  static List<FeedbackData> getRecentFeedback(String userId, {int limit = 5}) {
-    final userFeedbacks = getFeedbackForUser(userId);
+  // Get recent feedback for a user by email (for help history)
+  static List<FeedbackData> getRecentFeedback(String userEmail, {int limit = 5}) {
+    final userFeedbacks = getFeedbackForUser(userEmail);
     userFeedbacks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return userFeedbacks.take(limit).toList();
   }
 
-  // Check if user has any pending reports
-  static bool hasPendingReports(String userId) {
+  // Check if user has any pending reports by email
+  static bool hasPendingReports(String userEmail) {
     return _reports.any(
-      (report) => report.reportedUserId == userId && report.status == 'pending',
+      (report) => report.reportedUserEmail == userEmail && report.status == 'pending',
     );
   }
 
-  // Get trust score based on feedback and reports
-  static double getTrustScore(String userId) {
-    final avgRating = getAverageRating(userId);
-    final feedbackCount = getFeedbackCount(userId);
-    final hasPending = hasPendingReports(userId);
+  // Get trust score based on feedback and reports by email
+  static double getTrustScore(String userEmail) {
+    final avgRating = getAverageRating(userEmail);
+    final feedbackCount = getFeedbackCount(userEmail);
+    final hasPending = hasPendingReports(userEmail);
 
     // Base score from rating
     double score = avgRating * 20; // Convert 5-star to 100-point scale

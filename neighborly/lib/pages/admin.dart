@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:neighborly/pages/admin_community_management.dart';
+import 'package:neighborly/pages/admin_reports_feedback.dart';
 import 'users.dart';
 import 'announcements.dart';
 import 'team.dart';
@@ -23,9 +24,6 @@ class _AdminHomePageState extends State<AdminHomePage>
   late AnimationController _headerSlideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _headerSlideAnimation;
-
-  // Mock notification count - in real app this would come from Firebase
-  int _notificationCount = 0;
 
   @override
   void initState() {
@@ -53,13 +51,6 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
     _fadeController.forward();
     _headerSlideController.forward();
-
-    // Listen to unread notification count
-    getUnreadNotificationCount().listen((count) {
-      setState(() {
-        _notificationCount = count;
-      });
-    });
   }
 
   @override
@@ -418,6 +409,26 @@ class _AdminHomePageState extends State<AdminHomePage>
                       );
                     },
                   ),
+                  StreamBuilder<int>(
+                    stream: getPendingReportsCount(),
+                    builder: (context, snapshot) {
+                      final pendingCount = snapshot.data ?? 0;
+                      return _buildActionCard(
+                        'Reports & Feedback',
+                        Icons.report_problem_rounded,
+                        const Color(0xFFE11D48),
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AdminReportsFeedbackPage(),
+                            ),
+                          );
+                        },
+                        badgeCount: pendingCount,
+                      );
+                    },
+                  ),
                 ],
               );
             },
@@ -431,6 +442,14 @@ class _AdminHomePageState extends State<AdminHomePage>
     return FirebaseFirestore.instance
         .collection('notifications')
         .where('read', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.size);
+  }
+
+  Stream<int> getPendingReportsCount() {
+    return FirebaseFirestore.instance
+        .collection('reports')
+        .where('status', isEqualTo: 'pending')
         .snapshots()
         .map((snapshot) => snapshot.size);
   }

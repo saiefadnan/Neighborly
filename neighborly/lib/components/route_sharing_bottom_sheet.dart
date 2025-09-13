@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:neighborly/components/shared_routes_bottom_sheet.dart';
+import 'package:neighborly/services/map_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RouteSharingBottomSheet extends StatefulWidget {
   final Map<String, dynamic> helpData;
@@ -27,6 +29,7 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
   final TextEditingController _instructionController = TextEditingController();
   bool _isDrawingMode = false;
   bool _showInstructions = false;
+  bool _isSubmittingRoute = false;
 
   @override
   void initState() {
@@ -414,45 +417,140 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
-                onPressed: () {
-                  _submitRoute();
-                  Navigator.pop(context);
-                  Navigator.pop(context); // Close bottom sheet
+                onPressed: _isSubmittingRoute ? null : () async {
+                  await _submitRoute();
+                  if (mounted) {
+                    Navigator.pop(context);
+                    Navigator.pop(context); // Close bottom sheet
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF71BB7B),
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Share Route'),
+                child: _isSubmittingRoute
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text('Share Route'),
               ),
             ],
           ),
     );
   }
 
-  void _submitRoute() {
-    // Here you would normally send this to your backend
-    final routeData = {
-      'name':
-          _routeNameController.text.isEmpty
-              ? 'Suggested Route'
-              : _routeNameController.text,
-      'points':
-          _routePoints
-              .map((p) => {'lat': p.latitude, 'lng': p.longitude})
-              .toList(),
-      'waypoints': _waypoints,
-      'helpRequestId': widget.helpData['id'] ?? 'temp_id',
-      'helper': 'Current User', // Replace with actual user
-      'createdAt': DateTime.now().toIso8601String(),
-    };
+  Future<void> _submitRoute() async {
+    setState(() {
+      _isSubmittingRoute = true;
+    });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Route "${routeData['name']}" shared successfully!'),
-        backgroundColor: const Color(0xFF71BB7B),
-      ),
-    );
+    try {
+      // Prepare waypoints data
+      final waypointsData = _waypoints.map((waypoint) => {
+        'position': waypoint['position'] as LatLng,
+        'instruction': waypoint['instruction'] as String,
+        'landmark': waypoint['landmark'] as String,
+      }).toList();
+
+      // Call the backend API to create the route
+      final result = await MapService.createRoute(
+        helpRequestId: widget.helpData['id'] ?? '',
+        routeName: _routeNameController.text.isEmpty
+            ? 'Suggested Route'
+            : _routeNameController.text,
+        routePoints: _routePoints,
+        waypoints: waypointsData,
+      );
+
+      if (mounted) {
+        if (result['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      result['message'] ?? 'Route shared successfully!',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF4CAF50),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: const EdgeInsets.all(16),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error, color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      result['message'] ?? 'Failed to share route',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: const EdgeInsets.all(16),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Error sharing route: ${e.toString()}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmittingRoute = false;
+        });
+      }
+    }
   }
 
   void _openInOSM() {
@@ -581,10 +679,20 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
                           ),
                         ),
                         builder:
-                            (context) => SharedRoutesBottomSheet(
-                              helpData: widget.helpData,
-                              userLocation: widget.userLocation,
-                            ),
+                            (context) {
+                              print('🗺️ About to show SharedRoutesBottomSheet');
+                              print('🗺️ HelpData keys: ${widget.helpData.keys.toList()}');
+                              print('🗺️ HelpData id: ${widget.helpData['id']}');
+                              print('🗺️ HelpData requestId: ${widget.helpData['requestId']}');
+                              print('🗺️ HelpData createdBy: ${widget.helpData['createdBy']}');
+                              print('🗺️ HelpData userId: ${widget.helpData['userId']}');
+                              
+                              return SharedRoutesBottomSheet(
+                                helpRequestId: widget.helpData['id'] ?? '',
+                                isOwner: widget.helpData['userId'] == FirebaseAuth.instance.currentUser?.uid,
+                                ownerUserId: widget.helpData['userId'] ?? '',
+                              );
+                            },
                       );
                     },
                     icon: const Icon(Icons.list),
@@ -825,9 +933,18 @@ class _RouteSharingBottomSheetState extends State<RouteSharingBottomSheet> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _shareRoute,
-                  icon: const Icon(Icons.share),
-                  label: const Text('Share This Route'),
+                  onPressed: _isSubmittingRoute ? null : _shareRoute,
+                  icon: _isSubmittingRoute
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.share),
+                  label: Text(_isSubmittingRoute ? 'Sharing...' : 'Share This Route'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF71BB7B),
                     foregroundColor: Colors.white,

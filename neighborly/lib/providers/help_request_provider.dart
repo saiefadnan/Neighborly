@@ -19,6 +19,7 @@ class HelpRequestData {
   final String requesterName;
   final String requesterImage;
   final String contactNumber;
+  final String status; // Added status field
   final LatLng? coordinates;
   bool isResponded;
   int responderCount;
@@ -36,6 +37,7 @@ class HelpRequestData {
     required this.requesterName,
     required this.requesterImage,
     required this.contactNumber,
+    required this.status,
     this.coordinates,
     this.isResponded = false,
     this.responderCount = 0,
@@ -70,6 +72,7 @@ class HelpRequestData {
       requesterName: helpData['username'] ?? 'Anonymous',
       requesterImage: 'assets/images/dummy.png',
       contactNumber: helpData['phone'] ?? '',
+      status: helpData['status'] ?? 'open', // Add status field with default
       coordinates: helpData['coordinates'] as LatLng?,
       isResponded: false,
       responderCount: 0,
@@ -254,6 +257,7 @@ class HelpRequestProvider with ChangeNotifier {
       requesterName: data['username'] ?? 'Anonymous',
       requesterImage: 'assets/images/dummy.png',
       contactNumber: data['phone'] ?? '',
+      status: data['status'] ?? 'open', // Map status from backend
       coordinates:
           data['location'] != null
               ? LatLng(
@@ -304,11 +308,15 @@ class HelpRequestProvider with ChangeNotifier {
           !nearbyOnly ||
           double.tryParse(help.distance.split(' ')[0]) != null &&
               double.parse(help.distance.split(' ')[0]) <= 2.0;
+      
+      // Filter out completed requests when viewing "My Requests"
+      bool isNotCompleted = !isMyHelp || help.status != 'completed';
 
       return matchesSearch &&
           matchesHelpType &&
           matchesUrgency &&
-          matchesDistance;
+          matchesDistance &&
+          isNotCompleted;
     }).toList();
   }
 
@@ -343,6 +351,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Sarah Johnson',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+1 (555) 123-4567',
+        status: 'open',
         coordinates: const LatLng(23.7510, 90.3890),
         responderCount: 2,
       ),
@@ -360,6 +369,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Mike Chen',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+1 (555) 987-6543',
+        status: 'open',
         coordinates: const LatLng(23.7540, 90.3920),
         responderCount: 0,
       ),
@@ -377,6 +387,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Jessica Martinez',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+1 (555) 456-7890',
+        status: 'open',
         coordinates: const LatLng(23.7480, 90.3850),
         responderCount: 1,
       ),
@@ -394,6 +405,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'David Wilson',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+1 (555) 321-0987',
+        status: 'open',
         coordinates: const LatLng(23.7560, 90.3940),
         responderCount: 3,
       ),
@@ -411,6 +423,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Emily Rodriguez',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+1 (555) 654-3210',
+        status: 'open',
         coordinates: const LatLng(23.7450, 90.3870),
         responderCount: 1,
       ),
@@ -428,6 +441,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Robert Taylor',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+1 (555) 789-0123',
+        status: 'open',
         coordinates: const LatLng(23.7520, 90.3900),
         responderCount: 0,
       ),
@@ -445,6 +459,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Lisa Thompson',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+1 (555) 012-3456',
+        status: 'open',
         coordinates: const LatLng(23.7580, 90.3960),
         responderCount: 2,
       ),
@@ -462,6 +477,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Amanda Davis',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+1 (555) 567-8901',
+        status: 'open',
         coordinates: const LatLng(23.7470, 90.3930),
         responderCount: 1,
       ),
@@ -479,6 +495,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Michael Brown',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+1 (555) 111-2222',
+        status: 'open',
         coordinates: const LatLng(23.7490, 90.3910),
         responderCount: 4,
       ),
@@ -496,6 +513,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Traffic Reporter',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+1 (555) 333-4444',
+        status: 'open',
         coordinates: const LatLng(23.7600, 90.3980),
         responderCount: 12,
       ),
@@ -513,6 +531,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Ali Rahman',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+880171234567',
+        status: 'open',
         coordinates: const LatLng(23.7500, 90.3880),
         responderCount: 3,
       ),
@@ -530,6 +549,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Ali Rahman',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+880171234567',
+        status: 'open',
         coordinates: const LatLng(23.7500, 90.3880),
         responderCount: 1,
       ),
@@ -547,6 +567,7 @@ class HelpRequestProvider with ChangeNotifier {
         requesterName: 'Ali Rahman',
         requesterImage: 'assets/images/dummy.png',
         contactNumber: '+880171234567',
+        status: 'open',
         coordinates: const LatLng(23.7500, 90.3880),
         responderCount: 0,
       ),

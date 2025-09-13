@@ -10,6 +10,7 @@ import communityRouter from './routes/communityRoutes';
 import blockRoutes from './routes/blockRoutes';
 import notificationRouter from './routes/notificationRoute';
 import { fcmRouter } from './routes/fcmRoute';
+import { reportFeedbackRoute } from './routes/reportFeedbackRoute';
 import { initializeApp, cert} from 'firebase-admin/app';
 import { readFileSync } from 'fs'
 import { join } from 'path';
@@ -40,6 +41,7 @@ app.route('/api', blockRoutes);
 app.route('/api', notificationRouter);
 app.route('/api/fcm', fcmRouter);
 app.route('/api/gamification', gamificationRouter);
+app.route('/api/report-feedback', reportFeedbackRoute);
 Bun.serve({
   fetch: app.fetch,
   port: 4000,

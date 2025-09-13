@@ -47,6 +47,7 @@ dependencies:
   firebase_core: ^3.15.2
   firebase_auth: ^5.1.0
   cloud_firestore: ^5.1.0
+  firebase_storage: ^12.1.0
   firebase_messaging: ^15.2.10
   flutter_local_notifications: ^17.0.0
   permission_handler: ^11.0.0
@@ -59,6 +60,7 @@ dependencies:
   uuid: ^4.5.1
   chewie: ^1.12.1
   video_player: ^2.10.0
+  path: ^1.9.0
   cached_network_image: ^3.4.1
   video_compress: ^3.1.4
   flutter_image_compress: ^2.4.0

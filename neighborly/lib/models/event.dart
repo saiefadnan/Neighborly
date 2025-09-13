@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EventModel {
-  final String id;
+  String id;
+  final String creatorId;
   final String title;
   final String description;
   final String imageUrl;
@@ -10,12 +11,14 @@ class EventModel {
   final String location;
   final double lng;
   final double lat;
-  final double raduis;
+  final double radius;
   final List<String> tags;
   final DateTime date;
+  bool joined = false;
 
   EventModel({
     required this.id,
+    required this.creatorId,
     required this.title,
     required this.description,
     required this.imageUrl,
@@ -24,7 +27,7 @@ class EventModel {
     required this.location,
     required this.lng,
     required this.lat,
-    required this.raduis,
+    required this.radius,
     required this.tags,
     required this.date,
   });
@@ -32,6 +35,7 @@ class EventModel {
   factory EventModel.fromMap(Map<String, dynamic> event) {
     return EventModel(
       id: event['id'] ?? '',
+      creatorId: event['creatorId'] ?? '',
       title: event['title'] ?? '',
       description: event['desc'] ?? '',
       imageUrl: event['img'] ?? '',
@@ -40,7 +44,7 @@ class EventModel {
       location: event['location'] ?? '',
       lng: (event['lng'] ?? 0).toDouble(),
       lat: (event['lat'] ?? 0).toDouble(),
-      raduis: (event['raduis'] ?? 0).toDouble(),
+      radius: (event['radius'] ?? 0).toDouble(),
       tags: List<String>.from(event['tags'] ?? []),
       date:
           event['date'] != null
@@ -53,6 +57,7 @@ class EventModel {
     return {
       'id': id,
       'title': title,
+      'creatorId': creatorId,
       'desc': description,
       'img': imageUrl,
       'approved': approved,
@@ -60,7 +65,7 @@ class EventModel {
       'location': location,
       'lng': lng,
       'lat': lat,
-      'raduis': raduis,
+      'radius': radius,
       'tags': tags,
       'date': !apiCall ? Timestamp.fromDate(date) : date.toIso8601String(),
     };

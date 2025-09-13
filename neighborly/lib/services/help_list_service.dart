@@ -87,6 +87,7 @@ class HelpListService {
       requesterName: api['username'] ?? 'Anonymous',
       requesterImage: 'assets/images/dummy.png',
       contactNumber: api['phone'] ?? '',
+      status: api['status'] ?? 'open',
       coordinates: (lat != null && lng != null) ? LatLng(lat, lng) : null,
       isResponded: respondedByCurrent,
       responderCount: responderCount,

@@ -154,7 +154,7 @@ class _PostCardState extends ConsumerState<PostCard> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializePostData();
     });
-
+    print(widget.post);
     if (widget.post['type'] == 'video' && widget.post['mediaUrl'] != null) {
       _videoController = VideoPlayerController.networkUrl(
         Uri.parse(widget.post['mediaUrl']),
@@ -198,6 +198,7 @@ class _PostCardState extends ConsumerState<PostCard> {
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     Map<String, dynamic> votedByMap = {};
+    print('VotedByMap before vote: $votedByMap');
     bool hasVoted = false;
     String? userVotedOptionId;
     if (widget.post['type'] == 'poll') {
@@ -346,6 +347,17 @@ class _PostCardState extends ConsumerState<PostCard> {
                                     (widget.post['timestamp'] as Timestamp)
                                         .toDate()
                                         .toIso8601String(),
+                                  )
+                                  : widget.post['timestamp'] is Map
+                                  ? _getFormattedTime(
+                                    DateTime.fromMillisecondsSinceEpoch(
+                                      (widget.post['timestamp']['_seconds']
+                                                  as int) *
+                                              1000 +
+                                          ((widget.post['timestamp']['_nanoseconds']
+                                                  as int) ~/
+                                              1000000),
+                                    ).toIso8601String(),
                                   )
                                   : 'Just now',
                               style: TextStyle(
@@ -615,17 +627,29 @@ class _PostCardState extends ConsumerState<PostCard> {
               const SizedBox(height: 20),
               FlutterPolls(
                 pollId: widget.post['postID'].toString(),
-                onVoted: (PollOption option, int selectedIndex) async {
+                onVoted: (PollOption option, int totalVotes) async {
+                  print('=== VOTE DEBUG ===');
+                  print('Selected Index: $totalVotes');
+                  print('Option ID: ${option.id}');
+                  print('Option Title: ${option.title}');
+                  print('Current hasVoted: $hasVoted');
+                  print('Current userVotedOptionId: $userVotedOptionId');
+                  print('==================');
                   if (!hasVoted) {
                     try {
                       final uid = FirebaseAuth.instance.currentUser!.uid;
                       final postRef = FirebaseFirestore.instance
                           .collection('posts')
                           .doc(widget.post['postID']);
-                      votedByMap[uid] = option.id; // track who voted what
+                      votedByMap[uid] = option.id;
+                      widget.post['poll']['votedBy'] = votedByMap;
+                      print('VotedByMap after vote: $votedByMap');
 
                       final options = List<Map<String, dynamic>>.from(
                         widget.post['poll']['options'],
+                      );
+                      final selectedIndex = options.indexWhere(
+                        (opt) => opt['id'].toString() == option.id,
                       );
                       options[selectedIndex]['votes'] =
                           ((options[selectedIndex]['votes'] as int?) ?? 0) + 1;

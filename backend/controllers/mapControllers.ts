@@ -1139,16 +1139,17 @@ export const getHelpRequestResponses = async (c: Context) => {
       return c.json({ success: false, message: 'Help request not found' }, 404);
     }
 
-    // Get all responses for this help request
-    const responsesQuery = await db.collection('helpRequestResponses')
-      .where('requestId', '==', requestId)
+    // Get all responses for this help request from the subcollection
+    const responsesSnapshot = await helpRequestDoc.ref.collection('responses')
       .orderBy('createdAt', 'desc')
       .get();
 
-    const responses = responsesQuery.docs.map(doc => ({
+    const responses = responsesSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
+
+    console.log(`Found ${responses.length} responses for request ${requestId}`);
 
     return c.json({ 
       success: true, 
@@ -1161,6 +1162,374 @@ export const getHelpRequestResponses = async (c: Context) => {
     return c.json({ 
       success: false, 
       message: 'Failed to get help request responses' 
+    }, 500);
+  }
+};
+
+// ============= ROUTE MANAGEMENT FUNCTIONS =============
+
+// Create a new route for a help request
+export const createRoute = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+    const userEmail = decodedToken.email;
+
+    const db = getFirestore();
+    const body = await c.req.json();
+
+    // Validate required fields
+    const { helpRequestId, routeName, routePoints, waypoints } = body;
+    
+    if (!helpRequestId || !routePoints || !Array.isArray(routePoints) || routePoints.length < 2) {
+      return c.json({ 
+        success: false, 
+        message: 'Invalid route data. Need at least 2 route points.' 
+      }, 400);
+    }
+
+    // Check if help request exists and is still open
+    const helpRequestRef = db.collection('helpRequests').doc(helpRequestId);
+    const helpRequestDoc = await helpRequestRef.get();
+    
+    if (!helpRequestDoc.exists) {
+      return c.json({ 
+        success: false, 
+        message: 'Help request not found' 
+      }, 404);
+    }
+
+    const helpRequestData = helpRequestDoc.data();
+    if (helpRequestData?.status !== 'open') {
+      return c.json({ 
+        success: false, 
+        message: 'Help request is no longer accepting routes' 
+      }, 400);
+    }
+
+    // Get user profile for helper info
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+    const helperUsername = userData?.username || userData?.displayName || userEmail?.split('@')[0] || 'Anonymous Helper';
+
+    // Create route document
+    const routeData = {
+      helpRequestId,
+      helperUserId: userId,
+      helperUsername,
+      routeName: routeName || 'Suggested Route',
+      status: 'pending',
+      isActive: true,
+      
+      // Route geometry
+      routePoints: routePoints.map((point: any) => ({
+        latitude: point.latitude || point.lat,
+        longitude: point.longitude || point.lng
+      })),
+      
+      // Waypoints with instructions
+      waypoints: (waypoints || []).map((waypoint: any, index: number) => ({
+        position: {
+          latitude: waypoint.position?.latitude || waypoint.position?.lat,
+          longitude: waypoint.position?.longitude || waypoint.position?.lng
+        },
+        instruction: waypoint.instruction || '',
+        landmark: waypoint.landmark || '',
+        order: index
+      })),
+      
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Add route to database
+    const routeRef = await db.collection('routes').add(routeData);
+
+    // Update help request with route count
+    const routesSnapshot = await db.collection('routes')
+      .where('helpRequestId', '==', helpRequestId)
+      .where('status', '==', 'pending')
+      .get();
+
+    await helpRequestRef.update({
+      routesCount: routesSnapshot.size,
+      hasRoutes: true,
+      updatedAt: new Date()
+    });
+
+    return c.json({
+      success: true,
+      message: 'Route created successfully',
+      routeId: routeRef.id,
+      route: {
+        id: routeRef.id,
+        ...routeData
+      }
+    }, 201);
+
+  } catch (error) {
+    console.error('Error creating route:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to create route' 
+    }, 500);
+  }
+};
+
+// Get routes for a specific help request
+export const getRoutesForHelpRequest = async (c: Context) => {
+  try {
+    console.log('🗺️ getRoutesForHelpRequest called');
+    console.log('🗺️ Request URL:', c.req.url);
+    console.log('🗺️ Request method:', c.req.method);
+    
+    const authHeader = c.req.header('Authorization');
+    console.log('🗺️ Auth header present:', !!authHeader);
+    
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      console.log('🗺️ No auth token provided');
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    console.log('🗺️ Verifying token...');
+    await getAuth().verifyIdToken(idToken);
+    console.log('🗺️ Token verified successfully');
+    
+    const helpRequestId = c.req.param('helpRequestId');
+    console.log('🗺️ Help request ID:', helpRequestId);
+
+    const db = getFirestore();
+    
+    // Get all active routes for this help request
+    const routesQuery = await db.collection('routes')
+      .where('helpRequestId', '==', helpRequestId)
+      .where('isActive', '==', true)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const routes = routesQuery.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt,
+      updatedAt: doc.data().updatedAt?.toDate?.() || doc.data().updatedAt
+    }));
+
+    return c.json({ 
+      success: true, 
+      routes: routes,
+      count: routes.length
+    });
+
+  } catch (error) {
+    console.error('🗺️ Error getting routes for help request:', error);
+    console.error('🗺️ Error details:', error instanceof Error ? error.stack : error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to get routes' 
+    }, 500);
+  }
+};
+
+// Accept a route (only by help request owner)
+export const acceptRoute = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+    const routeId = c.req.param('routeId');
+
+    const db = getFirestore();
+    
+    // Get the route
+    const routeRef = db.collection('routes').doc(routeId);
+    const routeDoc = await routeRef.get();
+    
+    if (!routeDoc.exists) {
+      return c.json({ 
+        success: false, 
+        message: 'Route not found' 
+      }, 404);
+    }
+
+    const routeData = routeDoc.data();
+    const helpRequestId = routeData?.helpRequestId;
+
+    // Get the help request and verify ownership
+    const helpRequestRef = db.collection('helpRequests').doc(helpRequestId);
+    const helpRequestDoc = await helpRequestRef.get();
+    
+    if (!helpRequestDoc.exists) {
+      return c.json({ 
+        success: false, 
+        message: 'Help request not found' 
+      }, 404);
+    }
+
+    const helpRequestData = helpRequestDoc.data();
+    if (helpRequestData?.userId !== userId) {
+      return c.json({ 
+        success: false, 
+        message: 'Only the help request owner can accept routes' 
+      }, 403);
+    }
+
+    if (helpRequestData?.status !== 'open') {
+      return c.json({ 
+        success: false, 
+        message: 'Help request is no longer accepting routes' 
+      }, 400);
+    }
+
+    // Start a batch operation
+    const batch = db.batch();
+
+    // Accept this route
+    batch.update(routeRef, {
+      status: 'accepted',
+      acceptedAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    // Reject all other routes for this help request
+    const otherRoutesQuery = await db.collection('routes')
+      .where('helpRequestId', '==', helpRequestId)
+      .where('status', '==', 'pending')
+      .get();
+
+    otherRoutesQuery.docs.forEach(doc => {
+      if (doc.id !== routeId) {
+        batch.update(doc.ref, {
+          status: 'rejected',
+          rejectedAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+    });
+
+    // Update help request status to completed and set accepted responder
+    batch.update(helpRequestRef, {
+      status: 'completed',
+      acceptedResponderId: routeData?.helperUserId,
+      acceptedRouteId: routeId,
+      updatedAt: new Date()
+    });
+
+    // Commit the batch
+    await batch.commit();
+
+    // Send notification to the route helper (TODO: implement this function in notificationService)
+    try {
+      // await notificationService.sendRouteAcceptedNotification({
+      //   userId: routeData?.helperUserId,
+      //   routeName: routeData?.routeName || 'Your route',
+      //   requesterName: helpRequestData?.username || 'Someone'
+      // });
+      console.log('Route accepted notification would be sent to:', routeData?.helperUserId);
+    } catch (notifError) {
+      console.error('Error sending route accepted notification:', notifError);
+      // Don't fail the entire operation for notification errors
+    }
+
+    return c.json({
+      success: true,
+      message: 'Route accepted successfully',
+      routeId: routeId
+    });
+
+  } catch (error) {
+    console.error('Error accepting route:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to accept route' 
+    }, 500);
+  }
+};
+
+// Delete a route (only by route creator)
+export const deleteRoute = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+    const routeId = c.req.param('routeId');
+
+    const db = getFirestore();
+    
+    // Get the route and verify ownership
+    const routeRef = db.collection('routes').doc(routeId);
+    const routeDoc = await routeRef.get();
+    
+    if (!routeDoc.exists) {
+      return c.json({ 
+        success: false, 
+        message: 'Route not found' 
+      }, 404);
+    }
+
+    const routeData = routeDoc.data();
+    if (routeData?.helperUserId !== userId) {
+      return c.json({ 
+        success: false, 
+        message: 'Only the route creator can delete this route' 
+      }, 403);
+    }
+
+    if (routeData?.status === 'accepted') {
+      return c.json({ 
+        success: false, 
+        message: 'Cannot delete an accepted route' 
+      }, 400);
+    }
+
+    const helpRequestId = routeData?.helpRequestId;
+
+    // Delete the route
+    await routeRef.delete();
+
+    // Update help request route count
+    const remainingRoutesQuery = await db.collection('routes')
+      .where('helpRequestId', '==', helpRequestId)
+      .where('status', '==', 'pending')
+      .get();
+
+    const helpRequestRef = db.collection('helpRequests').doc(helpRequestId);
+    await helpRequestRef.update({
+      routesCount: remainingRoutesQuery.size,
+      hasRoutes: remainingRoutesQuery.size > 0,
+      updatedAt: new Date()
+    });
+
+    return c.json({
+      success: true,
+      message: 'Route deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting route:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to delete route' 
     }, 500);
   }
 };

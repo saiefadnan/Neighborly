@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/help_request_provider.dart';
 import '../components/responses_drawer.dart';
+import '../components/shared_routes_bottom_sheet.dart';
 
 class HelpListPage extends StatefulWidget {
   const HelpListPage({super.key});
@@ -623,6 +624,15 @@ class _HelpListPageState extends State<HelpListPage>
                         const Color(0xFF71BB7B),
                         () => _respondToHelp(help),
                       ),
+                    // For own requests, show routes button for route-type requests
+                    if (help.userId == currentUserId && 
+                        (help.helpType == 'Route' || help.title == 'Route'))
+                      _buildActionButton(
+                        'Show Routes',
+                        Icons.route,
+                        const Color(0xFF71BB7B),
+                        () => _showRoutesForMyRequest(help),
+                      ),
                     // For own requests, show delete button when no responses
                     if (help.userId == currentUserId &&
                         help.responderCount == 0)
@@ -760,6 +770,20 @@ class _HelpListPageState extends State<HelpListPage>
         itemBuilder: (context, index) {
           return _buildHelpCard(filteredHelps[index], isMyHelp);
         },
+      ),
+    );
+  }
+
+  // Show routes for my request (for request owners)
+  void _showRoutesForMyRequest(HelpRequestData help) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SharedRoutesBottomSheet(
+        helpRequestId: help.id,
+        isOwner: true, // Current user is the request owner
+        ownerUserId: help.userId,
       ),
     );
   }
@@ -1585,7 +1609,13 @@ class _HelpListPageState extends State<HelpListPage>
                   const SizedBox(width: 8),
                   Consumer<HelpRequestProvider>(
                     builder: (context, helpProvider, child) {
-                      final myHelps = helpProvider.myHelps;
+                      final myHelps = helpProvider.getFilteredHelps(
+                        helpType: _selectedHelpType,
+                        urgency: _selectedUrgency,
+                        searchQuery: _searchQuery,
+                        nearbyOnly: _nearbyOnly,
+                        isMyHelp: true,
+                      );
                       return Text('My Requests (${myHelps.length})');
                     },
                   ),

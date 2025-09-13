@@ -15,9 +15,9 @@ final commentsProvider = StateNotifierProvider.family<
 
 class CommentsNotifier
     extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
-  final ref;
+  final Ref ref;
   final String postID;
-
+  bool isLoading = false;
   CommentsNotifier(this.ref, this.postID) : super(AsyncLoading()) {
     loadComments();
   }
@@ -133,10 +133,14 @@ class CommentsNotifier
     }
   }
 
-  Future<void> storeComments(Map<String, dynamic> commentData) async {
+  Future<void> storeComments(
+    Map<String, dynamic> commentData, {
+    String? replyTo,
+  }) async {
     final baseUrl = dotenv.env['BASE_URL'];
     final url = Uri.parse('$baseUrl/api/forum/store/comments');
-    print(commentData);
+    
+    isLoading = true;
     try {
       final response = await http
           .post(
@@ -157,6 +161,9 @@ class CommentsNotifier
     } catch (e) {
       print('Error storing comment: $e');
       await backUpStoreComment(commentData);
+    } finally {
+      addComment(commentData, replyTo: replyTo);
+      isLoading = false;
     }
   }
 
