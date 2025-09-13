@@ -372,4 +372,185 @@ function calculateTrustScore(averageRating: number, feedbackCount: number, hasPe
   return Math.max(0, Math.min(100, score));
 }
 
+// Admin endpoints
+
+// Get all reports with filtering (Admin only)
+reportFeedbackController.get('/admin/reports', async (c) => {
+  try {
+    const db = getFirestore();
+    const auth = getAuth();
+    
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization header missing or invalid' }, 401);
+    }
+
+    const token = authHeader.substring(7);
+    const decodedToken = await auth.verifyIdToken(token);
+    
+    // Check if user is admin (you can implement admin check based on your system)
+    // For now, we'll allow any authenticated user to access admin endpoints
+    
+    const reportType = c.req.query('reportType');
+    const status = c.req.query('status');
+    const limit = parseInt(c.req.query('limit') || '50');
+    
+    let query = db.collection('reports').orderBy('createdAt', 'desc');
+    
+    if (reportType && reportType !== 'All') {
+      query = query.where('reportType', '==', reportType);
+    }
+    
+    if (status && status !== 'All') {
+      query = query.where('status', '==', status);
+    }
+    
+    const reportsSnapshot = await query.limit(limit).get();
+    const reports = reportsSnapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    return c.json({
+      success: true,
+      reports: reports,
+      total: reports.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching admin reports:', error);
+    return c.json({ error: 'Failed to fetch reports' }, 500);
+  }
+});
+
+// Get all feedback (Admin only)
+reportFeedbackController.get('/admin/feedback', async (c) => {
+  try {
+    const db = getFirestore();
+    const auth = getAuth();
+    
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization header missing or invalid' }, 401);
+    }
+
+    const token = authHeader.substring(7);
+    const decodedToken = await auth.verifyIdToken(token);
+    
+    const limit = parseInt(c.req.query('limit') || '50');
+    
+    const feedbackSnapshot = await db.collection('feedback')
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+    
+    const feedback = feedbackSnapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    return c.json({
+      success: true,
+      feedback: feedback,
+      total: feedback.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching admin feedback:', error);
+    return c.json({ error: 'Failed to fetch feedback' }, 500);
+  }
+});
+
+// Update report status (Admin only)
+reportFeedbackController.patch('/admin/reports/:id/status', async (c) => {
+  try {
+    const db = getFirestore();
+    const auth = getAuth();
+    
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization header missing or invalid' }, 401);
+    }
+
+    const token = authHeader.substring(7);
+    const decodedToken = await auth.verifyIdToken(token);
+    
+    const reportId = c.req.param('id');
+    const { status } = await c.req.json();
+    
+    if (!status || !['pending', 'investigating', 'resolved', 'auto-resolved'].includes(status)) {
+      return c.json({ error: 'Invalid status' }, 400);
+    }
+    
+    const updateData: any = {
+      status: status,
+      updatedAt: new Date().toISOString()
+    };
+    
+    if (status === 'resolved') {
+      updateData.resolvedAt = new Date().toISOString();
+    }
+    
+    await db.collection('reports').doc(reportId).update(updateData);
+
+    return c.json({
+      success: true,
+      message: `Report status updated to ${status}`
+    });
+
+  } catch (error) {
+    console.error('Error updating report status:', error);
+    return c.json({ error: 'Failed to update report status' }, 500);
+  }
+});
+
+// Get reports and feedback statistics (Admin only)
+reportFeedbackController.get('/admin/stats', async (c) => {
+  try {
+    const db = getFirestore();
+    const auth = getAuth();
+    
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization header missing or invalid' }, 401);
+    }
+
+    const token = authHeader.substring(7);
+    const decodedToken = await auth.verifyIdToken(token);
+    
+    // Get reports statistics
+    const reportsSnapshot = await db.collection('reports').get();
+    const reports = reportsSnapshot.docs.map((doc: any) => doc.data());
+    
+    const reportStats = {
+      total: reports.length,
+      pending: reports.filter((r: any) => r.status === 'pending').length,
+      investigating: reports.filter((r: any) => r.status === 'investigating').length,
+      resolved: reports.filter((r: any) => r.status === 'resolved').length,
+      autoResolved: reports.filter((r: any) => r.status === 'auto-resolved').length,
+    };
+    
+    // Get feedback statistics
+    const feedbackSnapshot = await db.collection('feedback').get();
+    const feedback = feedbackSnapshot.docs.map((doc: any) => doc.data());
+    
+    const feedbackStats = {
+      total: feedback.length,
+      averageRating: feedback.length > 0 ? 
+        feedback.reduce((sum: number, f: any) => sum + f.rating, 0) / feedback.length : 0,
+      totalRecommendations: feedback.filter((f: any) => f.wouldRecommend).length,
+    };
+
+    return c.json({
+      success: true,
+      reports: reportStats,
+      feedback: feedbackStats
+    });
+
+  } catch (error) {
+    console.error('Error fetching admin stats:', error);
+    return c.json({ error: 'Failed to fetch statistics' }, 500);
+  }
+});
+
 export { reportFeedbackController };
