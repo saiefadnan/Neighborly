@@ -14,7 +14,7 @@ class HelpListService {
     return u?.getIdToken();
   }
 
-  /// Fetch all requests (limit 100) then map into HelpRequestData objects.
+  /// Fetch all requests with status 'open' only (limit 100) then map into HelpRequestData objects.
   /// Classification (my vs community) is done later in provider using userId.
   static Future<List<HelpRequestData>> fetchAllHelpRequests() async {
     final token = await _token();
@@ -23,7 +23,10 @@ class HelpListService {
     }
     final uri = Uri.parse(
       '$_baseUrl/requests',
-    ).replace(queryParameters: {'limit': '100'});
+    ).replace(queryParameters: {
+      'limit': '100',
+      'status': 'open'  // Only fetch open requests
+    });
     final resp = await http.get(
       uri,
       headers: {'Authorization': 'Bearer $token'},
