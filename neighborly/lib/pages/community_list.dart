@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'announcements.dart';
 import '../providers/community_provider.dart';
 
@@ -55,6 +56,9 @@ class _CommunityListPageState extends State<CommunityListPage>
 
   // Convert CommunityData to Community for UI compatibility
   Community _convertToLegacyCommunity(CommunityData data) {
+    // Check if current user has pending join request
+    bool hasPendingRequest = _hasPendingJoinRequest(data);
+    
     return Community(
       name: data.name,
       memberCount: data.memberCount,
@@ -67,7 +71,16 @@ class _CommunityListPageState extends State<CommunityListPage>
       recentActivity: data.recentActivity ?? 'Active recently',
       tags: data.tags,
       image: data.imageUrl ?? 'assets/images/Image1.jpg', // fallback image
+      isPending: hasPendingRequest,
     );
+  }
+
+  // Check if user has pending join request for a community
+  bool _hasPendingJoinRequest(CommunityData community) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser?.email == null) return false;
+    
+    return community.joinRequests.contains(currentUser!.email!);
   }
 
   // Build community list using provider data
@@ -112,6 +125,9 @@ class _CommunityListPageState extends State<CommunityListPage>
     final success = await provider.joinCommunity(communityData.id);
 
     if (success) {
+      // Refresh community data to show pending state
+      await provider.fetchAllCommunities();
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Join request sent to ${community.name} admins!'),
@@ -170,6 +186,9 @@ class _CommunityListPageState extends State<CommunityListPage>
                 Navigator.of(context).pop();
 
                 if (success) {
+                  // Refresh community data after leaving
+                  await provider.fetchAllCommunities();
+                  
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Left ${community.name} community'),
@@ -322,18 +341,26 @@ class _CommunityListPageState extends State<CommunityListPage>
                               color:
                                   isMyCommunity
                                       ? const Color(0xFF71BB7B).withOpacity(0.1)
-                                      : Colors.blue.withOpacity(0.1),
+                                      : community.isPending
+                                          ? Colors.orange.withOpacity(0.1)
+                                          : Colors.blue.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              isMyCommunity ? 'Member' : 'Available',
+                              isMyCommunity 
+                                  ? 'Member' 
+                                  : community.isPending 
+                                      ? 'Pending'
+                                      : 'Available',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color:
                                     isMyCommunity
                                         ? const Color(0xFF71BB7B)
-                                        : Colors.blue,
+                                        : community.isPending
+                                            ? Colors.orange
+                                            : Colors.blue,
                               ),
                             ),
                           ),
@@ -478,28 +505,63 @@ class _CommunityListPageState extends State<CommunityListPage>
                 const SizedBox(width: 12),
                 // Join/Leave Button
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      if (isMyCommunity) {
-                        _leaveCommunity(community);
-                      } else {
-                        _joinCommunity(community);
-                      }
-                    },
-                    icon: Icon(
-                      isMyCommunity ? Icons.exit_to_app : Icons.add,
-                      size: 18,
-                    ),
-                    label: Text(isMyCommunity ? 'Leave' : 'Join'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          isMyCommunity ? Colors.red : const Color(0xFF71BB7B),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
+                  child: community.isPending
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.1),
+                            border: Border.all(
+                              color: Colors.orange,
+                              width: 1,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.pending,
+                                color: Colors.orange,
+                                size: 18,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Pending',
+                                style: TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: () {
+                            if (isMyCommunity) {
+                              _leaveCommunity(community);
+                            } else {
+                              _joinCommunity(community);
+                            }
+                          },
+                          icon: Icon(
+                            isMyCommunity ? Icons.exit_to_app : Icons.add,
+                            size: 18,
+                          ),
+                          label: Text(isMyCommunity ? 'Leave' : 'Join'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isMyCommunity
+                                ? Colors.red
+                                : const Color(0xFF71BB7B),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
                 ),
               ],
             ),
@@ -732,6 +794,7 @@ class Community {
   final String recentActivity;
   final List<String> tags;
   final String image;
+  final bool isPending;
 
   Community({
     required this.name,
@@ -743,5 +806,6 @@ class Community {
     required this.recentActivity,
     required this.tags,
     required this.image,
+    this.isPending = false,
   });
 }
