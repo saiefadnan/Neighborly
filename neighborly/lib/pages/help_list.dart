@@ -22,6 +22,7 @@ class _HelpListPageState extends State<HelpListPage>
   String _selectedHelpType = 'All';
   String _selectedUrgency = 'All';
   bool _nearbyOnly = false;
+  String _sortBy = 'newest'; // Added sorting option
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isLoading = true;
@@ -176,7 +177,7 @@ class _HelpListPageState extends State<HelpListPage>
   }
 
   List<HelpRequestData> _getFilteredHelps(List<HelpRequestData> helps) {
-    return helps.where((help) {
+    List<HelpRequestData> filteredHelps = helps.where((help) {
       bool matchesSearch =
           _searchQuery.isEmpty ||
           help.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -195,6 +196,66 @@ class _HelpListPageState extends State<HelpListPage>
           matchesUrgency &&
           matchesDistance;
     }).toList();
+
+    // Sort by time posted based on selection
+    if (_sortBy == 'newest') {
+      filteredHelps.sort((a, b) {
+        return _compareTimePosted(a.timePosted, b.timePosted);
+      });
+    } else if (_sortBy == 'oldest') {
+      filteredHelps.sort((a, b) {
+        return _compareTimePosted(b.timePosted, a.timePosted);
+      });
+    } else if (_sortBy == 'urgency') {
+      // Sort by urgency first, then by time
+      filteredHelps.sort((a, b) {
+        int urgencyComparison = _compareUrgency(a.urgency, b.urgency);
+        if (urgencyComparison != 0) return urgencyComparison;
+        return _compareTimePosted(a.timePosted, b.timePosted);
+      });
+    }
+
+    return filteredHelps;
+  }
+
+  // Helper method to compare time posted strings
+  int _compareTimePosted(String timeA, String timeB) {
+    // Convert time strings to comparable values
+    int valueA = _getTimeValue(timeA);
+    int valueB = _getTimeValue(timeB);
+    
+    return valueA.compareTo(valueB);
+  }
+
+  // Helper method to compare urgency levels
+  int _compareUrgency(String urgencyA, String urgencyB) {
+    const urgencyOrder = {'Emergency': 0, 'Urgent': 1, 'General': 2};
+    int valueA = urgencyOrder[urgencyA] ?? 3;
+    int valueB = urgencyOrder[urgencyB] ?? 3;
+    return valueA.compareTo(valueB);
+  }
+
+  // Convert time posted string to numerical value for sorting
+  int _getTimeValue(String timePosted) {
+    if (timePosted.toLowerCase().contains('just now')) {
+      return 0;
+    } else if (timePosted.toLowerCase().contains('min')) {
+      final match = RegExp(r'(\d+)').firstMatch(timePosted);
+      return match != null ? int.parse(match.group(1)!) : 0;
+    } else if (timePosted.toLowerCase().contains('hour')) {
+      final match = RegExp(r'(\d+)').firstMatch(timePosted);
+      return match != null ? (int.parse(match.group(1)!) * 60) : 0;
+    } else if (timePosted.toLowerCase().contains('day')) {
+      final match = RegExp(r'(\d+)').firstMatch(timePosted);
+      return match != null ? (int.parse(match.group(1)!) * 60 * 24) : 0;
+    } else if (timePosted.toLowerCase().contains('week')) {
+      final match = RegExp(r'(\d+)').firstMatch(timePosted);
+      return match != null ? (int.parse(match.group(1)!) * 60 * 24 * 7) : 0;
+    }
+    
+    // For any other format, try to parse as minutes
+    final match = RegExp(r'(\d+)').firstMatch(timePosted);
+    return match != null ? int.parse(match.group(1)!) : 999999;
   }
 
   Color _getUrgencyColor(String urgency) {
@@ -321,12 +382,103 @@ class _HelpListPageState extends State<HelpListPage>
                   selectedColor: const Color(0xFF71BB7B),
                   checkmarkColor: Colors.white,
                 ),
+                const SizedBox(width: 12),
+                // Sort by filter
+                PopupMenuButton<String>(
+                  onSelected: (String value) {
+                    setState(() {
+                      _sortBy = value;
+                    });
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'newest',
+                      child: Row(
+                        children: [
+                          Icon(Icons.access_time, size: 16),
+                          SizedBox(width: 8),
+                          Text('Newest First'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'oldest',
+                      child: Row(
+                        children: [
+                          Icon(Icons.history, size: 16),
+                          SizedBox(width: 8),
+                          Text('Oldest First'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'urgency',
+                      child: Row(
+                        children: [
+                          Icon(Icons.priority_high, size: 16),
+                          SizedBox(width: 8),
+                          Text('By Urgency'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF71BB7B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF71BB7B).withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.sort,
+                          size: 16,
+                          color: Color(0xFF71BB7B),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _getSortLabel(_sortBy),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF71BB7B),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.arrow_drop_down,
+                          size: 16,
+                          color: Color(0xFF71BB7B),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  // Get display label for sort option
+  String _getSortLabel(String sortBy) {
+    switch (sortBy) {
+      case 'newest':
+        return 'Newest';
+      case 'oldest':
+        return 'Oldest';
+      case 'urgency':
+        return 'Urgency';
+      default:
+        return 'Sort';
+    }
   }
 
   Widget _buildFilterChip(
@@ -1772,6 +1924,43 @@ class _HelpListPageState extends State<HelpListPage>
 
                         return Column(
                           children: [
+                            if (_sortBy != 'newest') ...[
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF71BB7B).withOpacity(0.1),
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: const Color(0xFF71BB7B).withOpacity(0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.sort,
+                                      color: Color(0xFF71BB7B),
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Sorted by: ${_getSortLabel(_sortBy)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF71BB7B),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
                             // Show status indicator if using fallback data
                             if (_hasError) ...[
                               Container(
