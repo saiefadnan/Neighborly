@@ -140,7 +140,7 @@ class _EventDetailsState extends ConsumerState<EventDetailsPage> {
             .doc(uid)
             .delete();
       } else {
-        print(uid + ' joined the event');
+        print('$uid joined the event');
         await FirebaseFirestore.instance
             .collection('events')
             .doc(widget.event.id)

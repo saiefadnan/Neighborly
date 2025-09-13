@@ -217,6 +217,7 @@ class _BottomCommentSheetState extends ConsumerState<BottomCommentSheet> {
 
 void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
   bool canSend = false;
+  bool isLoading = ref.read(commentsProvider(postId).notifier).isLoading;
   ref.read(hintTextProvider.notifier).state = ""; // Reset reply target
   showModalBottomSheet(
     context: context,
@@ -460,28 +461,39 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                                                 ?.profilePicture ??
                                                             'assets/images/anonymous.jpg';
                                                       }
-                                                      ref
-                                                          .read(
-                                                            commentsProvider(
-                                                              postId,
-                                                            ).notifier,
-                                                          )
-                                                          .addComment(
-                                                            newComment,
-                                                            replyTo: replyTo,
-                                                          );
+                                                      // ref
+                                                      //     .read(
+                                                      //       commentsProvider(
+                                                      //         postId,
+                                                      //       ).notifier,
+                                                      //     )
+                                                      //     .addComment(
+                                                      //       newComment,
+                                                      //       replyTo: replyTo,
+                                                      //     );
                                                       _commentController
                                                           .clear();
-                                                      ref
-                                                          .read(
-                                                            commentsProvider(
-                                                              postId,
-                                                            ).notifier,
-                                                          )
-                                                          .storeComments(
-                                                            newComment,
-                                                          ); //store in firebase
 
+                                                      if (context.mounted) {
+                                                        setState(() {
+                                                          isLoading = true;
+                                                        });
+
+                                                        await ref
+                                                            .read(
+                                                              commentsProvider(
+                                                                postId,
+                                                              ).notifier,
+                                                            )
+                                                            .storeComments(
+                                                              newComment,
+                                                            );
+                                                      }
+                                                      if (context.mounted) {
+                                                        setState(() {
+                                                          isLoading = false;
+                                                        });
+                                                      } //store in firebase
                                                       WidgetsBinding.instance.addPostFrameCallback((
                                                         _,
                                                       ) {
@@ -516,61 +528,95 @@ void showCommentBox(BuildContext context, WidgetRef ref, String postId) {
                                                               .localToGlobal(
                                                                 Offset.zero,
                                                               );
-                                                          final scrollableBox =
+                                                          if (scrollController
+                                                                  .hasClients &&
                                                               scrollController
-                                                                      .position
-                                                                      .context
-                                                                      .storageContext
-                                                                      .findRenderObject()
-                                                                  as RenderBox;
-                                                          final scrollOffset =
-                                                              scrollController
-                                                                  .offset +
-                                                              position.dy -
-                                                              scrollableBox
-                                                                  .localToGlobal(
-                                                                    Offset.zero,
-                                                                  )
-                                                                  .dy;
+                                                                  .positions
+                                                                  .isNotEmpty) {
+                                                            final scrollableBox =
+                                                                scrollController
+                                                                        .position
+                                                                        .context
+                                                                        .storageContext
+                                                                        .findRenderObject()
+                                                                    as RenderBox;
+                                                            final scrollOffset =
+                                                                scrollController
+                                                                    .offset +
+                                                                position.dy -
+                                                                scrollableBox
+                                                                    .localToGlobal(
+                                                                      Offset
+                                                                          .zero,
+                                                                    )
+                                                                    .dy;
 
-                                                          scrollController.animateTo(
-                                                            scrollOffset,
-                                                            duration: Duration(
-                                                              milliseconds: 300,
-                                                            ),
-                                                            curve:
-                                                                Curves
-                                                                    .easeInOut,
-                                                          );
+                                                            scrollController.animateTo(
+                                                              scrollOffset,
+                                                              duration: Duration(
+                                                                milliseconds:
+                                                                    300,
+                                                              ),
+                                                              curve:
+                                                                  Curves
+                                                                      .easeInOut,
+                                                            );
+                                                          }
                                                         }
                                                       });
-                                                      ref
-                                                          .read(
-                                                            replyTargetProvider
-                                                                .notifier,
-                                                          )
-                                                          .state = null;
-                                                      ref
-                                                          .read(
-                                                            hintTextProvider
-                                                                .notifier,
-                                                          )
-                                                          .state = "";
+                                                      if (context.mounted) {
+                                                        ref
+                                                            .read(
+                                                              replyTargetProvider
+                                                                  .notifier,
+                                                            )
+                                                            .state = null;
 
-                                                      setState(() {
-                                                        canSend = false;
-                                                      });
+                                                        ref
+                                                            .read(
+                                                              hintTextProvider
+                                                                  .notifier,
+                                                            )
+                                                            .state = "";
+
+                                                        setState(() {
+                                                          canSend = false;
+                                                        });
+                                                      }
                                                     }
                                                   }
                                                   : null,
-                                          icon: Icon(
-                                            Icons.send,
-                                            color:
-                                                canSend
-                                                    ? Color(0xFF71BB7B)
-                                                    : Colors.grey.shade400,
-                                            size: 30,
-                                          ),
+                                          icon:
+                                              isLoading
+                                                  ? SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(
+                                                            canSend
+                                                                ? Color(
+                                                                  0xFF71BB7B,
+                                                                )
+                                                                : Colors
+                                                                    .grey
+                                                                    .shade400,
+                                                          ),
+                                                    ),
+                                                  )
+                                                  : Icon(
+                                                    Icons.send,
+                                                    color:
+                                                        canSend
+                                                            ? Color(0xFF71BB7B)
+                                                            : Colors
+                                                                .grey
+                                                                .shade400,
+                                                    size: 30,
+                                                  ),
                                         ),
                                       ),
                                     ],

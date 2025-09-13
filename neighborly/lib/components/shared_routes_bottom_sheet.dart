@@ -787,7 +787,7 @@ class _SharedRoutesBottomSheetState extends State<SharedRoutesBottomSheet> {
                             ],
                           ),
                         );
-                      }).toList(),
+                      }),
                       if ((route['waypoints'] as List).length > 3)
                         Text(
                           '... and ${(route['waypoints'] as List).length - 3} more steps',
@@ -926,7 +926,7 @@ class _SharedRoutesBottomSheetState extends State<SharedRoutesBottomSheet> {
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text('${index + 1}. $instruction'),
                 );
-              }).toList(),
+              }),
             ],
           ],
         ),
