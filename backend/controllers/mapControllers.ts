@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import notificationService from '../services/notificationService';
 
@@ -502,7 +502,11 @@ const calculateXP = (priority: string): number => {
 
 const helpedRequestData = {
   requestId: requestId,
-  acceptedUserID: responseData?.userId, // This is the responder's userId
+  requesterId: helpRequestData.userId,      // Requester ID
+  requesterName: helpRequestData.username,  // Requester Name
+  responderId: responseData?.userId,        // Responder ID  
+  responderName: responseData?.username,    // Responder Name
+  acceptedUserID: responseData?.userId,     // Legacy field (keep for compatibility)
   acceptedAt: new Date().toISOString(),
   status: 'in_progress', // Initially in progress
   xp: calculateXP(helpRequestData.priority), // XP points based on priority
@@ -525,7 +529,41 @@ const helpedRequestData = {
 };
 
 await helpedRequestRef.set(helpedRequestData);
-console.log(`Created helpedRequests entry for ${requestId} with acceptedUserID: ${responseData?.userId}`);
+
+// Initialize chat session automatically
+const chatSessionRef = getFirestore().collection('helpChats').doc(requestId);
+const chatSessionData = {
+  helpRequestId: requestId,
+  requesterId: helpRequestData.userId,
+  requesterName: helpRequestData.username,
+  responderId: responseData?.userId,
+  responderName: responseData?.username,
+  createdAt: new Date(),
+  lastMessage: '',
+  lastMessageTime: new Date(),
+  unreadCounts: {
+    [helpRequestData.userId]: 0,
+    [responseData?.userId]: 0,
+  }
+};
+
+await chatSessionRef.set(chatSessionData);
+
+// Send initial system message to welcome both parties
+const welcomeMessage = {
+  helpRequestId: requestId,
+  senderId: 'system',
+  senderName: 'System',
+  message: `Help request accepted! ${helpRequestData.username} and ${responseData?.username} can now communicate to coordinate the help.`,
+  type: 'system',
+  timestamp: new Date(),
+  isRead: false,
+};
+
+await chatSessionRef.collection('messages').add(welcomeMessage);
+
+console.log(`Created chat session and welcome message for help request ${requestId}`);
+console.log(`Created helpedRequests entry for ${requestId} with responder: ${responseData?.userId}`);
     // Update response status
     await responseRef.update({
       status: 'accepted',
@@ -1530,6 +1568,452 @@ export const deleteRoute = async (c: Context) => {
     return c.json({ 
       success: false, 
       message: 'Failed to delete route' 
+    }, 500);
+  }
+};
+
+// Help Chat and Completion Management Endpoints
+
+// Request completion
+export const requestHelpCompletion = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    const body = await c.req.json();
+    const { helpRequestId, message, initiatorType } = body;
+
+    if (!helpRequestId || !initiatorType) {
+      return c.json({ 
+        success: false, 
+        message: 'Missing required fields: helpRequestId, initiatorType' 
+      }, 400);
+    }
+
+    const db = getFirestore();
+    
+    // Verify user is part of this help request
+    const helpedRequestDoc = await db.collection('helpedRequests').doc(helpRequestId).get();
+    
+    if (!helpedRequestDoc.exists) {
+      return c.json({ 
+        success: false, 
+        message: 'Help request not found' 
+      }, 404);
+    }
+
+    const helpedRequestData = helpedRequestDoc.data()!;
+    const requesterId = helpedRequestData.requesterId;
+    const responderId = helpedRequestData.responderId;
+
+    if (userId !== requesterId && userId !== responderId) {
+      return c.json({ 
+        success: false, 
+        message: 'Unauthorized: You are not part of this help request' 
+      }, 403);
+    }
+
+    // Get user info
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+    const userName = userData?.displayName || userData?.email || 'Anonymous';
+
+    // Create completion request
+    const completionRequest = {
+      helpRequestId,
+      initiatorId: userId,
+      initiatorName: userName,
+      initiatorType,
+      status: 'pending',
+      message: message || 'Help has been completed!',
+      requestedAt: new Date(),
+    };
+
+    // Save completion request
+    await db.collection('helpCompletions').doc(helpRequestId).set(completionRequest);
+
+    // Update help request status
+    await db.collection('helpedRequests').doc(helpRequestId).update({
+      status: 'pending_completion',
+      completionRequest,
+      updatedAt: new Date(),
+    });
+
+    // Send notification to other party
+    const otherPartyId = userId === requesterId ? responderId : requesterId;
+    await notificationService.sendNotification({
+      userId: otherPartyId,
+      title: 'Completion Request',
+      body: `${userName} wants to mark the help as complete: ${message || 'Help has been completed!'}`,
+      type: 'completion_request',
+      data: {
+        helpRequestId,
+        initiatorName: userName,
+        message: message || 'Help has been completed!',
+        action: 'confirm_completion',
+      },
+    });
+
+    return c.json({ 
+      success: true, 
+      message: 'Completion request sent successfully',
+      completionRequest
+    });
+
+  } catch (error) {
+    console.error('Error requesting completion:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to request completion' 
+    }, 500);
+  }
+};
+
+// Confirm or reject completion
+export const confirmHelpCompletion = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    const body = await c.req.json();
+    const { helpRequestId, approved, feedback } = body;
+
+    if (!helpRequestId || typeof approved !== 'boolean') {
+      return c.json({ 
+        success: false, 
+        message: 'Missing required fields: helpRequestId, approved (boolean)' 
+      }, 400);
+    }
+
+    const db = getFirestore();
+    
+    // Get completion request
+    const completionDoc = await db.collection('helpCompletions').doc(helpRequestId).get();
+    
+    if (!completionDoc.exists) {
+      return c.json({ 
+        success: false, 
+        message: 'Completion request not found' 
+      }, 404);
+    }
+
+    const completionData = completionDoc.data()!;
+    
+    // Verify user is the one who should confirm (not the initiator)
+    if (userId === completionData.initiatorId) {
+      return c.json({ 
+        success: false, 
+        message: 'Cannot confirm your own completion request' 
+      }, 403);
+    }
+
+    // Get user info
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+    const userName = userData?.displayName || userData?.email || 'Anonymous';
+
+    // Update completion request
+    await db.collection('helpCompletions').doc(helpRequestId).update({
+      status: approved ? 'confirmed' : 'rejected',
+      confirmerId: userId,
+      confirmerName: userName,
+      confirmedAt: new Date(),
+      feedback: feedback || null,
+    });
+
+    if (approved) {
+      // Mark help request as completed
+      await db.collection('helpedRequests').doc(helpRequestId).update({
+        status: 'completed',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Update original help request status if it exists
+      const helpedRequestDoc = await db.collection('helpedRequests').doc(helpRequestId).get();
+      if (helpedRequestDoc.exists) {
+        const helpedRequestData = helpedRequestDoc.data()!;
+        const originalRequestId = helpedRequestData.originalRequestId;
+        
+        if (originalRequestId) {
+          await db.collection('helpRequests').doc(originalRequestId).update({
+            status: 'completed',
+            updatedAt: new Date(),
+          });
+        }
+      }
+
+      // Award XP to both parties
+      const helpedRequestData = helpedRequestDoc.data()!;
+      const requesterId = helpedRequestData.requesterId;
+      const responderId = helpedRequestData.responderId;
+      const xpReward = helpedRequestData.xp || 100;
+
+      const batch = db.batch();
+
+      // Award XP to requester
+      const requesterRef = db.collection('users').doc(requesterId);
+      batch.update(requesterRef, {
+        xp: FieldValue.increment(xpReward),
+        completedRequests: FieldValue.increment(1),
+      });
+
+      // Award double XP to helper
+      const responderRef = db.collection('users').doc(responderId);
+      batch.update(responderRef, {
+        xp: FieldValue.increment(xpReward * 2),
+        completedHelps: FieldValue.increment(1),
+      });
+
+      await batch.commit();
+
+      // Send completion confirmation notifications
+      await notificationService.sendNotification({
+        userId: completionData.initiatorId,
+        title: 'Help Completed! 🎉',
+        body: `${userName} confirmed the help is complete. Great job!`,
+        type: 'help_completed',
+        data: {
+          helpRequestId,
+          confirmerName: userName,
+        },
+      });
+
+      await notificationService.sendNotification({
+        userId: userId,
+        title: 'Help Completed! 🎉',
+        body: `You confirmed the help is complete. Great job!`,
+        type: 'help_completed',
+        data: {
+          helpRequestId,
+          confirmerName: userName,
+        },
+      });
+
+    } else {
+      // Revert to in_progress status
+      await db.collection('helpedRequests').doc(helpRequestId).update({
+        status: 'in_progress',
+        updatedAt: new Date(),
+      });
+
+      // Send rejection notifications
+      await notificationService.sendNotification({
+        userId: completionData.initiatorId,
+        title: 'Completion Request Declined',
+        body: feedback 
+          ? `${userName} declined: ${feedback}`
+          : `${userName} thinks more work is needed`,
+        type: 'completion_rejected',
+        data: {
+          helpRequestId,
+          confirmerName: userName,
+          feedback: feedback || null,
+        },
+      });
+    }
+
+    return c.json({ 
+      success: true, 
+      message: approved ? 'Help marked as completed successfully' : 'Completion request rejected',
+      approved
+    });
+
+  } catch (error) {
+    console.error('Error confirming completion:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to confirm completion' 
+    }, 500);
+  }
+};
+
+// Send progress update
+export const sendProgressUpdate = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    const body = await c.req.json();
+    const { helpRequestId, status, message } = body;
+
+    if (!helpRequestId || !status || !message) {
+      return c.json({ 
+        success: false, 
+        message: 'Missing required fields: helpRequestId, status, message' 
+      }, 400);
+    }
+
+    const db = getFirestore();
+    
+    // Verify user is part of this help request
+    const helpedRequestDoc = await db.collection('helpedRequests').doc(helpRequestId).get();
+    
+    if (!helpedRequestDoc.exists) {
+      return c.json({ 
+        success: false, 
+        message: 'Help request not found' 
+      }, 404);
+    }
+
+    const helpedRequestData = helpedRequestDoc.data()!;
+    const requesterId = helpedRequestData.requesterId;
+    const responderId = helpedRequestData.responderId;
+
+    if (userId !== requesterId && userId !== responderId) {
+      return c.json({ 
+        success: false, 
+        message: 'Unauthorized: You are not part of this help request' 
+      }, 403);
+    }
+
+    // Get user info
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+    const userName = userData?.displayName || userData?.email || 'Anonymous';
+
+    // Create progress update
+    const progressUpdate = {
+      helpRequestId,
+      updaterId: userId,
+      updaterName: userName,
+      status,
+      message,
+      timestamp: new Date(),
+    };
+
+    // Save progress update
+    await db.collection('helpProgress').doc(helpRequestId).collection('updates').add(progressUpdate);
+
+    // Update help request with current progress
+    await db.collection('helpedRequests').doc(helpRequestId).update({
+      currentProgressStatus: status,
+      lastProgressUpdate: progressUpdate,
+      updatedAt: new Date(),
+    });
+
+    // Send notification to requester (progress updates usually come from responder)
+    if (userId === responderId) {
+      await notificationService.sendNotification({
+        userId: requesterId,
+        title: 'Progress Update',
+        body: `${userName}: ${message}`,
+        type: 'help_progress',
+        data: {
+          helpRequestId,
+          updaterName: userName,
+          message,
+          status,
+        },
+      });
+    }
+
+    return c.json({ 
+      success: true, 
+      message: 'Progress update sent successfully',
+      progressUpdate
+    });
+
+  } catch (error) {
+    console.error('Error sending progress update:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to send progress update' 
+    }, 500);
+  }
+};
+
+// Get completion request for a help request
+export const getCompletionRequest = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    const helpRequestId = c.req.param('helpRequestId');
+
+    if (!helpRequestId) {
+      return c.json({ 
+        success: false, 
+        message: 'Missing helpRequestId parameter' 
+      }, 400);
+    }
+
+    const db = getFirestore();
+    
+    // Verify user is part of this help request
+    const helpedRequestDoc = await db.collection('helpedRequests').doc(helpRequestId).get();
+    
+    if (!helpedRequestDoc.exists) {
+      return c.json({ 
+        success: false, 
+        message: 'Help request not found' 
+      }, 404);
+    }
+
+    const helpedRequestData = helpedRequestDoc.data()!;
+    const requesterId = helpedRequestData.requesterId;
+    const responderId = helpedRequestData.responderId;
+
+    if (userId !== requesterId && userId !== responderId) {
+      return c.json({ 
+        success: false, 
+        message: 'Unauthorized: You are not part of this help request' 
+      }, 403);
+    }
+
+    // Get completion request
+    const completionDoc = await db.collection('helpCompletions').doc(helpRequestId).get();
+    
+    if (!completionDoc.exists) {
+      return c.json({ 
+        success: true, 
+        completionRequest: null
+      });
+    }
+
+    const completionData = completionDoc.data()!;
+
+    return c.json({ 
+      success: true, 
+      completionRequest: {
+        id: completionDoc.id,
+        ...completionData
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting completion request:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to get completion request' 
     }, 500);
   }
 };

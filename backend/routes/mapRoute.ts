@@ -16,7 +16,11 @@ import {
   createRoute,
   getRoutesForHelpRequest,
   acceptRoute,
-  deleteRoute
+  deleteRoute,
+  requestHelpCompletion,
+  confirmHelpCompletion,
+  sendProgressUpdate,
+  getCompletionRequest
 } from '../controllers/mapControllers';
 
 const mapRouter = new Hono();
@@ -69,5 +73,11 @@ mapRouter.put('/routes/:routeId/accept', acceptRoute);
 
 // Delete a route (only by route creator)
 mapRouter.delete('/routes/:routeId', deleteRoute);
+
+// Help completion and progress endpoints
+mapRouter.post('/help-requests/:helpRequestId/request-completion', requestHelpCompletion);
+mapRouter.post('/help-requests/:helpRequestId/confirm-completion', confirmHelpCompletion);
+mapRouter.post('/help-requests/:helpRequestId/progress-update', sendProgressUpdate);
+mapRouter.get('/help-requests/:helpRequestId/completion-request', getCompletionRequest);
 
 export default mapRouter;

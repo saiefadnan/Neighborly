@@ -39,6 +39,43 @@ export interface UserNotification {
 
 class NotificationService {
   
+  // Generic method to send notifications
+  async sendNotification(params: {
+    userId: string;
+    title: string;
+    body: string;
+    type: string;
+    data?: any;
+  }): Promise<void> {
+    try {
+      const { userId, title, body, type, data } = params;
+      
+      // Get user email
+      const userDoc = await getDB().collection('users').doc(userId).get();
+      const userData = userDoc.exists ? userDoc.data() : {};
+      const userEmail = userData?.email || '';
+
+      const notification: UserNotification = {
+        recipientUserId: userId,
+        recipientEmail: userEmail,
+        type: type as any,
+        title,
+        message: body,
+        helpRequestId: data?.helpRequestId || '',
+        helpRequestData: data || {},
+        communityName: '',
+        communityId: '',
+        createdAt: new Date(),
+        isRead: false,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      };
+
+      await this.createSingleNotification(notification);
+    } catch (error) {
+      console.error('Error sending notification:', error);
+    }
+  }
+  
   // Create notifications for help request creation
   async createHelpRequestNotifications(helpRequestData: any): Promise<{ success: boolean; message: string; notificationCount?: number }> {
     try {
@@ -150,11 +187,11 @@ class NotificationService {
 
       // Get requester's email
       const requesterDoc = await getDB().collection('users').doc(requesterId).get();
-      const requesterEmail = requesterDoc.exists ? requesterDoc.data()?.email : '';
+      const requesterEmail = requesterDoc.exists ? requesterDoc.data()?.email || '' : '';
 
       const notification: UserNotification = {
         recipientUserId: requesterId,
-        recipientEmail: requesterEmail,
+        recipientEmail: requesterEmail || '',
         type: 'help_response',
         title: '👋 Someone Wants to Help!',
         message: `${responderData.username} responded to your ${helpRequest.title} help request`,

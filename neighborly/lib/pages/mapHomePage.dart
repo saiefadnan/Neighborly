@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:neighborly/pages/forum.dart';
+import 'package:neighborly/pages/chat_list_page.dart';
 import 'package:neighborly/components/help_request_drawer.dart';
 import 'package:neighborly/components/responses_drawer.dart';
 import 'package:neighborly/components/route_sharing_bottom_sheet.dart';
@@ -2884,21 +2884,21 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           ),
           const SizedBox(height: 10),
 
-          // 🗣 Community Forum
+          // � My Chats (WhatsApp-style chat list)
           FloatingActionButton(
             heroTag: "chat",
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ForumPage(title: 'NeighborTalk'),
+                  builder: (context) => const ChatListPage(),
                 ),
               );
             },
             backgroundColor: const Color(0xFF71BB7B),
             foregroundColor: const Color(0xFFFAF4E8),
-            tooltip: "Community Forum",
-            child: const Icon(Icons.forum),
+            tooltip: "My Chats",
+            child: const Icon(Icons.chat),
           ),
           const SizedBox(height: 10),
 
