@@ -94,6 +94,7 @@ class _StatisticsPageState extends State<StatisticsPage>
   }
 
   Future<void> _fetchHelpedRequestStats() async {
+    bool success = false;
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
@@ -109,11 +110,39 @@ class _StatisticsPageState extends State<StatisticsPage>
             setState(() {
               helpedRequestStats = Map<String, int>.from(data['data']);
             });
+            success = true;
           }
         }
       }
     } catch (e) {
       print('Error fetching helped request stats: $e');
+    }
+
+    // Firestore fallback if API fails
+    if (!success) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final snapshot =
+              await FirebaseFirestore.instance
+                  .collection('helpRequests')
+                  .where('acceptedResponderId', isEqualTo: user.uid)
+                  .get();
+
+          final Map<String, int> counts = {};
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            final title = data['title'] ?? 'Unknown';
+            counts[title] = (counts[title] ?? 0) + 1;
+          }
+
+          setState(() {
+            helpedRequestStats = counts;
+          });
+        }
+      } catch (e) {
+        print('Firestore fallback for helped request stats failed: $e');
+      }
     }
   }
 
