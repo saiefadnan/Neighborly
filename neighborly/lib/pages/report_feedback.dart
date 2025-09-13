@@ -113,7 +113,7 @@ class _ReportTabState extends State<ReportTab> {
   
   // Image evidence handling
   final ImagePicker _imagePicker = ImagePicker();
-  List<File> _selectedImages = [];
+  final List<File> _selectedImages = [];
   String _evidenceType = 'text'; // 'text' or 'image' or 'both'
   
   // Progress tracking

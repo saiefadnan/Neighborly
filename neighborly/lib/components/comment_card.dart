@@ -49,21 +49,19 @@ class _CommentCardState extends ConsumerState<CommentCard> {
         return false;
       }
 
-      // Ensure we have post context
-      if (openedPost.isEmpty || openedPost['content'] == null) {
-        print('No post context available for relevance check');
+      // Ensure we have post and comment context
+      final postTitle = openedPost['title'] ?? '';
+      final postContent = openedPost['content'] ?? '';
+      final commentContent = widget.comment['content'] ?? '';
+
+      if (postContent.isEmpty || commentContent.isEmpty) {
+        print('Missing post or comment content for relevance check');
         return false;
       }
 
-      // Use BART-MNLI for relevance classification (always warm, fast)
       final url = Uri.parse(
         "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
       );
-
-      // Combine post and comment for relevance analysis
-      final postContent =
-          "${openedPost['title'] ?? ''} ${openedPost['content'] ?? ''}".trim();
-      final commentContent = widget.comment['content'];
 
       final response = await http
           .post(
@@ -73,21 +71,15 @@ class _CommentCardState extends ConsumerState<CommentCard> {
               'Content-Type': 'application/json',
             },
             body: jsonEncode({
-              "inputs": "Post: $postContent\n\nComment: $commentContent",
+              "inputs":
+                  "Post: $postTitle $postContent\n\nComment: $commentContent",
               "parameters": {
-                "candidate_labels": [
-                  "relevant to the post topic",
-                  "directly related to the discussion",
-                  "on-topic response",
-                  "completely unrelated",
-                  "off-topic spam",
-                  "irrelevant content",
-                ],
+                "candidate_labels": ["on-topic", "off-topic", "spam"],
                 "multi_label": false,
               },
             }),
           )
-          .timeout(const Duration(seconds: 8)); // Reasonable timeout
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode != 200) {
         print("HF error: ${response.statusCode} - ${response.body}");
@@ -95,35 +87,47 @@ class _CommentCardState extends ConsumerState<CommentCard> {
       }
 
       final result = jsonDecode(response.body);
-
-      // Handle the response
       if (result is! Map ||
           !result.containsKey('labels') ||
           !result.containsKey('scores')) {
-        print('Unexpected response format');
+        print('Unexpected response format from HF API');
         return false;
       }
 
-      final labels = result['labels'] as List;
-      final scores = result['scores'] as List;
+      final labels =
+          (result['labels'] as List)
+              .map((e) => e.toString().toLowerCase())
+              .toList();
+      final scores =
+          (result['scores'] as List).map((e) => (e as num).toDouble()).toList();
 
-      // Check the top prediction
-      if (labels.isNotEmpty && scores.isNotEmpty) {
-        final topLabel = labels[0].toString().toLowerCase();
-        final topScore = (scores[0] as num).toDouble();
+      if (labels.isEmpty || scores.isEmpty) {
+        print('Empty labels or scores from HF API');
+        return false;
+      }
 
-        print("Relevance: $topLabel, Score: $topScore");
+      double offTopicScore = 0.0;
+      double onTopicScore = 0.0;
 
-        // If the top prediction is off-topic related with high confidence
-        if ((topLabel.contains('unrelated') ||
-                topLabel.contains('off-topic') ||
-                topLabel.contains('irrelevant')) &&
-            topScore > 0.7) {
-          return true; // Off-topic
+      for (int i = 0; i < labels.length; i++) {
+        final label = labels[i];
+        final score = scores[i];
+        if (label.contains('off-topic')) {
+          offTopicScore += 0.7 * score;
+        } else if (label.contains('spam')) {
+          offTopicScore += 0.3 * score;
+        } else if (label.contains('on-topic')) {
+          onTopicScore += score;
         }
       }
 
-      return false; // On-topic
+      print("Off-topic score: ${offTopicScore.toStringAsFixed(3)}");
+      print("On-topic score: ${onTopicScore.toStringAsFixed(3)}");
+
+      final isOffTopic = offTopicScore > 0.5 || onTopicScore < 0.55;
+      print("Decision: ${isOffTopic ? 'OFF-TOPIC' : 'ON-TOPIC'}");
+
+      return isOffTopic;
     } catch (e) {
       print('Error in offTopicDetector: $e');
       return false;
@@ -135,7 +139,9 @@ class _CommentCardState extends ConsumerState<CommentCard> {
       setState(() {
         isDetectionLoading = true;
       });
-
+      print(
+        'Running off-topic detection for comment ${widget.comment['commentID']} and post ${widget.comment['postID']}',
+      );
       final result = await offTopicDetector();
       await FirebaseFirestore.instance
           .collection('posts')
