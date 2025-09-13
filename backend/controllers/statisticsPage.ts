@@ -81,24 +81,27 @@ export const getUserSuccessfulHelpsCount = async (c: Context) => {
     
     console.log('=== DEBUG: Checking all help requests ===');
     helpRequestsCollection.docs.forEach((doc) => {
-      const data = doc.data();
-      const acceptedResponderId = data.acceptedResponderId;
-      const acceptedResponderUserId = data.acceptedResponderUserId; // Alternative field
-      
-      console.log(`Document ID: ${doc.id}`);
-      console.log(`acceptedResponderId: ${acceptedResponderId}`);
-      console.log(`acceptedResponderUserId: ${acceptedResponderUserId}`);
-      console.log(`Current userId: ${userId}`);
-      console.log(`Match with acceptedResponderId: ${acceptedResponderId === userId}`);
-      console.log(`Match with acceptedResponderUserId: ${acceptedResponderUserId === userId}`);
-      console.log('---');
-      
-      // Check both possible fields
-      if (acceptedResponderId === userId || acceptedResponderUserId === userId) {
-        successfulHelpsCount++;
-        console.log(`✓ Match found! Count is now: ${successfulHelpsCount}`);
-      }
-    });
+  const data = doc.data();
+  const acceptedResponderId = data.acceptedResponderId;
+  const acceptedResponderUserId = data.acceptedResponderUserId; // Alternative field
+  const status = data.status; // ← ADD THIS LINE
+  
+  console.log(`Document ID: ${doc.id}`);
+  console.log(`acceptedResponderId: ${acceptedResponderId}`);
+  console.log(`acceptedResponderUserId: ${acceptedResponderUserId}`);
+  console.log(`status: ${status}`); // ← ADD THIS LINE
+  console.log(`Current userId: ${userId}`);
+  console.log(`Match with acceptedResponderId: ${acceptedResponderId === userId}`);
+  console.log(`Match with acceptedResponderUserId: ${acceptedResponderUserId === userId}`);
+  console.log('---');
+  
+  // Check both possible fields AND status must be completed
+  if ((acceptedResponderId === userId || acceptedResponderUserId === userId) 
+      && status === 'completed') {
+    successfulHelpsCount++;
+    console.log(`✓ Match found! Count is now: ${successfulHelpsCount}`);
+  }
+});
     console.log('=== END DEBUG ===');
 
     console.log(`User ${userId} has ${successfulHelpsCount} successful helps`);
@@ -144,11 +147,12 @@ export const getHelpedRequestStats = async (c: Context) => {
     let userContributionsCount = 0;
     
     helpedRequestsCollection.docs.forEach((doc) => {
-      const data = doc.data();
-      const acceptedUserID = data.acceptedUserID; // This is the helper's userId
-      
-      // Only count requests where the current user was the accepted helper
-      if (acceptedUserID === currentUserId) {
+  const data = doc.data();
+  const acceptedUserID = data.acceptedUserID;
+  const status = data.status;
+  
+  // Only count COMPLETED requests where the current user was the accepted helper
+  if (acceptedUserID === currentUserId && status === 'completed') {
         const title = data.originalRequestData?.title || 'Unknown';
         
         if (titleCounts[title]) {

@@ -127,6 +127,7 @@ class _StatisticsPageState extends State<StatisticsPage>
               await FirebaseFirestore.instance
                   .collection('helpRequests')
                   .where('acceptedResponderId', isEqualTo: user.uid)
+                  .where('status', isEqualTo: 'completed') // ← ADD THIS LINE
                   .get();
 
           final Map<String, int> counts = {};
@@ -155,7 +156,9 @@ class _StatisticsPageState extends State<StatisticsPage>
         // 1. Try HTTP API first
         try {
           final response = await http.get(
-            Uri.parse('${ApiConfig.baseUrl}/api/stats/user-successful-helps'),
+            Uri.parse(
+              '${ApiConfig.baseUrl}/api/gamification/user/successful-helps',
+            ),
             headers: {'Authorization': 'Bearer $token'},
           );
 
@@ -185,9 +188,12 @@ class _StatisticsPageState extends State<StatisticsPage>
             final data = doc.data();
             final acceptedResponderId = data['acceptedResponderId'];
             final acceptedResponderUserId = data['acceptedResponderUserId'];
+            final status = data['status'];
 
-            if (acceptedResponderId == user.uid ||
-                acceptedResponderUserId == user.uid) {
+            if ((acceptedResponderId == user.uid ||
+                    acceptedResponderUserId == user.uid) &&
+                status == 'completed') {
+              // ← ADD STATUS CHECK
               count++;
             }
           }
@@ -207,83 +213,130 @@ class _StatisticsPageState extends State<StatisticsPage>
     }
   }
 
-  Future<void> _fetchUserRank() async {
+  Future<void> _migrateUserXPWithFallback() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
+      if (user == null) return;
+
+      bool success = false;
+
+      // 1. Try HTTP API first
+      try {
         final token = await user.getIdToken();
+        final response = await http.post(
+          Uri.parse('${ApiConfig.baseUrl}/api/gamification/migrate-xp-levels'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
 
-        // 1. Try HTTP API first
-        try {
-          final response = await http.get(
-            Uri.parse('${ApiConfig.baseUrl}/api/stats/leaderboard'),
-            headers: {'Authorization': 'Bearer $token'},
-          );
-
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-            if (data['success'] == true) {
-              setState(() {
-                userRank = data['userRank'] ?? 0; // ← ADD THIS LINE
-              });
-              print('Fetched user rank from API: $userRank');
-              return;
-            }
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            print('XP migration completed via API: ${data['message']}');
+            success = true;
           }
-        } catch (e) {
-          print(
-            'Leaderboard API fetch failed, trying Firestore fallback. Error: $e',
-          );
         }
+      } catch (e) {
+        print('Migration API failed, trying Firestore fallback. Error: $e');
+      }
 
-        // 2. Firestore fallback if API failed
-        try {
-          final usersSnapshot =
-              await FirebaseFirestore.instance.collection('users').get();
-
-          // Create list of users with XP
-          List<Map<String, dynamic>> usersWithXP = [];
-
-          for (var doc in usersSnapshot.docs) {
-            final data = doc.data();
-            final accumulateXP = data['accumulateXP'] ?? 0;
-
-            usersWithXP.add({'userId': doc.id, 'accumulateXP': accumulateXP});
-          }
-
-          // Sort by XP (highest first)
-          usersWithXP.sort(
-            (a, b) => b['accumulateXP'].compareTo(a['accumulateXP']),
-          );
-
-          // Find current user's rank
-          int rank = 0;
-          for (int i = 0; i < usersWithXP.length; i++) {
-            if (usersWithXP[i]['userId'] == user.uid) {
-              // Handle ties: find the rank of users with same XP
-              int currentUserXP = usersWithXP[i]['accumulateXP'];
-              rank = 1;
-              for (int j = 0; j < i; j++) {
-                if (usersWithXP[j]['accumulateXP'] > currentUserXP) {
-                  rank++;
-                }
-              }
-              break;
-            }
-          }
-
-          setState(() {
-            userRank = rank;
-            // Calculate help response success: if user helped > 0, then 100%, otherwise 0%
-          });
-          print('Fetched user rank from Firestore: $userRank');
-        } catch (e) {
-          print('Firestore leaderboard fallback failed: $e');
-        }
+      // 2. Firestore fallback if API failed
+      if (!success) {
+        await _migrateUserXPFirestore();
       }
     } catch (e) {
-      print('Error fetching user rank: $e');
+      print('Error in migration: $e');
     }
+  }
+
+  Future<void> _migrateUserXPFirestore() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Check if migration already happened recently (within 1 hour)
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        final lastMigration = userData['xpAndLevelMigratedAt'];
+
+        if (lastMigration != null) {
+          final lastMigrationTime = DateTime.parse(lastMigration);
+          final now = DateTime.now();
+          final difference = now.difference(lastMigrationTime).inMinutes;
+
+          // Skip migration if done within last 60 minutes
+          if (difference < 60) {
+            print('Migration skipped - done ${difference} minutes ago');
+            return;
+          }
+        }
+      }
+
+      // Get all helpedRequests for current user
+      final helpedRequestsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('helpedRequests')
+              .where('acceptedUserID', isEqualTo: user.uid)
+              .where('status', isEqualTo: 'completed') // ← ONLY COUNT COMPLETED
+              .get();
+
+      // Calculate total XP
+      int totalXP = 0;
+      for (final doc in helpedRequestsSnapshot.docs) {
+        final data = doc.data();
+        final xp = data['xp'] ?? 0;
+        totalXP += xp is int ? xp : int.tryParse(xp.toString()) ?? 0;
+      }
+
+      // Calculate level based on XP
+      int calculatedLevel = _calculateLevel(totalXP);
+
+      // Update user document
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+            'accumulateXP': totalXP,
+            'level': calculatedLevel,
+            'xpAndLevelMigratedAt': DateTime.now().toIso8601String(),
+          });
+
+      print(
+        'Firestore migration completed: XP=$totalXP, Level=$calculatedLevel',
+      );
+    } catch (e) {
+      print('Firestore migration failed: $e');
+    }
+  }
+
+  int _calculateLevel(int accumulateXP) {
+    final List<int> xpRequirements = [
+      0,
+      1000,
+      3500,
+      8500,
+      16500,
+      28500,
+      45500,
+      68500,
+      98500,
+      136500,
+    ];
+
+    int currentLevel = 1;
+    for (int i = 1; i < xpRequirements.length; i++) {
+      if (accumulateXP >= xpRequirements[i]) {
+        currentLevel = i + 1;
+      } else {
+        break;
+      }
+    }
+    return currentLevel;
   }
 
   @override
@@ -328,12 +381,18 @@ class _StatisticsPageState extends State<StatisticsPage>
 
   // ADD this new method:
   Future<void> _fetchAllData() async {
+    // Run all migrations first
+    await _runAllMigrations();
+
+    // Run XP migration
+    await _migrateUserXPWithFallback();
+
+    // Then fetch all other data
     await _fetchHelpRequestStats();
     await _fetchHelpedRequestStats();
-    await _fetchSuccessfulHelpsCount(); // ← Wait for this to complete first
-    await _fetchUserRank(); // ← Then calculate percentage
+    await _fetchSuccessfulHelpsCount();
+    await _fetchUserRank();
 
-    // Calculate help response success after all data is loaded
     setState(() {
       if (successfulHelpsCount > 0) {
         helpResponseSuccess = 100;
@@ -341,10 +400,256 @@ class _StatisticsPageState extends State<StatisticsPage>
         helpResponseSuccess = 0;
       }
     });
+  }
 
-    print(
-      'All data loaded. successfulHelpsCount: $successfulHelpsCount, helpResponseSuccess: $helpResponseSuccess',
-    );
+  // Add this method to fetch the user's leaderboard rank
+  Future<void> _fetchUserRank() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+
+        // 1. Try HTTP API first
+        try {
+          final response = await http.get(
+            Uri.parse('${ApiConfig.baseUrl}/api/gamification/user-rank'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            if (data['success'] == true && data['rank'] != null) {
+              setState(() {
+                userRank = data['rank'] as int;
+              });
+              return;
+            }
+          }
+        } catch (e) {
+          print('Rank API failed, trying Firestore fallback. Error: $e');
+        }
+
+        // 2. Firestore fallback if API failed
+        try {
+          final usersSnapshot =
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .orderBy('accumulateXP', descending: true)
+                  .get();
+
+          int rank = 0;
+          for (int i = 0; i < usersSnapshot.docs.length; i++) {
+            if (usersSnapshot.docs[i].id == user.uid) {
+              rank = i + 1;
+              break;
+            }
+          }
+
+          setState(() {
+            userRank = rank;
+          });
+          print('Fetched user rank from Firestore: $userRank');
+        } catch (e) {
+          print('Firestore fallback for user rank failed: $e');
+          setState(() {
+            userRank = 0;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching user rank: $e');
+      setState(() {
+        userRank = 0;
+      });
+    }
+  }
+
+  Future<void> _runAllMigrations() async {
+    try {
+      print('Starting all migrations...');
+
+      // Run migrations in sequence
+      await _migrateHelpedRequestsXP();
+      await _migrateUserAccumulatedXP();
+
+      print('All migrations completed successfully');
+    } catch (e) {
+      print('Error in migrations: $e');
+    }
+  }
+
+  Future<void> _migrateHelpedRequestsXP() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      bool success = false;
+
+      // 1. Try HTTP API first
+      try {
+        final token = await user.getIdToken();
+        final response = await http.post(
+          Uri.parse('${ApiConfig.baseUrl}/api/migrate-helped-requests-xp'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            print('helpedRequests XP migration via API: ${data['message']}');
+            success = true;
+          }
+        }
+      } catch (e) {
+        print('helpedRequests XP API failed, trying Firestore fallback: $e');
+      }
+
+      // 2. Firestore fallback if API failed
+      if (!success) {
+        try {
+          final helpedRequestsSnapshot =
+              await FirebaseFirestore.instance
+                  .collection('helpedRequests')
+                  .get();
+
+          final batch = FirebaseFirestore.instance.batch();
+          int migratedCount = 0;
+
+          for (final doc in helpedRequestsSnapshot.docs) {
+            final data = doc.data();
+
+            if (!data.containsKey('xp')) {
+              final priority =
+                  data['originalRequestData']?['priority'] ?? 'medium';
+              int xpValue;
+
+              switch (priority.toLowerCase()) {
+                case 'emergency':
+                  xpValue = 500;
+                  break;
+                case 'urgent':
+                  xpValue = 300;
+                  break;
+                default:
+                  xpValue = 100;
+              }
+
+              batch.update(doc.reference, {
+                'xp': xpValue,
+                'migratedAt': DateTime.now().toIso8601String(),
+              });
+
+              migratedCount++;
+            }
+          }
+
+          if (migratedCount > 0) {
+            await batch.commit();
+          }
+
+          print(
+            'Firestore helpedRequests XP migration: $migratedCount documents',
+          );
+        } catch (e) {
+          print('Firestore fallback for helpedRequests XP failed: $e');
+        }
+      }
+    } catch (e) {
+      print('Error in helpedRequests XP migration: $e');
+    }
+  }
+
+  Future<void> _migrateUserAccumulatedXP() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      bool success = false;
+
+      // 1. Try HTTP API first
+      try {
+        final token = await user.getIdToken();
+        final response = await http.post(
+          Uri.parse('${ApiConfig.baseUrl}/api/migrate-user-accumulated-xp'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            print('User XP migration via API: ${data['message']}');
+            success = true;
+          }
+        }
+      } catch (e) {
+        print('User XP API failed, trying Firestore fallback: $e');
+      }
+
+      // 2. Firestore fallback if API failed
+      if (!success) {
+        try {
+          final helpedRequestsSnapshot =
+              await FirebaseFirestore.instance
+                  .collection('helpedRequests')
+                  .where(
+                    'status',
+                    isEqualTo: 'completed',
+                  ) // ← ONLY COUNT COMPLETED
+                  .get();
+
+          Map<String, int> userXPMap = {};
+
+          for (final doc in helpedRequestsSnapshot.docs) {
+            final data = doc.data();
+            final userId = data['acceptedUserID'];
+            final xp = data['xp'] ?? 0;
+
+            if (userId != null && xp > 0) {
+              userXPMap[userId] =
+                  (userXPMap[userId] ?? 0) +
+                  (xp is int ? xp : int.tryParse(xp.toString()) ?? 0);
+            }
+          }
+
+          final batch = FirebaseFirestore.instance.batch();
+          int migratedUsers = 0;
+
+          for (final entry in userXPMap.entries) {
+            final userId = entry.key;
+            final totalXP = entry.value;
+
+            final userDoc =
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(userId)
+                    .get();
+
+            if (userDoc.exists) {
+              final userData = userDoc.data()!;
+
+              if (!userData.containsKey('accumulateXP')) {
+                batch.update(userDoc.reference, {
+                  'accumulateXP': totalXP,
+                  'xpMigratedAt': DateTime.now().toIso8601String(),
+                });
+
+                migratedUsers++;
+              }
+            }
+          }
+
+          if (migratedUsers > 0) {
+            await batch.commit();
+          }
+
+          print('Firestore user XP migration: $migratedUsers users');
+        } catch (e) {
+          print('Firestore fallback for user XP failed: $e');
+        }
+      }
+    } catch (e) {
+      print('Error in user XP migration: $e');
+    }
   }
 
   @override

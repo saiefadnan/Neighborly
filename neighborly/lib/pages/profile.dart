@@ -60,10 +60,13 @@ Map<String, dynamic> calculateLevel(int accumulateXP) {
 // Fetch user XP data
 // Fetch user XP data
 Future<Map<String, dynamic>?> fetchUserXP() async {
+  // Run migration first
+  await _migrateUserXPWithFallback();
+  
   bool success = false;
   Map<String, dynamic>? result;
 
-  // 1. Try HTTP API first
+  // Rest of your existing fetchUserXP code...
   try {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -85,6 +88,9 @@ Future<Map<String, dynamic>?> fetchUserXP() async {
   } catch (e) {
     print('XP API fetch failed, will try Firestore. Error: $e');
   }
+
+  // ... rest of existing code for Firestore fallback
+
 
   // 2. If API failed, try Firestore directly
   if (!success) {
@@ -247,6 +253,127 @@ Future<Map<String, dynamic>?> fetchUserBadges() async {
   }
 
   return result;
+}
+
+Future<void> _migrateUserXPWithFallback() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    bool success = false;
+
+    // 1. Try HTTP API first
+    try {
+      final token = await user.getIdToken();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/gamification/migrate-xp-levels'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          print('XP migration completed via API: ${data['message']}');
+          success = true;
+        }
+      }
+    } catch (e) {
+      print('Migration API failed, trying Firestore fallback. Error: $e');
+    }
+
+    // 2. Firestore fallback if API failed
+    if (!success) {
+      await _migrateUserXPFirestore();
+    }
+  } catch (e) {
+    print('Error in migration: $e');
+  }
+}
+
+Future<void> _migrateUserXPFirestore() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Check if migration already happened recently (within 1 hour)
+    final userDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+    if (userDoc.exists) {
+      final userData = userDoc.data()!;
+      final lastMigration = userData['xpAndLevelMigratedAt'];
+
+      if (lastMigration != null) {
+        final lastMigrationTime = DateTime.parse(lastMigration);
+        final now = DateTime.now();
+        final difference = now.difference(lastMigrationTime).inMinutes;
+
+        // Skip migration if done within last 60 minutes
+        if (difference < 60) {
+          print('Migration skipped - done ${difference} minutes ago');
+          return;
+        }
+      }
+    }
+
+    // Get all helpedRequests for current user
+    final helpedRequestsSnapshot =
+        await FirebaseFirestore.instance
+            .collection('helpedRequests')
+            .where('acceptedUserID', isEqualTo: user.uid)
+            .where('status', whereIn: ['completed', 'in_progress'])
+            .get();
+
+    // Calculate total XP
+    int totalXP = 0;
+    for (final doc in helpedRequestsSnapshot.docs) {
+      final data = doc.data();
+      final xp = data['xp'] ?? 0;
+      totalXP += xp is int ? xp : int.tryParse(xp.toString()) ?? 0;
+    }
+
+    // Calculate level
+    int calculatedLevel = _calculateLevel(totalXP);
+
+    // Update user document
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      'accumulateXP': totalXP,
+      'level': calculatedLevel,
+      'xpAndLevelMigratedAt': DateTime.now().toIso8601String(),
+    });
+
+    print('Firestore migration completed: XP=$totalXP, Level=$calculatedLevel');
+  } catch (e) {
+    print('Firestore migration failed: $e');
+  }
+}
+
+int _calculateLevel(int accumulateXP) {
+  final List<int> xpRequirements = [
+    0,
+    1000,
+    3500,
+    8500,
+    16500,
+    28500,
+    45500,
+    68500,
+    98500,
+    136500,
+  ];
+
+  int currentLevel = 1;
+  for (int i = 1; i < xpRequirements.length; i++) {
+    if (accumulateXP >= xpRequirements[i]) {
+      currentLevel = i + 1;
+    } else {
+      break;
+    }
+  }
+  return currentLevel;
 }
 
 // Replace the existing milestones list with this function

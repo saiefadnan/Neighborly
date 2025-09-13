@@ -6,7 +6,8 @@ import {
   migrateUserXPAndLevels,
   getUserBadgeCounts,
   getUserPostCount,
-  getUserHelpCount
+  getUserHelpCount,
+  getUserSuccessfulHelpsCount
 } from '../controllers/gamificationController';
 
 const gamificationRouter = new Hono();
@@ -22,5 +23,6 @@ gamificationRouter.post('/migrate-xp-and-levels', migrateUserXPAndLevels);  // ‚
 gamificationRouter.get('/user/badges', getUserBadgeCounts);
 gamificationRouter.get('/user/posts', getUserPostCount);  // ‚Üê Add this route
 gamificationRouter.get('/user/helps', getUserHelpCount);
+gamificationRouter.get('/user/successful-helps', getUserSuccessfulHelpsCount);
 
 export default gamificationRouter;

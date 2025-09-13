@@ -176,8 +176,8 @@ export const migrateUserXPAndLevels = async (c: Context) => {
     
     // First, get all helpedRequests to calculate XP
     const helpedRequestsQuery = await db.collection('helpedRequests')
-      .where('status', 'in', ['completed', 'in_progress'])
-      .get();
+  .where('status', '==', 'completed')  // ← ONLY completed
+  .get();
     
     // Group XP by user - FORCE NUMBERS
     const userXPMap = new Map<string, number>();
@@ -185,8 +185,7 @@ export const migrateUserXPAndLevels = async (c: Context) => {
     for (const doc of helpedRequestsQuery.docs) {
       const data = doc.data();
       const userId = data.acceptedUserID;
-      const xp = Number(data.xp || 0);  // ← FORCE NUMBER
-      
+const xp = typeof data.xp === 'number' ? data.xp : parseInt(data.xp?.toString() || '0', 10) || 0;      
       if (userId && xp > 0) {
         const currentXP = Number(userXPMap.get(userId) || 0);  // ← FORCE NUMBER
         userXPMap.set(userId, currentXP + xp);  // ← NOW PROPER ADDITION
@@ -330,11 +329,12 @@ export const getUserBadgeCounts = async (c: Context) => {
       .get();
 
     // Get completed/in_progress helpedRequests for medal counts
-    const completedHelpedRequestsQuery = await getFirestore()
-      .collection('helpedRequests')
-      .where('acceptedUserID', '==', userId)
-      .where('status', 'in', ['completed', 'in_progress'])
-      .get();
+    // Get completed helpedRequests for medal counts
+const completedHelpedRequestsQuery = await getFirestore()
+  .collection('helpedRequests')
+  .where('acceptedUserID', '==', userId)
+  .where('status', '==', 'completed')  // ← ONLY completed
+  .get();
 
     let bronzeCount = 0;  // General type
     let goldCount = 0;    // Emergency type
@@ -394,7 +394,7 @@ export const getUserBadgeCounts = async (c: Context) => {
         postCount: postCount,
         communityHeroUnlocked: communityHeroUnlocked,
         kindstartUnlocked: kindstartUnlocked,
-        totalHelps: bronzeCount + goldCount + otherCount,  // Only completed/in_progress
+        totalHelps: bronzeCount + goldCount + otherCount,  // Only completed  // Only completed/in_progress
         helpDetails: helpDetails  // For debugging
       }
     });
@@ -519,6 +519,92 @@ export const getUserHelpCount = async (c: Context) => {
     return c.json({ 
       success: false, 
       message: 'Failed to get user help count' 
+    }, 500);
+  }
+};
+
+
+// ADD to gamificationController.ts
+export const getUserRank = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    // Get all users ordered by accumulateXP
+    const usersQuery = await getFirestore()
+      .collection('users')
+      .orderBy('accumulateXP', 'desc')
+      .get();
+
+    let rank = 0;
+    for (let i = 0; i < usersQuery.docs.length; i++) {
+  const doc = usersQuery.docs[i];
+  if (doc?.id === userId) {
+    rank = i + 1;
+    break;
+  }
+}
+
+// If user not found in ranking, they might have 0 XP
+if (rank === 0) {
+  rank = usersQuery.docs.length + 1;
+}
+
+    return c.json({ 
+      success: true, 
+      rank: rank,
+      totalUsers: usersQuery.docs.length
+    });
+
+  } catch (error) {
+    console.error('Error getting user rank:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to get user rank' 
+    }, 500);
+  }
+};
+
+// Get user's successful helps count (completed only)
+export const getUserSuccessfulHelpsCount = async (c: Context) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const idToken = authHeader?.replace('Bearer ', '');
+    
+    if (!idToken) {
+      return c.json({ success: false, message: 'No authorization token provided' }, 401);
+    }
+
+    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    // Get only COMPLETED helpedRequests for this user
+    const completedHelpedRequestsQuery = await getFirestore()
+      .collection('helpedRequests')
+      .where('acceptedUserID', '==', userId)
+      .where('status', '==', 'completed')  // ← ONLY completed
+      .get();
+
+    const count = completedHelpedRequestsQuery.docs.length;
+
+    return c.json({ 
+      success: true, 
+      count: count,
+      message: 'Successfully retrieved successful helps count'
+    });
+
+  } catch (error) {
+    console.error('Error getting user successful helps count:', error);
+    return c.json({ 
+      success: false, 
+      message: 'Failed to get user successful helps count' 
     }, 500);
   }
 };
