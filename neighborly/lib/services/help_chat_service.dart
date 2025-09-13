@@ -487,18 +487,27 @@ class HelpChatService {
 
   Future<void> _updateOriginalHelpRequestStatus(String helpRequestId, String status) async {
     try {
+      print('DEBUG: Attempting to update original help request status for $helpRequestId to $status');
+      
       // Find the original help request
       final helpedRequest = await _firestore
           .collection('helpedRequests')
           .doc(helpRequestId)
           .get();
 
-      if (!helpedRequest.exists) return;
+      if (!helpedRequest.exists) {
+        print('DEBUG: helpedRequest not found for $helpRequestId');
+        return;
+      }
 
       final data = helpedRequest.data() as Map<String, dynamic>;
-      final originalRequestId = data['originalRequestId'] as String?;
+      
+      // Fix: Use 'requestId' which is the actual field name in the document
+      final originalRequestId = data['requestId'] as String?;
+      
+      print('DEBUG: originalRequestId found: $originalRequestId');
 
-      if (originalRequestId != null) {
+      if (originalRequestId != null && originalRequestId.isNotEmpty) {
         await _firestore
             .collection('helpRequests')
             .doc(originalRequestId)
@@ -506,9 +515,13 @@ class HelpChatService {
           'status': status,
           'updatedAt': FieldValue.serverTimestamp(),
         });
+        print('DEBUG: Successfully updated helpRequests/$originalRequestId status to $status');
+      } else {
+        print('DEBUG: No requestId found in helpedRequest data');
+        print('DEBUG: Available fields: ${data.keys.toList()}');
       }
     } catch (e) {
-      print('Failed to update original help request status: $e');
+      print('DEBUG: Error updating original help request status: $e');
     }
   }
 

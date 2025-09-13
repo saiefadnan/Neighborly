@@ -1747,7 +1747,8 @@ export const confirmHelpCompletion = async (c: Context) => {
       const helpedRequestDoc = await db.collection('helpedRequests').doc(helpRequestId).get();
       if (helpedRequestDoc.exists) {
         const helpedRequestData = helpedRequestDoc.data()!;
-        const originalRequestId = helpedRequestData.originalRequestId;
+        // Fix: Use 'requestId' instead of 'originalRequestId'
+        const originalRequestId = helpedRequestData.requestId;
         
         if (originalRequestId) {
           await db.collection('helpRequests').doc(originalRequestId).update({
