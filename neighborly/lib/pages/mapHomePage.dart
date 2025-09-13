@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
+import 'dart:async';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neighborly/pages/chat_list_page.dart';
@@ -44,6 +45,14 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   List<Map<String, dynamic>> helpRequests = [];
   bool _isLoading = false;
 
+  // Real-time listeners
+  StreamSubscription<QuerySnapshot>? _helpRequestsSubscription;
+  StreamSubscription<QuerySnapshot>? _responsesSubscription;
+  final Map<String, StreamSubscription<QuerySnapshot>> _responseListeners = {};
+
+  // Real-time state management
+  bool _realTimeEnabled = false;
+
   @override
   void initState() {
     super.initState();
@@ -67,6 +76,9 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
 
     // Load help requests from API
     _loadHelpRequests();
+    
+    // Start real-time listeners
+    _startRealTimeListeners();
 
     // Auto-open help drawer if requested
     if (widget.autoOpenHelpDrawer) {
@@ -105,7 +117,257 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   void dispose() {
     _headerAnimationController.dispose();
     _mapController?.dispose();
+    
+    // Dispose real-time listeners
+    _helpRequestsSubscription?.cancel();
+    _responsesSubscription?.cancel();
+    for (final subscription in _responseListeners.values) {
+      subscription.cancel();
+    }
+    _responseListeners.clear();
+    
     super.dispose();
+  }
+
+  // Start real-time listeners for help requests
+  void _startRealTimeListeners() {
+    if (currentUserId == null) {
+      print('Cannot start real-time listeners: User not authenticated');
+      return;
+    }
+
+    print('Starting real-time listeners for help requests...');
+    
+    // Listen to help requests collection for real-time updates
+    _helpRequestsSubscription = FirebaseFirestore.instance
+        .collection('helpRequests')
+        .where('status', isEqualTo: 'open') // Only listen to open requests
+        .snapshots()
+        .listen(
+          (QuerySnapshot snapshot) {
+            _handleHelpRequestsUpdate(snapshot);
+          },
+          onError: (error) {
+            print('Error in real-time help requests listener: $error');
+          },
+        );
+
+    _realTimeEnabled = true;
+    print('Real-time listeners started successfully');
+  }
+
+  // Handle real-time updates to help requests
+  void _handleHelpRequestsUpdate(QuerySnapshot snapshot) {
+    print('Real-time update: ${snapshot.docs.length} help requests available');
+    
+    // Track new requests for notifications
+    final currentRequestIds = helpRequests.map((req) => req['id']).toSet();
+    List<Map<String, dynamic>> newRequests = [];
+    
+    // Convert Firestore documents to our format
+    List<Map<String, dynamic>> updatedRequests = [];
+    
+    for (var doc in snapshot.docs) {
+      try {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Convert Firestore document to our UI format
+        final convertedRequest = _convertFirestoreToUIFormat(doc.id, data);
+        if (convertedRequest != null) {
+          updatedRequests.add(convertedRequest);
+          
+          // Check if this is a new request
+          if (!currentRequestIds.contains(doc.id)) {
+            newRequests.add(convertedRequest);
+          }
+        }
+      } catch (e) {
+        print('Error converting Firestore document ${doc.id}: $e');
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        helpRequests = updatedRequests;
+      });
+      
+      // Update markers on the map
+      _createMarkers();
+      
+      // Show notification for new requests (but not on initial load)
+      if (newRequests.isNotEmpty && currentRequestIds.isNotEmpty) {
+        _showNewRequestNotification(newRequests.length);
+      }
+      
+      print('Updated ${helpRequests.length} help requests from real-time listener');
+    }
+  }
+
+  // Show notification when new help requests appear
+  void _showNewRequestNotification(int count) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.notification_important, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Text(
+              count == 1 
+                ? '1 new help request nearby!' 
+                : '$count new help requests nearby!',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF71BB7B),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  // Method to restart real-time listeners (useful for debugging)
+  void _restartRealTimeListeners() {
+    print('Restarting real-time listeners...');
+    
+    // Cancel existing listeners
+    _helpRequestsSubscription?.cancel();
+    for (final subscription in _responseListeners.values) {
+      subscription.cancel();
+    }
+    _responseListeners.clear();
+    
+    // Restart
+    _startRealTimeListeners();
+  }
+
+  // Convert Firestore document to UI format
+  Map<String, dynamic>? _convertFirestoreToUIFormat(String id, Map<String, dynamic> data) {
+    try {
+      // Extract location data
+      final locationData = data['location'] as Map<String, dynamic>?;
+      if (locationData == null) {
+        print('Skipping request $id: No location data');
+        return null;
+      }
+
+      final latitude = (locationData['latitude'] as num?)?.toDouble();
+      final longitude = (locationData['longitude'] as num?)?.toDouble();
+      
+      if (latitude == null || longitude == null) {
+        print('Skipping request $id: Invalid coordinates');
+        return null;
+      }
+
+      // Calculate time posted
+      String timePosted = 'Just now';
+      final createdAt = data['createdAt'];
+      if (createdAt != null) {
+        try {
+          DateTime dateTime;
+          if (createdAt is Timestamp) {
+            dateTime = createdAt.toDate();
+          } else if (createdAt is String) {
+            dateTime = DateTime.parse(createdAt);
+          } else {
+            dateTime = DateTime.now();
+          }
+          
+          final diff = DateTime.now().difference(dateTime);
+          if (diff.inMinutes < 1) {
+            timePosted = 'Just now';
+          } else if (diff.inMinutes < 60) {
+            timePosted = '${diff.inMinutes} mins ago';
+          } else if (diff.inHours < 24) {
+            timePosted = '${diff.inHours} hours ago';
+          } else {
+            timePosted = '${diff.inDays} days ago';
+          }
+        } catch (e) {
+          print('Error parsing timestamp for request $id: $e');
+        }
+      }
+
+      return {
+        'id': id,
+        'title': data['title'] ?? 'Help Request',
+        'description': data['description'] ?? '',
+        'type': data['type'] ?? 'General',
+        'priority': data['priority'] ?? 'medium',
+        'status': data['status'] ?? 'open',
+        'userId': data['userId'] ?? '',
+        'username': data['username'] ?? 'Anonymous User',
+        'phone': data['phone'] ?? '',
+        'address': data['address'] ?? 'Address not specified',
+        'time': timePosted,
+        'location': LatLng(latitude, longitude),
+        'responders': [], // Will be populated by response listeners
+        'acceptedResponderId': data['acceptedResponderId'],
+      };
+    } catch (e) {
+      print('Error converting Firestore document $id to UI format: $e');
+      return null;
+    }
+  }
+
+  // Start listening to responses for a specific help request
+  void _startResponseListener(String requestId) {
+    if (_responseListeners.containsKey(requestId)) {
+      return; // Already listening
+    }
+
+    print('Starting response listener for request: $requestId');
+    
+    final subscription = FirebaseFirestore.instance
+        .collection('helpRequests')
+        .doc(requestId)
+        .collection('responses')
+        .snapshots()
+        .listen(
+          (QuerySnapshot snapshot) {
+            _handleResponsesUpdate(requestId, snapshot);
+          },
+          onError: (error) {
+            print('Error in response listener for $requestId: $error');
+          },
+        );
+
+    _responseListeners[requestId] = subscription;
+  }
+
+  // Handle real-time updates to responses
+  void _handleResponsesUpdate(String requestId, QuerySnapshot snapshot) {
+    print('Response update for $requestId: ${snapshot.docs.length} responses');
+    
+    // Convert responses to our format
+    List<Map<String, dynamic>> responses = snapshot.docs.map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return {
+        'id': doc.id,
+        'userId': data['userId'] ?? '',
+        'username': data['username'] ?? 'Anonymous',
+        'message': data['message'] ?? '',
+        'phone': data['phone'] ?? '',
+        'timestamp': data['timestamp'],
+      };
+    }).toList();
+
+    // Update the help request with new responses
+    if (mounted) {
+      setState(() {
+        final requestIndex = helpRequests.indexWhere((req) => req['id'] == requestId);
+        if (requestIndex != -1) {
+          helpRequests[requestIndex]['responders'] = responses;
+          print('Updated responses for request $requestId: ${responses.length} responses');
+        }
+      });
+    }
   }
 
   // Load help requests from API
@@ -254,6 +516,8 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           ),
           icon: customIcon,
           onTap: () {
+            // Start response listener for this request
+            _startResponseListener(req['id']);
             _showHelpRequestBottomSheet(req);
           },
         ),
@@ -647,7 +911,6 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   void _showHelpRequestBottomSheet(Map<String, dynamic> helpData) {
     bool isMyRequest = helpData['userId'] == currentUserId;
     String status = helpData['status'] ?? 'open';
-    List<dynamic> responders = helpData['responders'] ?? [];
     String? acceptedResponderId = helpData['acceptedResponderId'];
 
     showModalBottomSheet(
@@ -657,13 +920,37 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.8,
-          padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        // Use StreamBuilder for real-time response updates
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('helpRequests')
+              .doc(helpData['id'])
+              .collection('responses')
+              .snapshots(),
+          builder: (context, snapshot) {
+            List<dynamic> responders = [];
+            
+            if (snapshot.hasData) {
+              responders = snapshot.data!.docs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return {
+                  'id': doc.id,
+                  'userId': data['userId'] ?? '',
+                  'username': data['username'] ?? 'Anonymous',
+                  'message': data['message'] ?? '',
+                  'phone': data['phone'] ?? '',
+                  'timestamp': data['timestamp'],
+                };
+              }).toList();
+            }
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              padding: const EdgeInsets.all(20),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                 // Handle bar
                 Center(
                   child: Container(
@@ -841,24 +1128,26 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                 ),
                 const SizedBox(height: 20),
 
-                // Show different content based on ownership and status
-                if (isMyRequest) ...[
-                  _buildMyRequestContent(
-                    helpData,
-                    responders,
-                    acceptedResponderId,
-                    status,
-                  ),
-                ] else ...[
-                  _buildOtherRequestContent(
-                    helpData,
-                    status,
-                    acceptedResponderId,
-                  ),
-                ],
-              ],
-            ),
-          ),
+                    // Show different content based on ownership and status
+                    if (isMyRequest) ...[
+                      _buildMyRequestContent(
+                        helpData,
+                        responders,
+                        acceptedResponderId,
+                        status,
+                      ),
+                    ] else ...[
+                      _buildOtherRequestContent(
+                        helpData,
+                        status,
+                        acceptedResponderId,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -2939,13 +3228,41 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
-                    "Neighborly Map",
-                    style: TextStyle(
-                      color: Color.fromARGB(179, 0, 0, 0),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Neighborly Map",
+                        style: TextStyle(
+                          color: Color.fromARGB(179, 0, 0, 0),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                      if (_realTimeEnabled) ...[
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              "Live",
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),

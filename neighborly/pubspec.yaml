@@ -78,11 +78,11 @@ flutter:
     - .env
     - assets/images/
     - assets/data/
-    - assets/images/homepagess.png
-    - assets/images/statss.png
-    - assets/images/contributionss.png
-    - assets/images/achievess.png
-    - assets/images/activityss.png
+    - assets/images/homepagess.PNG
+    - assets/images/statss.PNG
+    - assets/images/contributionss.PNG
+    - assets/images/achievess.PNG
+    - assets/images/activityss.PNG
 
 
   
