@@ -496,7 +496,7 @@ const calculateXP = (priority: string): number => {
     case 'urgent':
       return 300;
     default:
-      return 100; // for 'medium', 'low', or any other priority
+      return 100; // for 'medium', 'low', or any other priority i seeee
   }
 };
 

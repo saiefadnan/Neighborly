@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:neighborly/models/feedback_models.dart';
 import 'package:neighborly/pages/report_feedback.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../config/api_config.dart';
 
 // Custom scrolling text widget for ticker/marquee effect
 class _ScrollingText extends StatefulWidget {
@@ -118,6 +123,13 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  // Dynamic data from backend
+  List<HelpHistory> _helpProvided = [];
+  List<HelpHistory> _helpReceived = [];
+  bool _isLoading = true;
+  String? _error;
+  int _userAccumulateXP = 0; // ← ADD THIS LINE
+
   final List<String> _timeFilters = [
     'All Time',
     'This Week',
@@ -132,137 +144,11 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
     'Cancelled',
   ];
 
-  // Sample data for help provided by user
-  final List<HelpHistory> _helpProvided = [
-    HelpHistory(
-      id: '1',
-      title: 'Emergency Medical Help',
-      description: 'Helped elderly neighbor during medical emergency',
-      helpType: 'Medical',
-      status: 'Completed',
-      requesterName: 'Sarah Ahmed',
-      requesterImage: 'assets/images/Image1.jpg',
-      location: 'Dhanmondi 15, Dhaka',
-      dateCompleted: DateTime.now().subtract(Duration(days: 2)),
-      duration: '45 minutes',
-      rating: 5,
-      feedback:
-          'Amazing help! Ali was there immediately when I needed help most. Very grateful.',
-      helpValuePoints: 50,
-    ),
-    HelpHistory(
-      id: '2',
-      title: 'Grocery Shopping Help',
-      description: 'Bought groceries for sick neighbor',
-      helpType: 'Grocery',
-      status: 'Completed',
-      requesterName: 'Fatima Khan',
-      requesterImage: 'assets/images/Image3.jpg',
-      location: 'Dhanmondi 27, Dhaka',
-      dateCompleted: DateTime.now().subtract(Duration(days: 5)),
-      duration: '1 hour 20 minutes',
-      rating: 4,
-      feedback:
-          'Very helpful and brought everything I needed. Thank you so much!',
-      helpValuePoints: 25,
-    ),
-    HelpHistory(
-      id: '3',
-      title: 'Furniture Moving',
-      description: 'Helped move furniture to 4th floor',
-      helpType: 'Shifting Furniture',
-      status: 'Completed',
-      requesterName: 'Abdul Rahman',
-      requesterImage: 'assets/images/Image1.jpg',
-      location: 'Bashundhara R/A, Dhaka',
-      dateCompleted: DateTime.now().subtract(Duration(days: 12)),
-      duration: '2 hours 15 minutes',
-      rating: 5,
-      feedback:
-          'Strong and reliable help. Made the moving process so much easier!',
-      helpValuePoints: 40,
-    ),
-    HelpHistory(
-      id: '4',
-      title: 'Route Guidance',
-      description: 'Provided directions to new clinic',
-      helpType: 'Route',
-      status: 'In Progress',
-      requesterName: 'Maria Jose',
-      requesterImage: 'assets/images/Image2.jpg',
-      location: 'Gulshan 2, Dhaka',
-      dateCompleted: DateTime.now().subtract(Duration(hours: 3)),
-      duration: 'Ongoing',
-      rating: null,
-      feedback: null,
-      helpValuePoints: 0,
-    ),
-  ];
-
-  // Sample data for help received by user
-  final List<HelpHistory> _helpReceived = [
-    HelpHistory(
-      id: '5',
-      title: 'Pet Care While Away',
-      description: 'Someone took care of my cat while I was traveling',
-      helpType: 'Pet Care',
-      status: 'Completed',
-      requesterName: 'Ali Rahman', // Current user
-      requesterImage: 'assets/images/dummy.png',
-      helperName: 'Nadia Islam',
-      helperImage: 'assets/images/Image2.jpg',
-      location: 'Dhanmondi 15, Dhaka',
-      dateCompleted: DateTime.now().subtract(Duration(days: 15)),
-      duration: '3 days',
-      rating: 5,
-      feedback:
-          'I provided: Excellent care! My cat was happy and healthy when I returned.',
-      helpValuePoints: 35,
-      isReceived: true,
-    ),
-    HelpHistory(
-      id: '6',
-      title: 'Math Tutoring Help',
-      description: 'Got tutoring help for my son',
-      helpType: 'Education',
-      status: 'Completed',
-      requesterName: 'Ali Rahman',
-      requesterImage: 'assets/images/dummy.png',
-      helperName: 'Dr. Rashid Ahmed',
-      helperImage: 'assets/images/Image1.jpg',
-      location: 'Dhanmondi 15, Dhaka',
-      dateCompleted: DateTime.now().subtract(Duration(days: 8)),
-      duration: '2 weeks',
-      rating: 4,
-      feedback:
-          'I provided: Great teacher! My son improved a lot in mathematics.',
-      helpValuePoints: 60,
-      isReceived: true,
-    ),
-    HelpHistory(
-      id: '7',
-      title: 'Car Repair Guidance',
-      description: 'Got help fixing my car',
-      helpType: 'Repair',
-      status: 'In Progress',
-      requesterName: 'Ali Rahman',
-      requesterImage: 'assets/images/dummy.png',
-      helperName: 'Karim Hassan',
-      helperImage: 'assets/images/Image3.jpg',
-      location: 'Dhanmondi 15, Dhaka',
-      dateCompleted: DateTime.now().subtract(Duration(hours: 6)),
-      duration: 'Ongoing',
-      rating: null,
-      feedback: null,
-      helpValuePoints: 0,
-      isReceived: true,
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _fetchHelpHistory();
   }
 
   @override
@@ -270,6 +156,396 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  // Fetch help history from backend with Firestore fallback
+  Future<void> _fetchHelpHistory() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      await Future.wait([
+        _fetchHelpProvided(),
+        _fetchHelpReceived(),
+        _fetchUserAccumulateXP(),
+      ]);
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to load help history';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchHelpProvided() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      bool success = false;
+      List<HelpHistory> providedHelp = [];
+
+      // 1. Try HTTP API first
+      try {
+        final token = await user.getIdToken();
+        final response = await http.get(
+          Uri.parse('${ApiConfig.baseUrl}/api/help-history/provided'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            providedHelp =
+                (data['data'] as List)
+                    .map((item) => HelpHistory.fromBackendJson(item, false))
+                    .toList();
+            success = true;
+            print('Fetched ${providedHelp.length} provided help from API');
+          }
+        }
+      } catch (e) {
+        print(
+          'API fetch failed for provided help, trying Firestore fallback. Error: $e',
+        );
+      }
+
+      // 2. Firestore fallback if API failed
+      if (!success) {
+        try {
+          final helpedRequestsSnapshot =
+              await FirebaseFirestore.instance
+                  .collection('helpedRequests')
+                  .where('acceptedUserID', isEqualTo: user.uid)
+                  .get();
+
+          for (var doc in helpedRequestsSnapshot.docs) {
+            final helpData = doc.data();
+
+            // Get requester info
+            String requesterName = 'Unknown User';
+            String requesterImage = 'assets/images/dummy.png';
+
+            if (helpData['requesterId'] != null) {
+              try {
+                final requesterDoc =
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(helpData['requesterId'])
+                        .get();
+
+                if (requesterDoc.exists) {
+                  final userData = requesterDoc.data()!;
+                  requesterName =
+                      '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'
+                          .trim();
+                  if (requesterName.isEmpty) {
+                    requesterName = userData['username'] ?? 'Unknown User';
+                  }
+                  requesterImage =
+                      userData['profilepicurl'] ?? 'assets/images/dummy.png';
+                }
+              } catch (e) {
+                requesterName = helpData['requesterName'] ?? 'Unknown User';
+              }
+            }
+
+            final requestData = helpData['originalRequestData'] ?? {};
+
+            providedHelp.add(
+              HelpHistory(
+                id: doc.id,
+                title: requestData['title'] ?? 'Help Request',
+                description: requestData['description'] ?? '',
+                helpType:
+                    requestData['type'] ?? requestData['title'] ?? 'General',
+                status: helpData['status'] ?? 'Completed',
+                requesterName: requesterName,
+                requesterImage: requesterImage,
+                location: requestData['address'] ?? 'Unknown location',
+                dateCompleted: _parseDate(helpData['completedAt']),
+                duration: _calculateDuration(
+                  helpData['acceptedAt'],
+                  helpData['completedAt'],
+                ),
+                rating: null, // Will be implemented later
+                feedback: null, // Will be implemented later
+                helpValuePoints:
+                    helpData['xp'] ??
+                    _getXPFromPriority(requestData['priority']),
+                priority: requestData['priority'] ?? 'normal',
+                isReceived: false,
+              ),
+            );
+          }
+
+          success = true;
+          print('Fetched ${providedHelp.length} provided help from Firestore');
+        } catch (e) {
+          print('Firestore fallback failed for provided help: $e');
+        }
+      }
+
+      setState(() {
+        _helpProvided = providedHelp;
+      });
+    } catch (e) {
+      print('Error fetching provided help: $e');
+    }
+  }
+
+  Future<void> _fetchHelpReceived() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      bool success = false;
+      List<HelpHistory> receivedHelp = [];
+
+      // 1. Try HTTP API first
+      try {
+        final token = await user.getIdToken();
+        final response = await http.get(
+          Uri.parse('${ApiConfig.baseUrl}/api/help-history/received'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            receivedHelp =
+                (data['data'] as List)
+                    .map((item) => HelpHistory.fromBackendJson(item, true))
+                    .toList();
+            success = true;
+            print('Fetched ${receivedHelp.length} received help from API');
+          }
+        }
+      } catch (e) {
+        print(
+          'API fetch failed for received help, trying Firestore fallback. Error: $e',
+        );
+      }
+
+      // 2. Firestore fallback if API failed
+      if (!success) {
+        try {
+          final helpedRequestsSnapshot =
+              await FirebaseFirestore.instance
+                  .collection('helpedRequests')
+                  .where('requesterId', isEqualTo: user.uid)
+                  .get();
+
+          for (var doc in helpedRequestsSnapshot.docs) {
+            final helpData = doc.data();
+
+            // Get helper info
+            String helperName = 'Unknown Helper';
+            String helperImage = 'assets/images/dummy.png';
+
+            if (helpData['acceptedUserID'] != null) {
+              try {
+                final helperDoc =
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(helpData['acceptedUserID'])
+                        .get();
+
+                if (helperDoc.exists) {
+                  final userData = helperDoc.data()!;
+                  helperName =
+                      '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'
+                          .trim();
+                  if (helperName.isEmpty) {
+                    helperName = userData['username'] ?? 'Unknown Helper';
+                  }
+                  helperImage =
+                      userData['profilepicurl'] ?? 'assets/images/dummy.png';
+                }
+              } catch (e) {
+                helperName =
+                    helpData['responderName'] ??
+                    helpData['initiatorName'] ??
+                    'Unknown Helper';
+              }
+            }
+
+            final requestData = helpData['originalRequestData'] ?? {};
+
+            receivedHelp.add(
+              HelpHistory(
+                id: doc.id,
+                title: requestData['title'] ?? 'Help Request',
+                description: requestData['description'] ?? '',
+                helpType:
+                    requestData['type'] ?? requestData['title'] ?? 'General',
+                status: helpData['status'] ?? 'Completed',
+                requesterName: 'You', // Current user
+                requesterImage: 'assets/images/dummy.png',
+                helperName: helperName,
+                helperImage: helperImage,
+                location: requestData['address'] ?? 'Unknown location',
+                dateCompleted: _parseDate(helpData['completedAt']),
+                duration: _calculateDuration(
+                  helpData['acceptedAt'],
+                  helpData['completedAt'],
+                ),
+                rating: null, // Will be implemented later
+                feedback: null, // Will be implemented later
+                helpValuePoints: 0, // Receivers don't get XP
+                priority: requestData['priority'] ?? 'normal',
+                isReceived: true,
+              ),
+            );
+          }
+
+          success = true;
+          print('Fetched ${receivedHelp.length} received help from Firestore');
+        } catch (e) {
+          print('Firestore fallback failed for received help: $e');
+        }
+      }
+
+      setState(() {
+        _helpReceived = receivedHelp;
+      });
+    } catch (e) {
+      print('Error fetching received help: $e');
+    }
+  }
+
+  Future<void> _fetchUserAccumulateXP() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      bool success = false;
+      int accumulateXP = 0;
+
+      // 1. Try HTTP API first (using existing profile API)
+      try {
+        final token = await user.getIdToken();
+        final response = await http.get(
+          Uri.parse(
+            '${ApiConfig.baseUrl}/api/gamification/user/xp',
+          ), // ← CHANGED API
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          print('FULL API RESPONSE: $data'); // ← ADD THIS DEBUG LINE
+          if (data['success'] == true) {
+            print('XP API DATA FIELDS: ${data['data'].keys}');
+            accumulateXP = data['data']['accumulateXP'] ?? 0;
+            success = true;
+            print('Fetched accumulate XP from gamification API: $accumulateXP');
+          }
+        }
+      } catch (e) {
+        print(
+          'API fetch failed for accumulate XP, trying Firestore fallback. Error: $e',
+        );
+      }
+
+      // 2. Firestore fallback if API failed
+      if (!success) {
+        try {
+          final userDoc =
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .get();
+
+          if (userDoc.exists) {
+            final userData = userDoc.data()!;
+            accumulateXP = userData['accumulateXP'] ?? 0;
+            success = true;
+            print('Fetched accumulate XP from Firestore: $accumulateXP');
+          }
+        } catch (e) {
+          print('Firestore fallback failed for accumulate XP: $e');
+        }
+      }
+
+      setState(() {
+        _userAccumulateXP = accumulateXP;
+      });
+    } catch (e) {
+      print('Error fetching user accumulate XP: $e');
+    }
+  }
+
+  // Helper functions
+  DateTime _parseDate(dynamic date) {
+    if (date == null) return DateTime.now();
+
+    if (date is Timestamp) {
+      return date.toDate();
+    } else if (date is String) {
+      try {
+        return DateTime.parse(date);
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+
+    return DateTime.now();
+  }
+
+  String _calculateDuration(dynamic startDate, dynamic endDate) {
+    try {
+      final start = _parseDate(startDate);
+      final end = _parseDate(endDate);
+      final duration = end.difference(start);
+
+      if (duration.inDays > 0) {
+        return '${duration.inDays} days';
+      } else if (duration.inHours > 0) {
+        return '${duration.inHours} hours ${duration.inMinutes % 60} minutes';
+      } else {
+        return '${duration.inMinutes} minutes';
+      }
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
+  int _getXPFromPriority(String? priority) {
+    switch (priority?.toLowerCase()) {
+      case 'emergency':
+        return 500;
+      case 'urgent':
+        return 300;
+      default:
+        return 100;
+    }
+  }
+
+  // Get XP color based on value
+  Color _getXPColor(int xp) {
+    if (xp >= 500) {
+      return const Color(0xFFFFD700); // Gold
+    } else if (xp >= 300) {
+      return const Color(0xFFC0C0C0); // Silver
+    } else {
+      return const Color(0xFFCD7F32); // Bronze
+    }
+  }
+
+  IconData _getXPIcon(int xp) {
+    if (xp >= 500) {
+      return Icons.emoji_events; // Trophy for gold
+    } else if (xp >= 300) {
+      return Icons.military_tech; // Medal for silver
+    } else {
+      return Icons.stars; // Stars for bronze
+    }
   }
 
   List<HelpHistory> _getFilteredHistory(List<HelpHistory> history) {
@@ -333,6 +609,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
       case 'Medical':
         return Icons.local_hospital;
       case 'Grocery':
+      case 'Groceries':
         return Icons.shopping_cart;
       case 'Shifting Furniture':
         return Icons.chair;
@@ -344,6 +621,10 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
         return Icons.school;
       case 'Repair':
         return Icons.build;
+      case 'Emergency':
+        return Icons.emergency;
+      case 'Transport':
+        return Icons.directions_car;
       default:
         return Icons.help_outline;
     }
@@ -494,11 +775,8 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
   }
 
   Widget _buildUserTrustInfo(HelpHistory help) {
-    // Get user ID for the person we interacted with
     final String userId =
         help.isReceived ? (help.helperName ?? 'helper') : help.requesterName;
-
-    // Get trust metrics from feedback service
     final double avgRating = FeedbackService.getAverageRating(userId);
     final int feedbackCount = FeedbackService.getFeedbackCount(userId);
     final double trustScore = FeedbackService.getTrustScore(userId);
@@ -522,7 +800,6 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
 
     return Row(
       children: [
-        // Rating stars
         Row(
           children: List.generate(5, (index) {
             return Icon(
@@ -547,7 +824,6 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
           style: TextStyle(fontSize: 9, color: Colors.grey[500]),
         ),
         const SizedBox(width: 8),
-        // Trust badge
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
@@ -610,14 +886,20 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                   // Profile Image
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      help.isReceived
-                          ? (help.helperImage ?? help.requesterImage)
-                          : help.requesterImage,
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                    ),
+                    child:
+                        help.isReceived && help.helperImage != null
+                            ? Image.asset(
+                              help.helperImage!,
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                            )
+                            : Image.asset(
+                              help.requesterImage,
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                            ),
                   ),
                   const SizedBox(width: 12),
 
@@ -664,7 +946,6 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                           ],
                         ),
                         const SizedBox(height: 4),
-                        // User Trust Score and Rating
                         _buildUserTrustInfo(help),
                       ],
                     ),
@@ -800,16 +1081,18 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.purple.withOpacity(0.1),
+                        color: _getXPColor(
+                          help.helpValuePoints,
+                        ).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.emoji_events,
+                            _getXPIcon(help.helpValuePoints),
                             size: 12,
-                            color: Colors.purple[700],
+                            color: _getXPColor(help.helpValuePoints),
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -817,7 +1100,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: Colors.purple[700],
+                              color: _getXPColor(help.helpValuePoints),
                             ),
                           ),
                         ],
@@ -826,9 +1109,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                     const SizedBox(width: 6),
                   ],
 
-                  // Fixed width auto-scrolling time duration
                   _buildScrollingTimeContainer(help.duration),
-
                   const SizedBox(width: 6),
 
                   _buildActionButton(
@@ -848,8 +1129,8 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
 
   Widget _buildScrollingTimeContainer(String duration) {
     return Container(
-      width: 90, // Fixed width
-      height: 24, // Fixed height
+      width: 90,
+      height: 24,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.blue.withOpacity(0.1),
@@ -945,14 +1226,20 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        help.isReceived
-                            ? (help.helperImage ?? help.requesterImage)
-                            : help.requesterImage,
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
-                      ),
+                      child:
+                          help.isReceived && help.helperImage != null
+                              ? Image.asset(
+                                help.helperImage!,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                              )
+                              : Image.asset(
+                                help.requesterImage,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                              ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -1189,15 +1476,17 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.purple.withOpacity(0.1),
+                              color: _getXPColor(
+                                help.helpValuePoints,
+                              ).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
                               children: [
                                 Icon(
-                                  Icons.emoji_events,
+                                  _getXPIcon(help.helpValuePoints),
                                   size: 32,
-                                  color: Colors.purple[700],
+                                  color: _getXPColor(help.helpValuePoints),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
@@ -1205,7 +1494,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.purple[700],
+                                    color: _getXPColor(help.helpValuePoints),
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -1266,7 +1555,6 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            // Update status functionality
                             Navigator.of(context).pop();
                           },
                           icon: const Icon(Icons.update),
@@ -1285,7 +1573,6 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            // Message functionality
                             Navigator.of(context).pop();
                           },
                           icon: const Icon(Icons.message),
@@ -1309,7 +1596,6 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                         child: ElevatedButton.icon(
                           onPressed: () {
                             Navigator.of(context).pop();
-                            // Navigate to feedback page with pre-filled data
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -1335,7 +1621,6 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                         child: OutlinedButton.icon(
                           onPressed: () {
                             Navigator.of(context).pop();
-                            // Navigate to report page with pre-filled data
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -1404,18 +1689,21 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
   }
 
   Widget _buildStatsOverview() {
-    final completedProvided =
-        _helpProvided.where((h) => h.status == 'Completed').length;
-    final completedReceived =
-        _helpReceived.where((h) => h.status == 'Completed').length;
-    final totalPoints = _helpProvided
-        .where((h) => h.status == 'Completed')
-        .fold(0, (sum, h) => sum + h.helpValuePoints);
+    final completedProvided = _helpProvided.length; // All fetched are completed
+    final completedReceived = _helpReceived.length; // All fetched are completed
     final avgRating =
-        _helpProvided
-            .where((h) => h.rating != null)
-            .fold(0.0, (sum, h) => sum + h.rating!) /
-        _helpProvided.where((h) => h.rating != null).length;
+        _helpProvided.where((h) => h.rating != null).isEmpty
+            ? 0.0
+            : _helpProvided
+                    .where((h) => h.rating != null)
+                    .fold(0.0, (sum, h) => sum + h.rating!) /
+                _helpProvided.where((h) => h.rating != null).length;
+    _helpProvided.where((h) => h.rating != null).isEmpty
+        ? 0.0
+        : _helpProvided
+                .where((h) => h.rating != null)
+                .fold(0.0, (sum, h) => sum + h.rating!) /
+            _helpProvided.where((h) => h.rating != null).length;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -1457,21 +1745,21 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
               Expanded(
                 child: _buildStatItem(
                   'Provided',
-                  completedProvided.toString(),
+                  _helpProvided.length.toString(), // Direct count from backend
                   Icons.volunteer_activism,
                 ),
               ),
               Expanded(
                 child: _buildStatItem(
                   'Received',
-                  completedReceived.toString(),
+                  _helpReceived.length.toString(), // Direct count from backend
                   Icons.help_outline,
                 ),
               ),
               Expanded(
                 child: _buildStatItem(
                   'Points',
-                  totalPoints.toString(),
+                  _userAccumulateXP.toString(),
                   Icons.emoji_events,
                 ),
               ),
@@ -1522,6 +1810,99 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF7F2E7),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF71BB7B),
+          elevation: 0,
+          title: const Row(
+            children: [
+              Icon(Icons.history, color: Colors.white, size: 24),
+              SizedBox(width: 8),
+              Text(
+                'Help History',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Color(0xFF71BB7B)),
+              SizedBox(height: 16),
+              Text(
+                'Loading help history...',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF7F2E7),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF71BB7B),
+          elevation: 0,
+          title: const Row(
+            children: [
+              Icon(Icons.history, color: Colors.white, size: 24),
+              SizedBox(width: 8),
+              Text(
+                'Help History',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+              const SizedBox(height: 16),
+              Text(
+                _error!,
+                style: const TextStyle(fontSize: 16, color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchHelpHistory,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF71BB7B),
+                ),
+                child: const Text(
+                  'Retry',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F2E7),
       appBar: AppBar(
@@ -1596,10 +1977,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
-        // Statistics Overview - will collapse when scrolling up
         SliverToBoxAdapter(child: _buildStatsOverview()),
-
-        // Sticky Search/Filter Section
         SliverPersistentHeader(
           pinned: true,
           delegate: _StickyHeaderDelegate(
@@ -1608,8 +1986,6 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
             child: _buildFilterSection(),
           ),
         ),
-
-        // History List
         _buildSliverHistoryList(history, isProvided),
       ],
     );
@@ -1653,9 +2029,10 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
     }
 
     return SliverList(
-      delegate: SliverChildBuilderDelegate((context, index) {
-        return _buildHistoryCard(filteredHistory[index]);
-      }, childCount: filteredHistory.length),
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => _buildHistoryCard(filteredHistory[index]),
+        childCount: filteredHistory.length,
+      ),
     );
   }
 }
@@ -1711,6 +2088,7 @@ class HelpHistory {
   final int? rating;
   final String? feedback;
   final int helpValuePoints;
+  final String priority;
   final bool isReceived;
 
   HelpHistory({
@@ -1729,6 +2107,58 @@ class HelpHistory {
     this.rating,
     this.feedback,
     required this.helpValuePoints,
+    required this.priority,
     this.isReceived = false,
   });
+
+  // Factory method to create HelpHistory from backend JSON
+  factory HelpHistory.fromBackendJson(
+    Map<String, dynamic> json,
+    bool isReceived,
+  ) {
+    return HelpHistory(
+      id: json['id'] ?? '',
+      title: json['title'] ?? 'Help Request',
+      description: json['description'] ?? '',
+      helpType: json['type'] ?? 'General',
+      status: json['status'] ?? 'Completed',
+      requesterName:
+          isReceived ? 'You' : (json['requester']?['name'] ?? 'Unknown User'),
+      requesterImage: 'assets/images/dummy.png', // Default image
+      helperName: isReceived ? (json['helper']?['name'] ?? 'Helper') : null,
+      helperImage: isReceived ? 'assets/images/dummy.png' : null,
+      location: json['location'] ?? 'Unknown location',
+      dateCompleted:
+          DateTime.tryParse(json['completedAt'] ?? '') ?? DateTime.now(),
+      duration: _calculateDurationFromJson(
+        json['acceptedAt'],
+        json['completedAt'],
+      ),
+      rating: json['rating'],
+      feedback: json['feedback'],
+      helpValuePoints: json['xp'] ?? 0,
+      priority: json['priority'] ?? 'normal',
+      isReceived: isReceived,
+    );
+  }
+
+  static String _calculateDurationFromJson(String? startDate, String? endDate) {
+    try {
+      if (startDate == null || endDate == null) return 'Unknown';
+
+      final start = DateTime.parse(startDate);
+      final end = DateTime.parse(endDate);
+      final duration = end.difference(start);
+
+      if (duration.inDays > 0) {
+        return '${duration.inDays} days';
+      } else if (duration.inHours > 0) {
+        return '${duration.inHours} hours ${duration.inMinutes % 60} minutes';
+      } else {
+        return '${duration.inMinutes} minutes';
+      }
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
 }

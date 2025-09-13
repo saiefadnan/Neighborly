@@ -376,30 +376,81 @@ class _ProfileNameHeaderState extends State<_ProfileNameHeader> {
         });
         return;
       }
-      final token = await user.getIdToken();
-      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.infosApiPath}');
-      final response = await http.get(
-        uri,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body)['data'];
+
+      bool success = false;
+
+      // 1. Try HTTP API first
+      try {
+        final token = await user.getIdToken();
+        final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.infosApiPath}');
+        final response = await http.get(
+          uri,
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body)['data'];
+          setState(() {
+            _name =
+                ((data['firstName'] ?? '') + ' ' + (data['lastName'] ?? ''))
+                    .trim();
+            _loading = false;
+          });
+          success = true;
+          print('Fetched user name from API: $_name');
+        }
+      } catch (e) {
+        print('Name API fetch failed, trying Firestore fallback. Error: $e');
+      }
+
+      // 2. Firestore fallback if API failed
+      if (!success) {
+        try {
+          final userDoc =
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .get();
+
+          if (userDoc.exists) {
+            final userData = userDoc.data()!;
+            final firstName = userData['firstName'] ?? '';
+            final lastName = userData['lastName'] ?? '';
+            final username = userData['username'] ?? '';
+
+            // Try firstName + lastName first, then username as fallback
+            String name = (firstName + ' ' + lastName).trim();
+            if (name.isEmpty) {
+              name = username;
+            }
+
+            setState(() {
+              _name = name.isNotEmpty ? name : 'Unknown User';
+              _loading = false;
+            });
+            print('Fetched user name from Firestore: $_name');
+          } else {
+            setState(() {
+              _name = 'Unknown User';
+              _loading = false;
+            });
+          }
+        } catch (e) {
+          print('Firestore name fallback failed: $e');
+          setState(() {
+            _name = 'Unknown User';
+            _loading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching user info: $e');
+      if (mounted) {
         setState(() {
-          _name =
-              ((data['firstName'] ?? '') + ' ' + (data['lastName'] ?? ''))
-                  .trim();
-          _loading = false;
-        });
-      } else {
-        setState(() {
+          _name = 'Unknown User';
           _loading = false;
         });
       }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-      });
     }
   }
 
