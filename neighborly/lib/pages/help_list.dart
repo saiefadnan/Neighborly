@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/help_request_provider.dart';
 import '../components/responses_drawer.dart';
 import '../components/shared_routes_bottom_sheet.dart';
+import '../services/map_service.dart';
 
 class HelpListPage extends StatefulWidget {
   const HelpListPage({super.key});
@@ -1071,7 +1072,7 @@ class _HelpListPageState extends State<HelpListPage>
                             Expanded(
                               flex: 2,
                               child: ElevatedButton(
-                                onPressed: () {
+                                onPressed: () async {
                                   if (responseController.text.trim().isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
@@ -1090,43 +1091,143 @@ class _HelpListPageState extends State<HelpListPage>
                                     return;
                                   }
 
+                                  // Close the modal first
                                   Navigator.of(context).pop();
-                                  final helpProvider =
-                                      Provider.of<HelpRequestProvider>(
-                                        context,
-                                        listen: false,
-                                      );
-                                  helpProvider.updateHelpRequest(
-                                    help.id,
-                                    isResponded: true,
-                                    responderCount: help.responderCount + 1,
-                                  );
+                                  
+                                  // Show loading indicator
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Row(
                                         children: [
-                                          const Icon(
-                                            Icons.check_circle,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Text(
-                                            'Response sent to ${help.requesterName}!',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
+                                          SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                             ),
                                           ),
+                                          const SizedBox(width: 12),
+                                          const Text('Sending response...'),
                                         ],
                                       ),
                                       backgroundColor: const Color(0xFF71BB7B),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      margin: const EdgeInsets.all(16),
+                                      duration: const Duration(seconds: 3),
                                     ),
                                   );
+
+                                  try {
+                                    final user = FirebaseAuth.instance.currentUser;
+                                    final result = await MapService.respondToHelpRequest(
+                                      requestId: help.id,
+                                      message: responseController.text.trim(),
+                                      phone: user?.phoneNumber ?? '',
+                                      username: user?.displayName ?? 'Anonymous Helper',
+                                    );
+
+                                    // Hide loading snackbar
+                                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                                    if (result['success'] == true) {
+                                      // Update local state after successful backend call
+                                      final helpProvider = Provider.of<HelpRequestProvider>(
+                                        context,
+                                        listen: false,
+                                      );
+                                      helpProvider.updateHelpRequest(
+                                        help.id,
+                                        isResponded: true,
+                                        responderCount: help.responderCount + 1,
+                                      );
+
+                                      // Show success message
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.check_circle,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Text(
+                                                'Response sent to ${help.requesterName}!',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: const Color(0xFF71BB7B),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          margin: const EdgeInsets.all(16),
+                                        ),
+                                      );
+                                    } else {
+                                      // Show error message
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.error_outline,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  result['message'] ?? 'Failed to send response. Please try again.',
+                                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          margin: const EdgeInsets.all(16),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    // Hide loading snackbar
+                                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                    
+                                    // Show error message
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.error_outline,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            const Expanded(
+                                              child: Text(
+                                                'Network error. Please check your connection and try again.',
+                                                style: TextStyle(fontWeight: FontWeight.w600),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        margin: const EdgeInsets.all(16),
+                                      ),
+                                    );
+                                  }
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF71BB7B),
