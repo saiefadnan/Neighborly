@@ -247,8 +247,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                   if (requesterName.isEmpty) {
                     requesterName = userData['username'] ?? 'Unknown User';
                   }
-                  requesterImage =
-                      userData['profilepicurl'] ?? 'assets/images/dummy.png';
+                  requesterImage = userData['profilepicurl'] ?? '';
                 }
               } catch (e) {
                 requesterName = helpData['requesterName'] ?? 'Unknown User';
@@ -364,8 +363,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                   if (helperName.isEmpty) {
                     helperName = userData['username'] ?? 'Unknown Helper';
                   }
-                  helperImage =
-                      userData['profilepicurl'] ?? 'assets/images/dummy.png';
+                  helperImage = userData['profilepicurl'] ?? '';
                 }
               } catch (e) {
                 helperName =
@@ -888,18 +886,48 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                     borderRadius: BorderRadius.circular(12),
                     child:
                         help.isReceived && help.helperImage != null
-                            ? Image.asset(
-                              help.helperImage!,
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.cover,
-                            )
-                            : Image.asset(
-                              help.requesterImage,
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.cover,
-                            ),
+                            ? (help.helperImage!.isNotEmpty
+                                ? Image.network(
+                                  help.helperImage!,
+                                  width: 48,
+                                  height: 48,
+                                  fit: BoxFit.cover,
+                                  errorBuilder:
+                                      (context, error, stackTrace) =>
+                                          Image.asset(
+                                            'assets/images/dummy.png',
+                                            width: 48,
+                                            height: 48,
+                                            fit: BoxFit.cover,
+                                          ),
+                                )
+                                : Image.asset(
+                                  'assets/images/dummy.png',
+                                  width: 48,
+                                  height: 48,
+                                  fit: BoxFit.cover,
+                                ))
+                            : (help.requesterImage.isNotEmpty
+                                ? Image.network(
+                                  help.requesterImage,
+                                  width: 48,
+                                  height: 48,
+                                  fit: BoxFit.cover,
+                                  errorBuilder:
+                                      (context, error, stackTrace) =>
+                                          Image.asset(
+                                            'assets/images/dummy.png',
+                                            width: 48,
+                                            height: 48,
+                                            fit: BoxFit.cover,
+                                          ),
+                                )
+                                : Image.asset(
+                                  'assets/images/dummy.png',
+                                  width: 48,
+                                  height: 48,
+                                  fit: BoxFit.cover,
+                                )),
                   ),
                   const SizedBox(width: 12),
 
@@ -1228,18 +1256,48 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                       borderRadius: BorderRadius.circular(12),
                       child:
                           help.isReceived && help.helperImage != null
-                              ? Image.asset(
-                                help.helperImage!,
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
-                              )
-                              : Image.asset(
-                                help.requesterImage,
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
-                              ),
+                              ? (help.helperImage!.isNotEmpty
+                                  ? Image.network(
+                                    help.helperImage!,
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Image.asset(
+                                              'assets/images/dummy.png',
+                                              width: 60,
+                                              height: 60,
+                                              fit: BoxFit.cover,
+                                            ),
+                                  )
+                                  : Image.asset(
+                                    'assets/images/dummy.png',
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                  ))
+                              : (help.requesterImage.isNotEmpty
+                                  ? Image.network(
+                                    help.requesterImage,
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Image.asset(
+                                              'assets/images/dummy.png',
+                                              width: 60,
+                                              height: 60,
+                                              fit: BoxFit.cover,
+                                            ),
+                                  )
+                                  : Image.asset(
+                                    'assets/images/dummy.png',
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                  )),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -2124,9 +2182,11 @@ class HelpHistory {
       status: json['status'] ?? 'Completed',
       requesterName:
           isReceived ? 'You' : (json['requester']?['name'] ?? 'Unknown User'),
-      requesterImage: 'assets/images/dummy.png', // Default image
+      requesterImage:
+          isReceived ? '' : (json['requester']?['profilePicture'] ?? ''),
       helperName: isReceived ? (json['helper']?['name'] ?? 'Helper') : null,
-      helperImage: isReceived ? 'assets/images/dummy.png' : null,
+      helperImage:
+          isReceived ? (json['helper']?['profilePicture'] ?? '') : null,
       location: json['location'] ?? 'Unknown location',
       dateCompleted:
           DateTime.tryParse(json['completedAt'] ?? '') ?? DateTime.now(),
