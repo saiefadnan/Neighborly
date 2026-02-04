@@ -211,7 +211,7 @@ class _InProgressHelpDetailPageState extends State<InProgressHelpDetailPage> {
                       ),
                     ),
                     Text(
-                      'You\'ve requested completion. Waiting for ${_otherPartyName} to confirm.',
+                      'You\'ve requested completion. Waiting for $_otherPartyName to confirm.',
                       style: TextStyle(
                         color: Colors.blue[700],
                         fontSize: 14,

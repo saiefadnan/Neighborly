@@ -716,7 +716,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
               // Skip migration if done within last 60 minutes
               if (difference < 60) {
                 print(
-                  'XP & levels migration skipped - done ${difference} minutes ago',
+                  'XP & levels migration skipped - done $difference minutes ago',
                 );
                 return;
               }

@@ -42,7 +42,7 @@ class _HelpChatPageState extends State<HelpChatPage> {
   int _remainingSeconds = 60;
   Timer? _deletionTimer;
   bool _hasPendingCompletionRequest = false;
-  Set<String> _respondedCompletionRequests = <String>{}; // Track responded completion requests
+  final Set<String> _respondedCompletionRequests = <String>{}; // Track responded completion requests
 
   @override
   void initState() {

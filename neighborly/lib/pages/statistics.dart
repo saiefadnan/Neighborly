@@ -271,7 +271,7 @@ class _StatisticsPageState extends State<StatisticsPage>
 
           // Skip migration if done within last 60 minutes
           if (difference < 60) {
-            print('Migration skipped - done ${difference} minutes ago');
+            print('Migration skipped - done $difference minutes ago');
             return;
           }
         }

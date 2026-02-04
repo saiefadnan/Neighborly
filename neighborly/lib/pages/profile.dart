@@ -313,7 +313,7 @@ Future<void> _migrateUserXPFirestore() async {
 
         // Skip migration if done within last 60 minutes
         if (difference < 60) {
-          print('Migration skipped - done ${difference} minutes ago');
+          print('Migration skipped - done $difference minutes ago');
           return;
         }
       }

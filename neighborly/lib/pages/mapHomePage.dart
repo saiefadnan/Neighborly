@@ -76,7 +76,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
 
     // Load help requests from API
     _loadHelpRequests();
-    
+
     // Start real-time listeners
     _startRealTimeListeners();
 
@@ -117,7 +117,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   void dispose() {
     _headerAnimationController.dispose();
     _mapController?.dispose();
-    
+
     // Dispose real-time listeners
     _helpRequestsSubscription?.cancel();
     _responsesSubscription?.cancel();
@@ -125,7 +125,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       subscription.cancel();
     }
     _responseListeners.clear();
-    
+
     super.dispose();
   }
 
@@ -137,7 +137,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     }
 
     print('Starting real-time listeners for help requests...');
-    
+
     // Listen to help requests collection for real-time updates
     _helpRequestsSubscription = FirebaseFirestore.instance
         .collection('helpRequests')
@@ -159,23 +159,23 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   // Handle real-time updates to help requests
   void _handleHelpRequestsUpdate(QuerySnapshot snapshot) {
     print('Real-time update: ${snapshot.docs.length} help requests available');
-    
+
     // Track new requests for notifications
     final currentRequestIds = helpRequests.map((req) => req['id']).toSet();
     List<Map<String, dynamic>> newRequests = [];
-    
+
     // Convert Firestore documents to our format
     List<Map<String, dynamic>> updatedRequests = [];
-    
+
     for (var doc in snapshot.docs) {
       try {
         final data = doc.data() as Map<String, dynamic>;
-        
+
         // Convert Firestore document to our UI format
         final convertedRequest = _convertFirestoreToUIFormat(doc.id, data);
         if (convertedRequest != null) {
           updatedRequests.add(convertedRequest);
-          
+
           // Check if this is a new request
           if (!currentRequestIds.contains(doc.id)) {
             newRequests.add(convertedRequest);
@@ -190,33 +190,39 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       setState(() {
         helpRequests = updatedRequests;
       });
-      
+
       // Update markers on the map
       _createMarkers();
-      
+
       // Show notification for new requests (but not on initial load)
       if (newRequests.isNotEmpty && currentRequestIds.isNotEmpty) {
         _showNewRequestNotification(newRequests.length);
       }
-      
-      print('Updated ${helpRequests.length} help requests from real-time listener');
+
+      print(
+        'Updated ${helpRequests.length} help requests from real-time listener',
+      );
     }
   }
 
   // Show notification when new help requests appear
   void _showNewRequestNotification(int count) {
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.notification_important, color: Colors.white, size: 20),
+            const Icon(
+              Icons.notification_important,
+              color: Colors.white,
+              size: 20,
+            ),
             const SizedBox(width: 12),
             Text(
-              count == 1 
-                ? '1 new help request nearby!' 
-                : '$count new help requests nearby!',
+              count == 1
+                  ? '1 new help request nearby!'
+                  : '$count new help requests nearby!',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ],
@@ -224,9 +230,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
         backgroundColor: const Color(0xFF71BB7B),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -235,20 +239,23 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   // Method to restart real-time listeners (useful for debugging)
   void _restartRealTimeListeners() {
     print('Restarting real-time listeners...');
-    
+
     // Cancel existing listeners
     _helpRequestsSubscription?.cancel();
     for (final subscription in _responseListeners.values) {
       subscription.cancel();
     }
     _responseListeners.clear();
-    
+
     // Restart
     _startRealTimeListeners();
   }
 
   // Convert Firestore document to UI format
-  Map<String, dynamic>? _convertFirestoreToUIFormat(String id, Map<String, dynamic> data) {
+  Map<String, dynamic>? _convertFirestoreToUIFormat(
+    String id,
+    Map<String, dynamic> data,
+  ) {
     try {
       // Extract location data
       final locationData = data['location'] as Map<String, dynamic>?;
@@ -259,7 +266,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
 
       final latitude = (locationData['latitude'] as num?)?.toDouble();
       final longitude = (locationData['longitude'] as num?)?.toDouble();
-      
+
       if (latitude == null || longitude == null) {
         print('Skipping request $id: Invalid coordinates');
         return null;
@@ -278,7 +285,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
           } else {
             dateTime = DateTime.now();
           }
-          
+
           final diff = DateTime.now().difference(dateTime);
           if (diff.inMinutes < 1) {
             timePosted = 'Just now';
@@ -323,7 +330,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     }
 
     print('Starting response listener for request: $requestId');
-    
+
     final subscription = FirebaseFirestore.instance
         .collection('helpRequests')
         .doc(requestId)
@@ -344,27 +351,32 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
   // Handle real-time updates to responses
   void _handleResponsesUpdate(String requestId, QuerySnapshot snapshot) {
     print('Response update for $requestId: ${snapshot.docs.length} responses');
-    
+
     // Convert responses to our format
-    List<Map<String, dynamic>> responses = snapshot.docs.map((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      return {
-        'id': doc.id,
-        'userId': data['userId'] ?? '',
-        'username': data['username'] ?? 'Anonymous',
-        'message': data['message'] ?? '',
-        'phone': data['phone'] ?? '',
-        'timestamp': data['timestamp'],
-      };
-    }).toList();
+    List<Map<String, dynamic>> responses =
+        snapshot.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return {
+            'id': doc.id,
+            'userId': data['userId'] ?? '',
+            'username': data['username'] ?? 'Anonymous',
+            'message': data['message'] ?? '',
+            'phone': data['phone'] ?? '',
+            'timestamp': data['timestamp'],
+          };
+        }).toList();
 
     // Update the help request with new responses
     if (mounted) {
       setState(() {
-        final requestIndex = helpRequests.indexWhere((req) => req['id'] == requestId);
+        final requestIndex = helpRequests.indexWhere(
+          (req) => req['id'] == requestId,
+        );
         if (requestIndex != -1) {
           helpRequests[requestIndex]['responders'] = responses;
-          print('Updated responses for request $requestId: ${responses.length} responses');
+          print(
+            'Updated responses for request $requestId: ${responses.length} responses',
+          );
         }
       });
     }
@@ -382,6 +394,14 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
     });
 
     try {
+      // Check location services first
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception(
+          'Location services are disabled. Please enable them in settings.',
+        );
+      }
+
       // Get user's current location for nearby requests
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -410,30 +430,20 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
         }
       } else {
         // Get nearby requests based on location
-        Position position = await Geolocator.getCurrentPosition();
+        Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        );
 
-        // Check if we're getting emulator coordinates (California)
-        bool isEmulatorLocation =
-            (position.latitude >= 37.0 &&
-                position.latitude <= 38.0 &&
-                position.longitude >= -123.0 &&
-                position.longitude <= -121.0);
-
-        double searchLat, searchLng;
-        if (isEmulatorLocation) {
-          // Use MIST, Mirpur Cantonment coordinates for development
-          searchLat = 23.8223;
-          searchLng = 90.3654;
-          //print('Using MIST coordinates for emulator: $searchLat, $searchLng');
-        } else {
-          searchLat = position.latitude;
-          searchLng = position.longitude;
-          //print('Using real GPS coordinates: $searchLat, $searchLng');
-        }
+        print(
+          'Current GPS coordinates: ${position.latitude}, ${position.longitude}',
+        );
+        print('Location accuracy: ${position.accuracy} meters');
+        print('Location timestamp: ${position.timestamp}');
 
         final result = await MapService.getNearbyHelpRequests(
-          latitude: searchLat,
-          longitude: searchLng,
+          latitude: position.latitude,
+          longitude: position.longitude,
           radiusKm: 20.0, // 20km radius
         );
 
@@ -922,26 +932,28 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       builder: (BuildContext context) {
         // Use StreamBuilder for real-time response updates
         return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('helpRequests')
-              .doc(helpData['id'])
-              .collection('responses')
-              .snapshots(),
+          stream:
+              FirebaseFirestore.instance
+                  .collection('helpRequests')
+                  .doc(helpData['id'])
+                  .collection('responses')
+                  .snapshots(),
           builder: (context, snapshot) {
             List<dynamic> responders = [];
-            
+
             if (snapshot.hasData) {
-              responders = snapshot.data!.docs.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return {
-                  'id': doc.id,
-                  'userId': data['userId'] ?? '',
-                  'username': data['username'] ?? 'Anonymous',
-                  'message': data['message'] ?? '',
-                  'phone': data['phone'] ?? '',
-                  'timestamp': data['timestamp'],
-                };
-              }).toList();
+              responders =
+                  snapshot.data!.docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return {
+                      'id': doc.id,
+                      'userId': data['userId'] ?? '',
+                      'username': data['username'] ?? 'Anonymous',
+                      'message': data['message'] ?? '',
+                      'phone': data['phone'] ?? '',
+                      'timestamp': data['timestamp'],
+                    };
+                  }).toList();
             }
 
             return Container(
@@ -951,182 +963,182 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                // Handle bar
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Header with status indicator
-                Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        'assets/images/dummy.png',
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
+                    // Handle bar
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    const SizedBox(height: 20),
+
+                    // Header with status indicator
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            'assets/images/dummy.png',
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                helpData['username'] ?? 'Anonymous User',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              if (isMyRequest) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.purple.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    'You',
-                                    style: TextStyle(
-                                      fontSize: 10,
+                              Row(
+                                children: [
+                                  Text(
+                                    helpData['username'] ?? 'Anonymous User',
+                                    style: const TextStyle(
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.purple,
                                     ),
                                   ),
+                                  if (isMyRequest) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        'You',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.purple,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                helpData['address'] ?? 'Dhanmondi Area',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
                                 ),
-                              ],
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                        ),
+                        Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getUrgencyColor(helpData['type']),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                helpData['type'],
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(status),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _getStatusText(status),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Help Type
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF71BB7B).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _getHelpTypeIcon(helpData['title']),
+                            size: 18,
+                            color: const Color(0xFF71BB7B),
+                          ),
+                          const SizedBox(width: 8),
                           Text(
-                            helpData['address'] ?? 'Dhanmondi Area',
-                            style: TextStyle(
+                            helpData['type'],
+                            style: const TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF71BB7B),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getUrgencyColor(helpData['type']),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            helpData['type'],
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(status),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _getStatusText(status),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 16),
+
+                    // Title
+                    Text(
+                      helpData['title'] ?? helpData['type'],
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2C3E50),
+                      ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 20),
+                    const SizedBox(height: 12),
 
-                // Help Type
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF71BB7B).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _getHelpTypeIcon(helpData['title']),
-                        size: 18,
-                        color: const Color(0xFF71BB7B),
+                    // Description
+                    Text(
+                      'Description:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        helpData['type'],
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF71BB7B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Title
-                Text(
-                  helpData['title'] ?? helpData['type'],
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Description
-                Text(
-                  'Description:',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  helpData['description'],
-                  style: const TextStyle(fontSize: 14, height: 1.4),
-                ),
-                const SizedBox(height: 20),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      helpData['description'],
+                      style: const TextStyle(fontSize: 14, height: 1.4),
+                    ),
+                    const SizedBox(height: 20),
 
                     // Show different content based on ownership and status
                     if (isMyRequest) ...[
@@ -2994,11 +3006,12 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => SharedRoutesBottomSheet(
-        helpRequestId: helpData['id'] ?? '',
-        isOwner: true, // Current user is the request owner
-        ownerUserId: currentUserId ?? '',
-      ),
+      builder:
+          (context) => SharedRoutesBottomSheet(
+            helpRequestId: helpData['id'] ?? '',
+            isOwner: true, // Current user is the request owner
+            ownerUserId: currentUserId ?? '',
+          ),
     );
   }
 
@@ -3179,9 +3192,7 @@ class _MapHomePageState extends ConsumerState<MapHomePage>
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const ChatListPage(),
-                ),
+                MaterialPageRoute(builder: (context) => const ChatListPage()),
               );
             },
             backgroundColor: const Color(0xFF71BB7B),

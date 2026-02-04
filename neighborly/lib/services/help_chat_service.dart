@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:neighborly/models/help_chat_models.dart';
 import 'package:neighborly/services/notification_service.dart';
 

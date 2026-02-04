@@ -16,7 +16,7 @@ export const loadevents = async(c: Context)=>{
               .get();
       const events = snapshot.docs.map((doc)=> doc.data());
       const joinedEventIds = joinedSnapshot.docs.map((doc)=> doc.data());
-      console.log(events);
+      // console.log(events);
       console.log(joinedEventIds);
  return c.json({ success: true, eventData: events ,joinedIds:  joinedEventIds}, 200);
       

@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  fl_chart: ^1.0.0
+  fl_chart: ^0.68.0
   syncfusion_flutter_charts: ^30.1.42
   lottie: ^3.3.1
 
@@ -78,13 +78,6 @@ flutter:
     - .env
     - assets/images/
     - assets/data/
-    - assets/images/homepagess.PNG
-    - assets/images/statss.PNG
-    - assets/images/contributionss.PNG
-    - assets/images/achievess.PNG
-    - assets/images/activityss.PNG
-
-
   
 # Flutter Launcher Icons Configuration
 flutter_launcher_icons:

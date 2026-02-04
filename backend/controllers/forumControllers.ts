@@ -1,8 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { firestore } from 'firebase-admin';
 import { FieldValue, Firestore, getFirestore } from 'firebase-admin/firestore';
 import type { Context } from 'hono';
-import { SignatureKind } from 'typescript';
 import { v4 as uuidv4 } from 'uuid';
 
 
@@ -89,7 +87,7 @@ try{
 }
 
 
-export const loadPosts = async(c: Context)=>{
+export const loadExplorePosts = async(c: Context)=>{
   try{
     console.log('loading explore posts...');
       const {location} = await c.req.json();
