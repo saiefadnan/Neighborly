@@ -870,7 +870,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
 
       bool matchesStatus =
           _selectedStatusFilter == 'All' ||
-          help.status == _selectedStatusFilter;
+          help.status.toLowerCase() == _selectedStatusFilter.toLowerCase();
 
       bool matchesTime = true;
       if (_selectedTimeFilter != 'All Time') {
@@ -896,19 +896,39 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
       }
 
       return matchesSearch && matchesStatus && matchesTime;
-    }).toList();
+    }).toList()
+      ..sort((a, b) => b.dateCompleted.compareTo(a.dateCompleted)); // Sort newest first
   }
 
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Completed':
+    switch (status.toLowerCase()) {
+      case 'completed':
         return Colors.green;
-      case 'In Progress':
+      case 'in progress':
+      case 'in_progress':
         return Colors.orange;
-      case 'Cancelled':
+      case 'cancelled':
         return Colors.red;
+      case 'open':
+        return Colors.blue;
       default:
         return Colors.grey;
+    }
+  }
+
+  String _formatStatusText(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'Completed';
+      case 'in progress':
+      case 'in_progress':
+        return 'In Progress';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'open':
+        return 'Open';
+      default:
+        return status; // Return as-is if no match
     }
   }
 
@@ -1303,7 +1323,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          help.status,
+                          _formatStatusText(help.status),
                           style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -1665,7 +1685,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        help.status,
+                        _formatStatusText(help.status),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -1797,7 +1817,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                 const SizedBox(height: 20),
 
                 // Rating and Points (if completed)
-                if (help.status == 'Completed') ...[
+                if (help.status.toLowerCase() == 'completed') ...[
                   Row(
                     children: [
                       if (help.rating != null) ...[
@@ -1917,7 +1937,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                 ],
 
                 // Action buttons based on status
-                if (help.status == 'In Progress') ...[
+                if (help.status.toLowerCase() == 'in progress') ...[
                   Row(
                     children: [
                       Expanded(
@@ -1957,7 +1977,7 @@ class _HelpHistoryPageState extends State<HelpHistoryPage>
                       ),
                     ],
                   ),
-                ] else if (help.status == 'Completed') ...[
+                ] else if (help.status.toLowerCase() == 'completed') ...[
                   Row(
                     children: [
                       Expanded(
